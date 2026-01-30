@@ -9,9 +9,11 @@ def main():
     torontoData = nhlAPI.getRosterData(team)
     # print(torontoData['forwards'])
     df = dataProcessing.makeTeamDataframe(torontoData)
-    print(df.head())
+    # print(df.head())
     print(df.columns)
-
+    team_names = nhlAPI.getTeamNames()
+    allPlayerData = dataProcessing.makeAllPlayersDataFrame(team_names)
+    print(allPlayerData.head())
 
 if __name__ == "__main__":
     main()
