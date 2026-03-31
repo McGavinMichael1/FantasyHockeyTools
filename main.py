@@ -12,7 +12,7 @@ def main():
     # print(df.head())
     print(df.columns)
     team_names = nhlAPI.getTeamNames()
-    allPlayerData = dataProcessing.makeAllPlayersDataFrame(team_names)
+    allPlayerData = dataProcessing.getAllPlayersWithCache()
     print(allPlayerData.head())
 
 if __name__ == "__main__":

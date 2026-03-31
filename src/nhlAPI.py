@@ -1,9 +1,19 @@
 import requests
 import json
+import time
 
 def getRosterData(team):
     url = f"https://api-web.nhle.com/v1/roster/{team}/current"
-    response = requests.get(url)
+    while True:
+        response = requests.get(url)
+        if response.status_code == 429:
+            print("Rate limited, waiting...")
+            time.sleep(5)
+            continue # retry
+        elif response.status_code == 200:
+            break
+        else:
+            print("unexpected error occured")
     print(f"Status code for {team}: {response.status_code}")  # Check if request succeeded
     print(f"Response text preview: {response.text[:200]}")    # See what's actually returned
     data = response.json()
