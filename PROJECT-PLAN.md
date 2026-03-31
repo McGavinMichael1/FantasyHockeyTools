@@ -65,7 +65,7 @@ END
 ---
 
 ### Phase 1: Data Collection (API Integration)
-**Status:** [ ] Not Started | [ ] In Progress | [ ] Complete
+**Status:** [ ] Not Started | [x] In Progress | [ ] Complete
 
 **Objective:** Successfully fetch NHL player statistics from a free API
 
@@ -95,12 +95,11 @@ Probably need: nhl_api.py or data_fetcher.py
 ```
 
 **Your Notes & Discoveries:**
-```
-[What APIs did you find?]
-[What endpoints work?]
-[Sample API URLs that worked:]
-[Challenges encountered:]
-```
+- API: NHLE (api-web.nhle.com/v1/) — free, no auth required
+- Stats endpoint works but doesn't flag active/inactive players
+- Must fetch rosters from all 32 teams and use as an active-player filter
+- Modules created: nhl_api.py (API calls), data_processor.py (DataFrame logic), main.py (orchestration)
+- Caching strategy TBD — consider saving raw JSON responses to avoid hitting API repeatedly during dev
 
 ---
 
@@ -404,59 +403,54 @@ This is where you'll really practice those matrix operations!
 
 ## Learning Log
 
-**Track your breakthroughs and struggles here:**
-
-### Date: ___________
+### Date: March 2026
 **What I learned:**
+- Separation of concerns: keep API calls (nhl_api.py), data processing (data_processor.py), and orchestration (main.py) in separate modules
+- The NHLE stats endpoint does NOT indicate whether a player is currently active — must cross-reference with roster data from all 32 teams
+- Claude Code (VS Code) and Claude.ai Projects do NOT share session history — use PROJECT-PLAN.md as the shared memory layer, referenced with @PROJECT-PLAN.md in Claude Code
 
 **Challenges faced:**
+- Stats endpoint alone is insufficient to determine active player status
+- Combining multiple API responses into a clean DataFrame requires careful handling of nested JSON
 
 **Solutions found:**
+- Fetch rosters from all teams to build an "active players" filter, then join with stats data
+- Use pandas DataFrames as the core data structure for manipulation
 
 **Questions for next time:**
+- Where should caching live — in nhl_api.py or as a separate module?
+- Should cache be per-endpoint or per-player?
 
----
-
-### Date: ___________
-**What I learned:**
-
-**Challenges faced:**
-
-**Solutions found:**
-
-**Questions for next time:**
-
----
+## Resources & References
 
 ## Resources & References
 
 **APIs Found:**
-- 
-- 
+- NHLE API (unofficial): https://api-web.nhle.com/v1/
+- Key endpoints:
+  - Skater stats: `/v1/skater-stats-leaders/current`
+  - Team roster: `/v1/roster/{teamAbbrev}/current`
 
 **Libraries Being Used:**
-- 
-- 
+- `requests` — HTTP calls to NHLE API
+- `pandas` — DataFrame creation and manipulation
+- `json` — parsing API responses
 
 **Helpful Documentation:**
-- 
-- 
-
-**Questions to Ask for Help:**
-1. 
-2. 
-3. 
+- NHLE API community docs: https://gitlab.com/dword4/nhlapi
 
 ---
 
 ## Current Phase
-**I am currently working on:** Phase _____
+**I am currently working on:** Phase 1 - Data Collection
 
 **Next immediate task:**
-- [ ] 
+- [ ] Complete DataFrame creation from JSON responses in data_processor.py
+- [ ] Combine roster + stats endpoints to filter for active players only
+- [ ] Implement basic caching to avoid redundant API calls during development
 
 **Blocked on:**
-- 
+- Nothing currently
 
 ---
 
