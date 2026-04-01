@@ -18,3 +18,4 @@ venv/
 
 # Data files
 data/**/*.csv
+oauth2.json

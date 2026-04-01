@@ -1,3 +1,5 @@
+from random import random
+
 import requests
 import json
 import time
@@ -29,3 +31,20 @@ def getTeamNames():
     for team in data['standings']:
         team_abbrev_list.append(team['teamAbbrev']['default'])
     return team_abbrev_list
+
+def getPlayerStats(player_id):
+    url = f"https://api-web.nhle.com/v1/player/{player_id}/landing"
+    while True:
+        response = requests.get(url)
+        if response.status_code == 429:
+            print("Rate limited, waiting...")
+            time.sleep(15)
+            continue # retry
+        elif response.status_code == 200:
+            break
+        else:
+            print("unexpected error occured")
+    print(f"Status code for {player_id}: {response.status_code}")  # Check if request succeeded
+    print(f"Response text preview: {response.text[:200]}")    # See what's actually returned
+    data = response.json()
+    return data
