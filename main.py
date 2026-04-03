@@ -1,45 +1,77 @@
+from src.features import mlFeatures
 from src import fantasyPoints
-from src import nhlAPI
 from src import dataProcessing
 from src import yahooAPI
-import os
 from src.features import pickups
-def main():
-    """Main entry point for the fantasy hockey application."""
-    print("Welcome to Fantasy Hockey!")
+from src.models import pickups as pickupModel
+from src.models import cooling as coolingModel
 
-    # Your code here
-    print(os.getcwd())
-    team = "TOR"
-    torontoData = nhlAPI.getRosterData(team)
-    # print(torontoData['forwards'])
-    df = dataProcessing.makeTeamDataframe(torontoData)
-    # print(df.head())
-    print(df.columns)
-    team_names = nhlAPI.getTeamNames()
+
+def main():
+    # Load player roster and flatten names
     allPlayerData = dataProcessing.getAllPlayersWithCache()
     allPlayerData = dataProcessing.flattenPlayerNames(allPlayerData)
-    print(allPlayerData.head())
-    ross_colton = nhlAPI.getPlayerStats(8479525)
-    stats = dataProcessing.extractCurrentStats(ross_colton, 8479525)
-    print(stats)
+
+    # Load stats and calculate fantasy points
     stats_df = dataProcessing.getAllStatsWithCache(allPlayerData['id'])
     stats_df['fantasyPoints'] = stats_df.apply(lambda row: fantasyPoints.calculateSkaterPoints(row), axis=1)
-    print(stats_df.shape)
-    print(stats_df.head())
+
     last5_df = dataProcessing.getAllLast5WithCache(allPlayerData['id'])
     last5_df['fantasyPoints'] = last5_df.apply(lambda row: fantasyPoints.calculateSkaterPoints(row), axis=1)
 
+    # Get rostered players from Yahoo
     lg = yahooAPI.getLeague()
-    rostered = yahooAPI.getRosteredIds(lg)
-    print(f"Total rostered players: {len(rostered)}")
-    print(list(rostered)[:10])  # first 10 names
-
     rostered_names = yahooAPI.getRosteredIds(lg)
     rostered_nhle_ids = yahooAPI.getRosteredNHLIds(rostered_names, allPlayerData)
 
+    # Rank available free agents
     results = pickups.rankFreeAgents(stats_df, last5_df, allPlayerData, rostered_nhle_ids)
-    print(results[['player_id', 'full_name', 'positionCode', 'season_ppg', 'fantasyPoints_last5', 'weighted_score']].head(20).to_string())
+    print(results[['full_name', 'positionCode', 'season_ppg', 'fantasyPoints_last5', 'weighted_score']].head(20).to_string())
+    
+    ## model pipeline
+    df = mlFeatures.loadMoneyPuckData()
+    df = mlFeatures.buildRollingFeatures(df)
+
+    # Split before labeling — current season has no future games to label
+    historical_df = df[df['season'] <= 2024].copy()
+    current_df = df[df['season'] == 2025].copy()
+
+    historical_df = mlFeatures.buildLabel(historical_df)
+    pickupModel.train(historical_df)
+
+    # Predict on current season using most recent game state per player
+    games_played = current_df.groupby('playerId').size().reset_index(name='gamesPlayed')
+    current_players = current_df.groupby('playerId').last().reset_index()
+    current_players = current_players.merge(games_played, on='playerId')
+    current_players = current_players[current_players['gamesPlayed'] >= 20]
+
+    current_players['ml_score'] = pickupModel.predict(current_players)
+
+    current_players = current_players.merge(
+        allPlayerData[['id', 'full_name', 'positionCode']],
+        left_on='playerId',
+        right_on='id',
+        how='left'
+    )
+    current_players['display_name'] = current_players['full_name'].fillna(current_players['name'])
+
+    results['weighted_score_normalized'] = (results['weighted_score'] - results['weighted_score'].min()) / (results['weighted_score'].max() - results['weighted_score'].min())
+    combined = results.merge(current_players[['playerId', 'ml_score']], 
+                         left_on='player_id', right_on='playerId', how='left')
+    combined = combined.dropna(subset=['ml_score'])
+    combined['final_score'] = 0.3 * combined['weighted_score_normalized'] + 0.7 * combined['ml_score']
+    print(combined[['full_name', 'positionCode', 'weighted_score', 'ml_score', 'final_score']]
+      .sort_values('final_score', ascending=False)
+      .head(20)
+      .to_string())
+
+    
+    coolingModel.train(historical_df)
+    current_players['cooling_score'] = coolingModel.predict(current_players)
+    print(current_players[['display_name', 'positionCode', 'cooling_score', 'gamesPlayed']]
+        .sort_values('cooling_score', ascending=False)
+        .head(20)
+        .to_string())
 
 
 

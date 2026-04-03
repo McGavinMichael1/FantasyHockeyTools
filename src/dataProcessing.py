@@ -19,9 +19,13 @@ def makeTeamDataframe(jsonData):
     return df
 
 def flattenPlayerNames(players_df):
+    def extract_default(x):
+        if isinstance(x, dict):
+            return x['default']
+        return ast.literal_eval(x)['default']
     players_df = players_df.copy()
-    players_df['first'] = players_df['firstName'].apply(lambda x: ast.literal_eval(x)['default'])
-    players_df['last'] = players_df['lastName'].apply(lambda x: ast.literal_eval(x)['default'])
+    players_df['first'] = players_df['firstName'].apply(extract_default)
+    players_df['last'] = players_df['lastName'].apply(extract_default)
     players_df['full_name'] = players_df['first'] + ' ' + players_df['last']
     return players_df
 

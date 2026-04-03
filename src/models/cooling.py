@@ -18,14 +18,14 @@ import matplotlib.pyplot as plt
 from src.features.mlFeatures import buildFeatureMatrix
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, '..', '..', 'models', 'pickups', 'model.pkl')
+MODEL_PATH = os.path.join(BASE_DIR, '..', '..', 'models', 'cooling', 'model.pkl')
 
 def train(df: pd.DataFrame):
     """Train the pickup model on rolling window data and save it."""
     train_df = df[df['season'] <= 2022] # Use data up to 2022 for training
     val_df = df[df['season'] == 2023]
-    X_train, y_train = buildFeatureMatrix(train_df, label_col='is_heating_up')
-    X_val, y_val = buildFeatureMatrix(val_df, label_col='is_heating_up')
+    X_train, y_train = buildFeatureMatrix(train_df, label_col='is_cooling_down')
+    X_val, y_val = buildFeatureMatrix(val_df, label_col='is_cooling_down')
     model = xgb.XGBClassifier(
         n_estimators=100,
         max_depth=5,
@@ -56,7 +56,7 @@ def train(df: pd.DataFrame):
 def predict(df: pd.DataFrame) -> pd.Series:
     """Load the saved model and return predicted short-term fantasy points."""
     model = load()
-    X, _ = buildFeatureMatrix(df, label_col='is_heating_up')
+    X, _ = buildFeatureMatrix(df, label_col='is_cooling_down')
     probas = model.predict_proba(X)[:, 1]
     return pd.Series(probas, index=df.index)
 
