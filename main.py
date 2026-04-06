@@ -1,3 +1,4 @@
+from src.features.lstmFeatures import SEQUENCE_FEATURES
 from src.features import mlFeatures
 from src import fantasyPoints
 from src import dataProcessing
@@ -5,7 +6,7 @@ from src import yahooAPI
 from src.features import pickups
 from src.models import pickups as pickupModel
 from src.models import cooling as coolingModel
-
+from src.models import lstmPickups as lstmModel
 
 def main():
     # Load player roster and flatten names
@@ -37,6 +38,9 @@ def main():
     current_df = df[df['season'] == 2025].copy()
 
     historical_df = mlFeatures.buildLabel(historical_df)
+    print(historical_df[SEQUENCE_FEATURES].isna().sum())
+    # lstmModel.train()
+    # lstm_scores = lstmModel.predict(current_df)
     pickupModel.train(historical_df)
 
     # Predict on current season using most recent game state per player
@@ -46,6 +50,7 @@ def main():
     current_players = current_players[current_players['gamesPlayed'] >= 20]
 
     current_players['ml_score'] = pickupModel.predict(current_players)
+    # current_players['lstm_score'] = current_players['playerId'].map(lstm_scores)
 
     current_players = current_players.merge(
         allPlayerData[['id', 'full_name', 'positionCode']],
@@ -54,17 +59,16 @@ def main():
         how='left'
     )
     current_players['display_name'] = current_players['full_name'].fillna(current_players['name'])
-
     results['weighted_score_normalized'] = (results['weighted_score'] - results['weighted_score'].min()) / (results['weighted_score'].max() - results['weighted_score'].min())
+
     combined = results.merge(current_players[['playerId', 'ml_score']], 
-                         left_on='player_id', right_on='playerId', how='left')
+                            left_on='player_id', right_on='playerId', how='left')
     combined = combined.dropna(subset=['ml_score'])
     combined['final_score'] = 0.3 * combined['weighted_score_normalized'] + 0.7 * combined['ml_score']
     print(combined[['full_name', 'positionCode', 'weighted_score', 'ml_score', 'final_score']]
-      .sort_values('final_score', ascending=False)
-      .head(20)
-      .to_string())
-
+        .sort_values('final_score', ascending=False)
+        .head(20)
+        .to_string())
     
     coolingModel.train(historical_df)
     current_players['cooling_score'] = coolingModel.predict(current_players)

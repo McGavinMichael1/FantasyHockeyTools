@@ -13,6 +13,8 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import roc_auc_score, classification_report, RocCurveDisplay
 import matplotlib.pyplot as plt
+from sklearn.model_selection import RandomizedSearchCV, PredefinedSplit
+import numpy as np
 
 
 from src.features.mlFeatures import buildFeatureMatrix
@@ -26,18 +28,39 @@ def train(df: pd.DataFrame):
     val_df = df[df['season'] == 2023]
     X_train, y_train = buildFeatureMatrix(train_df, label_col='is_heating_up')
     X_val, y_val = buildFeatureMatrix(val_df, label_col='is_heating_up')
-    model = xgb.XGBClassifier(
-        n_estimators=100,
-        max_depth=5,
-        learning_rate=0.1,
-        eval_metric='logloss',
+    split_indicator = [-1] * len(X_train) + [0] * len(X_val)
+    ps = PredefinedSplit(split_indicator)
+    X_all = pd.concat([X_train, X_val])
+    y_all = pd.concat([y_train, y_val])
+    param_dist = {
+        'n_estimators': [100, 200, 300],
+        'max_depth': [3, 4, 5],
+        'learning_rate': [0.01, 0.05, 0.1],
+        'subsample': [0.7, 0.8, 0.9],
+        'colsample_bytree': [0.7, 0.8, 1.0],
+    }
+
+    search = RandomizedSearchCV(
+        xgb.XGBClassifier(eval_metric='logloss'),
+        param_distributions=param_dist,
+        n_iter=20,
+        scoring='roc_auc',
+        cv=ps,
+        random_state=42,
+        verbose=1,
     )
-    model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=True)
+    search.fit(X_all, y_all)
+    model = search.best_estimator_
+    print("Best params:", search.best_params_)
+    print(f"Best val AUC: {search.best_score_:.4f}")
     save(model)
     proba = model.predict_proba(X_val)[:, 1]
     preds = model.predict(X_val)
 
-    print(f"ROC AUC: {roc_auc_score(y_val, proba):.4f}")
+    train_proba = model.predict_proba(X_train)[:, 1]
+    print(f"Train AUC: {roc_auc_score(y_train, train_proba):.4f}")
+    print(f"Val AUC:   {roc_auc_score(y_val, proba):.4f}")
+
     print(classification_report(y_val, preds))
 
     RocCurveDisplay.from_predictions(y_val, proba)

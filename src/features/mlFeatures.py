@@ -14,7 +14,7 @@ def loadMoneyPuckData():
                                             moneyPuckData['I_F_primaryAssists'] * 2 +
                                             moneyPuckData['I_F_secondaryAssists'] * 2 +
                                             moneyPuckData['I_F_shotsOnGoal'] * 0.15)
-    moneyPuckData['ozone_start_pct'] = moneyPuckData['I_F_oZoneShiftStarts'] / (moneyPuckData['I_F_oZoneShiftStarts'] + moneyPuckData['I_F_dZoneShiftStarts'])
+    moneyPuckData['ozone_start_pct'] = moneyPuckData['I_F_oZoneShiftStarts'] / ((moneyPuckData['I_F_oZoneShiftStarts'] + moneyPuckData['I_F_dZoneShiftStarts']).replace(0, 1))
     moneyPuckData['xgoals_surplus'] = moneyPuckData['I_F_goals'] - moneyPuckData['I_F_xGoals']
     moneyPuckData['high_danger_rate'] = moneyPuckData['I_F_highDangerShots'] / moneyPuckData['I_F_shotsOnGoal'].replace(0, 1)
     position_mapping = {'C': 0, 'L': 1, 'R': 2, 'D': 3}
