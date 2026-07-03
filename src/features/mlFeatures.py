@@ -1,19 +1,15 @@
 import pandas as pd
-import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-RAW_DATA_DIR = os.path.join(BASE_DIR, '../..', 'data', 'raw')
+from src import moneypuck
+from src import fantasyPoints
 
 def loadMoneyPuckData():
-    historical = pd.read_csv(os.path.join(RAW_DATA_DIR, 'moneypuck_2020_2024.csv'))
-    current = pd.read_csv(os.path.join(RAW_DATA_DIR, 'moneypuck_current.csv'))
-    current = current[current['situation'] == 'all']
-    moneyPuckData = pd.concat([historical, current], ignore_index=True).copy()
+    games = moneypuck.loadGameLogs(min_season=2020)
+    # collapses to one row per player-game and scores with full league rules
+    # (incl. hits, blocks, PPP/SHP from situation rows)
+    moneyPuckData = fantasyPoints.moneypuckGamePoints(games)
+    moneyPuckData = moneyPuckData.rename(columns={'fantasyPoints': 'game_fantasy_points'})
     moneyPuckData.sort_values(by=['playerId', 'gameDate'], inplace=True)
-    moneyPuckData['game_fantasy_points'] = (moneyPuckData['I_F_goals'] * 3 +
-                                            moneyPuckData['I_F_primaryAssists'] * 2 +
-                                            moneyPuckData['I_F_secondaryAssists'] * 2 +
-                                            moneyPuckData['I_F_shotsOnGoal'] * 0.15)
     moneyPuckData['ozone_start_pct'] = moneyPuckData['I_F_oZoneShiftStarts'] / ((moneyPuckData['I_F_oZoneShiftStarts'] + moneyPuckData['I_F_dZoneShiftStarts']).replace(0, 1))
     moneyPuckData['xgoals_surplus'] = moneyPuckData['I_F_goals'] - moneyPuckData['I_F_xGoals']
     moneyPuckData['high_danger_rate'] = moneyPuckData['I_F_highDangerShots'] / moneyPuckData['I_F_shotsOnGoal'].replace(0, 1)
