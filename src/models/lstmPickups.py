@@ -1,3 +1,8 @@
+# PARKED (July 2026): experimental sequence model, not on the product path.
+# Kept for learning; XGBoost (src/models/pickups.py) is the product model.
+# Note: loadLSTMData in lstmFeatures.py still uses the old G/A/SOG-only
+# scoring — align it with fantasyPoints.SKATER_WEIGHTS before un-parking.
+
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -89,7 +94,7 @@ def train(epochs=30, batch_size=512, hidden_size=64, num_layers=2, dropout=0.3):
         if val_auc > best_auc:
             best_auc = val_auc
             epochs_without_improvement = 0
-            save(model)  # only save when improved
+            save(model, hidden_size, num_layers)  # only save when improved
         else:
             epochs_without_improvement += 1
             if epochs_without_improvement >= patience:
