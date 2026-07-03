@@ -65,14 +65,14 @@ def train(df: pd.DataFrame):
 
     RocCurveDisplay.from_predictions(y_val, proba)
     plt.title('Pickup Model - ROC Curve (Validation Set)')
-    plt.savefig('roc_curve.png')
-    plt.show()
+    plt.savefig('reports/pickup_roc_curve.png')
+    plt.close()
 
     xgb.plot_importance(model, max_num_features=20)
-    plt.title('Top 20 Feature Importances')
+    plt.title('Pickup Model - Top 20 Feature Importances')
     plt.tight_layout()
-    plt.savefig('feature_importance.png')
-    plt.show()
+    plt.savefig('reports/pickup_feature_importance.png')
+    plt.close()
 
 
 

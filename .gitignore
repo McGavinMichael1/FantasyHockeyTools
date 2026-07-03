@@ -19,3 +19,6 @@ venv/
 # Data files
 data/**/*.csv
 oauth2.json
+
+# Generated plots/reports
+reports/

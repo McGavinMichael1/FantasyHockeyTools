@@ -41,15 +41,15 @@ def train(df: pd.DataFrame):
     print(classification_report(y_val, preds))
 
     RocCurveDisplay.from_predictions(y_val, proba)
-    plt.title('Pickup Model - ROC Curve (Validation Set)')
-    plt.savefig('roc_curve.png')
-    plt.show()
+    plt.title('Cooling Model - ROC Curve (Validation Set)')
+    plt.savefig('reports/cooling_roc_curve.png')
+    plt.close()
 
     xgb.plot_importance(model, max_num_features=20)
-    plt.title('Top 20 Feature Importances')
+    plt.title('Cooling Model - Top 20 Feature Importances')
     plt.tight_layout()
-    plt.savefig('feature_importance.png')
-    plt.show()
+    plt.savefig('reports/cooling_feature_importance.png')
+    plt.close()
 
 
 
