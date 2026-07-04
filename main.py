@@ -31,13 +31,35 @@ def trainPickups():
 
 def latestGameState():
     """Most recent game-state row per current-season player with >= 20 GP."""
+    import os
+    import time
+
+    cache_file = os.path.join('data', 'processed', 'current_players_features.csv')
+
+    # Check if cache exists and is fresh (< 24 hours old)
+    if os.path.exists(cache_file):
+        age_hours = (time.time() - os.path.getmtime(cache_file)) / 3600
+        if age_hours < 24:
+            import pandas as pd
+            print(f"Loading cached current player features ({age_hours:.1f}h old)")
+            return pd.read_csv(cache_file)
+
+    # Cache miss or stale - compute features
+    print("Computing current player features (this may take 30-60 seconds)...")
     df = mlFeatures.loadMoneyPuckData()
     df = mlFeatures.buildRollingFeatures(df)
     current_df = df[df['season'] == CURRENT_SEASON].copy()
     games_played = current_df.groupby('playerId').size().reset_index(name='gamesPlayed')
     current_players = current_df.groupby('playerId').last().reset_index()
     current_players = current_players.merge(games_played, on='playerId')
-    return current_players[current_players['gamesPlayed'] >= 20]
+    current_players = current_players[current_players['gamesPlayed'] >= 20]
+
+    # Save to cache
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+    current_players.to_csv(cache_file, index=False)
+    print(f"Cached features to {cache_file}")
+
+    return current_players
 
 
 def runPickups():
@@ -51,9 +73,19 @@ def runPickups():
     last5_df = dataProcessing.getAllLast5WithCache(allPlayerData['id'])
     last5_df['fantasyPoints'] = last5_df.apply(lambda row: fantasyPoints.calculateSkaterPoints(row), axis=1)
 
-    lg = yahooAPI.getLeague()
-    rostered_names = yahooAPI.getRosteredIds(lg)
-    rostered_nhle_ids = yahooAPI.getRosteredNHLIds(rostered_names, allPlayerData)
+    # Try to get rostered players from Yahoo (optional)
+    rostered_nhle_ids = set()
+    try:
+        lg = yahooAPI.getLeague()
+        rostered_names = yahooAPI.getRosteredIds(lg)
+        rostered_nhle_ids = yahooAPI.getRosteredNHLIds(rostered_names, allPlayerData)
+        print(f"Yahoo API: Filtering out {len(rostered_nhle_ids)} rostered players")
+    except FileNotFoundError as e:
+        print(f"⚠️  Yahoo API disabled: {e}")
+        print("   To enable, create oauth2.json with Yahoo OAuth credentials")
+        print("   See: https://github.com/josuebrunel/yahoo-oauth#setup-oauth2")
+    except Exception as e:
+        print(f"⚠️  Yahoo API error (continuing without roster filter): {e}")
 
     results = pickups.rankFreeAgents(stats_df, last5_df, allPlayerData, rostered_nhle_ids)
 

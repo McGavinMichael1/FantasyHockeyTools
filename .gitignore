@@ -8,6 +8,11 @@ env/
 venv/
 .venv/
 .env
+.python-version
+
+# uv
+.uv/
+uv.lock
 
 # IDE
 .vscode/
@@ -18,7 +23,17 @@ venv/
 
 # Data files
 data/**/*.csv
+data/processed/*.json
 oauth2.json
 
 # Generated plots/reports
 reports/
+
+# Frontend (Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+
+# Models (binary files - retrain locally)
+models/**/*.pkl

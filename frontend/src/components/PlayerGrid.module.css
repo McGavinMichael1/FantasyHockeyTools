@@ -1,0 +1,274 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Filters bar */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.searchWrapper {
+  flex: 0 0 240px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.positionFilters {
+  display: flex;
+  gap: 4px;
+}
+
+.positionButton {
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.positionButton:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.positionButton.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.resultCount {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Table */
+.tableWrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table th {
+  padding: 10px 8px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.table th.sortable {
+  cursor: pointer;
+}
+
+.table th.sortable:hover {
+  color: var(--text-secondary);
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sortIndicator {
+  font-size: 8px;
+  color: var(--accent);
+}
+
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table tbody tr {
+  transition: background 0.1s ease;
+}
+
+.table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* Cell styles */
+.rank {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.headshotCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.headshot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  object-fit: cover;
+}
+
+.headshotPlaceholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.playerName {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.playerName span:first-child {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.sweaterNumber {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.positionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  border: 1px solid;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--bg-tertiary);
+}
+
+.positive {
+  color: var(--heating);
+}
+
+.negative {
+  color: var(--cooling);
+}
+
+/* Score cells */
+.scoreCell {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.scoreBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.heating .scoreBar {
+  background: linear-gradient(90deg, var(--heating-dim), var(--heating));
+}
+
+.cooling .scoreBar {
+  background: linear-gradient(90deg, var(--cooling-dim), var(--cooling));
+}
+
+.neutral .scoreBar {
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+}
+
+.scoreValue {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .filters {
+    flex-wrap: wrap;
+  }
+
+  .searchWrapper {
+    flex: 1 1 100%;
+    order: -1;
+  }
+
+  .resultCount {
+    flex: 1 1 100%;
+    margin-left: 0;
+    text-align: center;
+  }
+}
