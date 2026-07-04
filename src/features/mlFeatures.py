@@ -41,10 +41,16 @@ def buildRollingFeatures(df, windows=[5, 10, 20]):
 
     return df
 
-def buildLabel(df):
+def buildLabel(df, hot_quantile=0.75, cold_quantile=0.25):
     next_5_avg = df.groupby(['playerId', 'season'])['game_fantasy_points'].transform(lambda x: x[::-1].rolling(5, min_periods=5).mean()[::-1].shift(-1))
-    df['is_heating_up'] = (next_5_avg > df['season_avg_so_far'] * 1.25).astype(int)
-    df['is_cooling_down'] = (next_5_avg < df['season_avg_so_far'] * 0.75).astype(int)
+    # Rank against the league that season rather than each player's own baseline.
+    # A relative-to-self threshold lets low-output players (e.g. shot-blocking
+    # defensemen) trigger "heating up" on ordinary block/hit variance without ever
+    # producing fantasy-relevant totals. Percentile vs. the field ties the label
+    # to actual absolute value.
+    next_5_percentile = next_5_avg.groupby(df['season']).rank(pct=True)
+    df['is_heating_up'] = (next_5_percentile >= hot_quantile).astype(int)
+    df['is_cooling_down'] = (next_5_percentile <= cold_quantile).astype(int)
     df = df.dropna(subset=['season_avg_so_far'])
     df = df[next_5_avg.reindex(df.index).notna()]
     return df
