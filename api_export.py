@@ -3,6 +3,9 @@
 
 import json
 import os
+import time
+
+import pandas as pd
 
 from src import dataProcessing
 from src import fantasyPoints
@@ -24,9 +27,6 @@ def get_headshot_url(player_id: int) -> str:
 
 def latestGameState():
     """Most recent game-state row per current-season player with >= 20 GP."""
-    import time
-    import pandas as pd
-
     cache_file = os.path.join('data', 'processed', 'current_players_features.csv')
 
     if os.path.exists(cache_file):
@@ -207,5 +207,4 @@ def export_data():
 
 
 if __name__ == '__main__':
-    import pandas as pd
     export_data()
