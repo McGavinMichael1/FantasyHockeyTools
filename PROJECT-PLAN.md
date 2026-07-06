@@ -156,6 +156,16 @@ where per game: PPP = I_F_points summed over situation == '5on4'
 This is a *season-level regression* — simpler than the pickup classifier, and offseason-friendly
 (no live data needed).
 
+#### B0 — League-wide keeper input (manual, since Yahoo doesn't expose it until draft day)
+- [ ] Fill in `data/raw/keepers.csv` (one Yahoo display name per row, `player_name` column)
+      before running the draft ranker each year -- keeper lists change year to year and
+      Yahoo's API doesn't reflect them until the draft actually happens
+- [ ] `src/keepers.py::loadKeepers()` reads the file; `filterOutKeepers()` fuzzy-matches
+      names against a players DataFrame (same rapidfuzz approach as
+      `yahooAPI.getRosteredNHLIds`) and drops them from the draft pool
+- [ ] Distinct from Phase C's `src/keeper.py` -- that one decides which of *my* players
+      are worth keeping; this one just removes *everyone's* keepers from the draft pool
+
 #### B1 — Player-season aggregation table
 - [ ] In `src/moneypuck.py`: `buildPlayerSeasons(game_df) -> DataFrame`, one row per
       (playerId, season), aggregating from game logs (source: `2008_to_2024.csv` + current file):
@@ -244,6 +254,37 @@ worthless as a keeper if the draft is full of 60-FP players at his position.
       notes) → `python main.py pickups` (or the Streamlit page)
 - [ ] Revisit: heuristic/ML blend weights, cooling-model surfacing for *drop* candidates,
       un-park the LSTM if still curious (fix the `save(model)` signature bug first)
+
+#### E-ML — Pickup + cooling model improvements (suggested order, from July 2026 model review)
+1. **Tuning (cheap, mechanical — do first):**
+   - [ ] Tune the cooling model at all — `cooling.py` is hardcoded (`n_estimators=100,
+         max_depth=5, lr=0.1`) while pickups gets a 20-iter search; reuse the same search
+   - [ ] Replace the `n_estimators` grid with early stopping: `n_estimators=2000`,
+         `early_stopping_rounds=50` against the val set, let each candidate pick its tree count
+   - [ ] Widen the search space: `min_child_weight` (up to 20–50 — noisy labels reward heavy
+         regularization), `reg_alpha`, `reg_lambda`, `gamma`; make `learning_rate` log-uniform
+   - [ ] Swap RandomizedSearchCV for Optuna (TPE) — more sample-efficient at 20–50 trials,
+         native continuous/log ranges
+   - [ ] Validate across seasons, not just 2023: expanding-window folds (≤2021→2022, ≤2022→2023,
+         optionally fold in 2024), pick hyperparams by mean AUC; keep 2025 held out for backtest
+2. **Features (most likely source of real signal):**
+   - [ ] Trend deltas: `rolling_5 − rolling_20` for fantasy points and icetime — "heating up"
+         and "coach is promoting him" as explicit features instead of splits the trees must learn
+   - [ ] PP deployment: 5on4 TOI from MoneyPuck situation rows + its 5-vs-20 delta — a PP1
+         promotion (e.g. the Raddysh/Hedman-injury case in `backtest.py`) is the classic
+         breakout signal the current features miss
+   - [ ] Regression-to-mean: rolling sum of `xgoals_surplus`, rolling sh% vs career sh% —
+         should help the weaker cooling model most (0.64 val AUC vs pickups' 0.73)
+   - [ ] Schedule context (games next 7 days, rest days, back-to-backs) — parked-ideas overlap;
+         only if the above pans out
+3. **Reformulate as regression, grade with the backtest:**
+   - [ ] Try `XGBRegressor` on `next_5_avg` FP directly instead of the binarized 75th/25th
+         percentile labels — binarizing throws away signal, and the UI ranks anyway
+   - [ ] Evaluate with Spearman vs realized next-5 FP and, primarily, `backtest.py`'s
+         top-K-of-free-agent-pool hit rate — that's the product metric, not global AUC
+   - [ ] Caveat to watch: the league-percentile label partly learns "is good" rather than
+         "is heating up" (check whether `season_avg_so_far` dominates feature importance);
+         regression + ranking within the FA pool sidesteps this
 
 ---
 
@@ -360,6 +401,7 @@ both are small and partly luck-driven. Documented, accepted.
 **I am currently working on:** Phase B — Draft Analyzer (Phase A completed July 3, 2026)
 
 **Next immediate task:**
+- [ ] B0: fill in `data/raw/keepers.csv`, implement `src/keepers.py`
 - [ ] B1: `buildPlayerSeasons(game_df)` in `src/moneypuck.py` — aggregate game logs to one row
       per (playerId, season), cache to `data/processed/player_seasons.csv`
 - [ ] B2: draft features in `src/features/draft.py::build_draft_features`
