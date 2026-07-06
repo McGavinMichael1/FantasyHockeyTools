@@ -11,7 +11,8 @@ import pickle
 
 import pandas as pd
 import xgboost as xgb
-from sklearn.metrics import roc_auc_score, classification_report, RocCurveDisplay
+from scipy.stats import spearmanr
+from sklearn.metrics import make_scorer, roc_auc_score, RocCurveDisplay
 import matplotlib.pyplot as plt
 from sklearn.model_selection import RandomizedSearchCV, PredefinedSplit
 import numpy as np
@@ -22,12 +23,17 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, '..', '..', 'models', 'pickups', 'model.pkl')
 
+
+def _spearman(y_true, y_pred):
+    return spearmanr(y_true, y_pred).statistic
+
+
 def train(df: pd.DataFrame):
-    """Train the pickup model on rolling window data and save it."""
+    """Train the pickup regressor (predicted next-5-game FP/g) and save it."""
     train_df = df[df['season'] <= 2022] # Use data up to 2022 for training
     val_df = df[df['season'] == 2023]
-    X_train, y_train = buildFeatureMatrix(train_df, label_col='is_heating_up')
-    X_val, y_val = buildFeatureMatrix(val_df, label_col='is_heating_up')
+    X_train, y_train = buildFeatureMatrix(train_df, label_col='next_5_avg')
+    X_val, y_val = buildFeatureMatrix(val_df, label_col='next_5_avg')
     split_indicator = [-1] * len(X_train) + [0] * len(X_val)
     ps = PredefinedSplit(split_indicator)
     X_all = pd.concat([X_train, X_val])
@@ -41,10 +47,10 @@ def train(df: pd.DataFrame):
     }
 
     search = RandomizedSearchCV(
-        xgb.XGBClassifier(eval_metric='logloss'),
+        xgb.XGBRegressor(),
         param_distributions=param_dist,
         n_iter=20,
-        scoring='roc_auc',
+        scoring=make_scorer(_spearman),
         cv=ps,
         random_state=42,
         verbose=1,
@@ -52,19 +58,19 @@ def train(df: pd.DataFrame):
     search.fit(X_all, y_all)
     model = search.best_estimator_
     print("Best params:", search.best_params_)
-    print(f"Best val AUC: {search.best_score_:.4f}")
+    print(f"Best val Spearman: {search.best_score_:.4f}")
     save(model)
-    proba = model.predict_proba(X_val)[:, 1]
-    preds = model.predict(X_val)
+    val_pred = model.predict(X_val)
 
-    train_proba = model.predict_proba(X_train)[:, 1]
-    print(f"Train AUC: {roc_auc_score(y_train, train_proba):.4f}")
-    print(f"Val AUC:   {roc_auc_score(y_val, proba):.4f}")
+    train_pred = model.predict(X_train)
+    print(f"Train Spearman: {_spearman(y_train, train_pred):.4f}")
+    print(f"Val Spearman:   {_spearman(y_val, val_pred):.4f}")
+    # Ranking quality against the old binary label, comparable to the
+    # classifier's recorded val AUC.
+    print(f"Val AUC vs is_heating_up: {roc_auc_score(val_df['is_heating_up'], val_pred):.4f}")
 
-    print(classification_report(y_val, preds))
-
-    RocCurveDisplay.from_predictions(y_val, proba)
-    plt.title('Pickup Model - ROC Curve (Validation Set)')
+    RocCurveDisplay.from_predictions(val_df['is_heating_up'], val_pred)
+    plt.title('Pickup Model - ROC vs heating-up label (Validation Set)')
     plt.savefig('reports/pickup_roc_curve.png')
     plt.close()
 
@@ -77,11 +83,11 @@ def train(df: pd.DataFrame):
 
 
 def predict(df: pd.DataFrame) -> pd.Series:
-    """Load the saved model and return predicted short-term fantasy points."""
+    """Load the saved model and return predicted next-5-game fantasy FP/g."""
     model = load()
-    X, _ = buildFeatureMatrix(df, label_col='is_heating_up')
-    probas = model.predict_proba(X)[:, 1]
-    return pd.Series(probas, index=df.index)
+    X, _ = buildFeatureMatrix(df, label_col='next_5_avg')
+    preds = model.predict(X)
+    return pd.Series(preds, index=df.index)
 
 
 def load():

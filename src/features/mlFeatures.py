@@ -42,17 +42,20 @@ def buildRollingFeatures(df, windows=[5, 10, 20]):
     return df
 
 def buildLabel(df, hot_quantile=0.75, cold_quantile=0.25):
-    next_5_avg = df.groupby(['playerId', 'season'])['game_fantasy_points'].transform(lambda x: x[::-1].rolling(5, min_periods=5).mean()[::-1].shift(-1))
+    # Continuous regression target: mean fantasy points over the next 5 games
+    # (strictly future window — never includes the current game).
+    df['next_5_avg'] = df.groupby(['playerId', 'season'])['game_fantasy_points'].transform(lambda x: x[::-1].rolling(5, min_periods=5).mean()[::-1].shift(-1))
     # Rank against the league that season rather than each player's own baseline.
     # A relative-to-self threshold lets low-output players (e.g. shot-blocking
     # defensemen) trigger "heating up" on ordinary block/hit variance without ever
     # producing fantasy-relevant totals. Percentile vs. the field ties the label
-    # to actual absolute value.
-    next_5_percentile = next_5_avg.groupby(df['season']).rank(pct=True)
+    # to actual absolute value. (Binary labels kept for diagnostics and the
+    # parked LSTM; the pickup/cooling models now regress on next_5_avg.)
+    next_5_percentile = df['next_5_avg'].groupby(df['season']).rank(pct=True)
     df['is_heating_up'] = (next_5_percentile >= hot_quantile).astype(int)
     df['is_cooling_down'] = (next_5_percentile <= cold_quantile).astype(int)
     df = df.dropna(subset=['season_avg_so_far'])
-    df = df[next_5_avg.reindex(df.index).notna()]
+    df = df.dropna(subset=['next_5_avg'])
     return df
 
 def buildFeatureMatrix(df, label_col='is_heating_up'):

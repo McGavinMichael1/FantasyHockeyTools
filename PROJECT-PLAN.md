@@ -29,9 +29,10 @@
 - **Heuristic ranker** (`src/features/pickups.py::rankFreeAgents`): season PPG + last-5 blend,
   filters rostered/goalies/small samples
 - **ML pickup models** on MoneyPuck game-level data (`src/features/mlFeatures.py`):
-  rolling-window features (5/10/20 games), "heating up" / "cooling down" labels vs. own baseline
-  - `src/models/pickups.py` — XGBoost classifier + RandomizedSearchCV, season-based splits
-  - `src/models/cooling.py` — XGBoost cooling-down classifier
+  rolling-window features (5/10/20 games), continuous `next_5_avg` regression target
+  (league-percentile binary labels kept for diagnostics/LSTM)
+  - `src/models/pickups.py` — XGBoost regressor + RandomizedSearchCV (Spearman), season-based splits
+  - `src/models/cooling.py` — XGBoost regressor; low projected next-5 FP/g = drop candidate
   - `src/models/lstmPickups.py` — LSTM sequence model (experimental, has a bug — see below)
 - **Blended output** (`main.py`): 0.3 × heuristic + 0.7 × ML score, prints top 20
 - **Streamlit skeleton** (`ui/app.py`, `ui/pages/`): pages exist but are TODO stubs
@@ -277,14 +278,51 @@ worthless as a keeper if the draft is full of 60-FP players at his position.
          should help the weaker cooling model most (0.64 val AUC vs pickups' 0.73)
    - [ ] Schedule context (games next 7 days, rest days, back-to-backs) — parked-ideas overlap;
          only if the above pans out
-3. **Reformulate as regression, grade with the backtest:**
-   - [ ] Try `XGBRegressor` on `next_5_avg` FP directly instead of the binarized 75th/25th
+3. **Reformulate as regression, grade with the backtest:** ✅ DONE July 6, 2026 — see Learning Log
+   - [x] Try `XGBRegressor` on `next_5_avg` FP directly instead of the binarized 75th/25th
          percentile labels — binarizing throws away signal, and the UI ranks anyway
-   - [ ] Evaluate with Spearman vs realized next-5 FP and, primarily, `backtest.py`'s
+   - [x] Evaluate with Spearman vs realized next-5 FP and, primarily, `backtest.py`'s
          top-K-of-free-agent-pool hit rate — that's the product metric, not global AUC
-   - [ ] Caveat to watch: the league-percentile label partly learns "is good" rather than
+         (result: spot-check mean 40% vs classifier's 41% — similar, both >> 32% baseline)
+   - [x] Caveat to watch: the league-percentile label partly learns "is good" rather than
          "is heating up" (check whether `season_avg_so_far` dominates feature importance);
-         regression + ranking within the FA pool sidesteps this
+         regression + ranking within the FA pool sidesteps this (checked: ranks 4th, icetime 1st)
+
+#### E-UX — Explainable pickup scores (frontend "why", from July 2026 UX review)
+Net-new feature, **not** debt: the frontend surfaces model scores as bare bars with no legend and
+no reasoning, so the recommendations can't be trusted or acted on. Deferred behind the draft on
+purpose. Scoped July 6, 2026 — implementation notes preserved so it isn't re-derived.
+
+1. **Score legend (frontend-only, ~1–2h).** Define the three scores where they're shown
+   (`frontend/src/components/PlayerGrid.tsx` headers + a filter-bar popover). What they actually
+   are today (post E-ML item 3, July 2026): **Score** = `final_score` = `0.3 × heuristic_norm +
+   0.7 × ml_score` (`api_export.py`); **Heat** = `ml_score` = percentile rank of XGBoost-projected
+   next-5-game FP/g; **Cool** = `cooling_score` = inverted percentile of the cooling regressor's
+   projection (lowest projected next-5 FP/g = 1.0); heuristic = `0.6 × season PPG +
+   0.4 × last-5 FPTS` (`src/features/pickups.py:30`). No backend change, no retrain.
+2. **Faithful per-row "why" (backend + frontend, ~1 day).** Chose the model-faithful path over
+   heuristic chips: the box-score columns shown in the grid are *not* the model's inputs (model
+   trains on MoneyPuck `rolling_*` features — `mlFeatures.py:20-42`), so a "why" eyeballed from
+   visible stats can contradict the ranking it's explaining.
+   - Compute exact tree-SHAP contributions where the model already runs (`api_export.py:88`):
+     `model.get_booster().predict(dmatrix, pred_contribs=True)` on the same `X`. **No new
+     dependency** (native XGBoost — respects decision #10 / the optuna caution in
+     `fht-research-frontier`), no retrain (reads the saved `.pkl`).
+   - Emit a `reasons` list per player (top ±2–3 drivers). Main authoring work = a feature→plain-
+     English map (`rolling_5_icetime` → "Ice time up (last 5)", `rolling_10_gameScore` → "Strong
+     two-way play", etc.).
+   - **Honesty detail:** contributions faithfully explain **Heat** (`ml_score`), not the blended
+     **Score**. Attach the "why" to Heat/Cool and show the heuristic as its own line — don't
+     pretend the drivers explain the 30/70 blend.
+   - Frontend: add `reasons` to `frontend/src/types/player.ts`; render top-2 driver chips in a
+     new "Why" column + click-row-to-expand for the full ± breakdown (keeps table density down,
+     per the same UX review).
+   - **Prereq:** models are gitignored — a fresh clone must `train-pickups` before `api_export.py`
+     can compute contributions.
+3. **Sequencing dependency:** the legend/"why" copy describes *what the model predicts*. If E-ML
+   item 3 (regress on `next_5_avg` instead of the binarized top/bottom-quartile label) lands
+   first, "Heat = P(top quartile)" becomes "Heat = projected next-5 FP" — do E-UX after E-ML
+   settles, or keep the legend copy in sync with whatever the model actually outputs.
 
 ---
 
@@ -385,6 +423,53 @@ both are small and partly luck-driven. Documented, accepted.
 - MoneyPuck's data page now redirects automated scrapers to a data-license notice — so no
   auto-downloader; refreshing `moneypuck_current.csv` stays a manual browser download
   (`moneypuck.checkCurrentFreshness()` nags when it's stale)
+
+### July 2026 (E-ML item 3: regression conversion)
+**Pre-registered prediction (written before training the regressor):** converting pickups +
+cooling from binary classifiers to `XGBRegressor` on `next_5_avg` should keep ranking quality
+roughly flat — val AUC-equivalent (regressor score vs the old binary label) within ±0.02 of the
+classifier, and mean spot-check top-15 hit rate ≥ the classifier's, with the win (if any) coming
+from the continuous target preserving magnitude information the binarized label threw away.
+
+**Same-day classifier baseline (retrained July 6 on current data — data files newer than the
+July 3 numbers above):** pickup val AUC **0.8517** (train 0.8509), cooling val AUC **0.7715**.
+Spot-check top-15 hit rates @ 2025-11-01/12-01/01-01/02-01/03-01: **60/47/33/13/53% (mean 41%)**
+vs last-10-FP baseline 40/27/20/13/60% (mean 32%), pool base rate ~12%.
+
+**Regression results (July 6, 2026):** pickup regressor val Spearman **0.6214** (train 0.6210),
+val AUC-equivalent vs `is_heating_up` **0.8465** (classifier: 0.8517); cooling regressor val
+Spearman 0.6063, AUC-equivalent vs `is_cooling_down` **0.7673** (classifier: 0.7715). Spot-check
+top-15 hit rates: **53/33/33/27/53% (mean 40%)** vs the classifier's 41% mean — matched the
+prediction (similar, within ±0.02 AUC-equivalent; hit-rate delta −1.4pp is within top-15 noise),
+and still well above the last-10-FP baseline (32% mean). Feature-importance caveat checked:
+`season_avg_so_far` ranks 4th (178), behind rolling icetime (310) — the regressor is not just
+learning "is already good". Both models now ship as `XGBRegressor` on `next_5_avg`; `predict()`
+returns projected next-5 FP/g, and `main.py`/`api_export.py` convert to 0-1 percentile ranks
+(cooling inverted) so the heuristic blend and frontend score bars are unchanged.
+
+**Spot-check protocol change (July 6, 2026):** removed the drafted-by-proxy exemption from
+`src/backtest.py` — prior-season stars (Malkin, Nelson, McCann, Schmaltz) were genuinely on
+waivers, so exempting them hid the KNOWN_PICKUPS cases the backtest exists to grade. Only the
+current-season-pace roster proxy (top 150) remains. Under the corrected pool (447-471 players,
+base rate 12-16%), regressor and classifier are a statistical dead heat: regressor
+**67/53/47/53/53 (mean 55%)** vs classifier **67/60/40/53/53 (mean 55%)**, both well above the
+last-10-FP chaser (~39-40%). Conclusion: the regression conversion is not worse — equal ranking
+power with a more interpretable output (projected FP/g) and a continuous target for future
+feature work (E-ML item 2). (The naive-baseline prints differ by ±1 hit between runs due to
+unstable sort tie-breaking on `rolling_10_game_fantasy_points`; cosmetic only.)
+
+**Spot-check pseudo-simulation added (July 6, 2026):** `runSpotChecks` now replays the season
+in date order — the top `PICKUPS_PER_DATE` (5) recommendations at each date are treated as
+picked up and removed from later pools, model and chaser each shrinking their own pool
+independently. This stops a model from re-crediting the same hot player at every date and adds
+a season-level product metric: hit rate and avg realized next-5 FP/g of the 25 simulated adds.
+**Current numbers to beat (regressor):** per-date top-15 hit rates 67/60/47/53/47 (**mean
+55%**); simulated adds **60% hit rate, 2.83 FP/g avg** vs chaser 40% / 2.35 FP/g. Classifier
+under the same sim: top-15 mean 52%, adds 60% / 2.84 FP/g — still a dead heat on adds,
+regressor slightly ahead on top-15. Caveat, accepted for now: with the drafted-proxy exemption
+gone, early-season sim adds include slow-starting superstars (Q. Hughes, Panarin, Ovechkin on
+Nov 1) who would never be on real waivers — absolute numbers are optimistic, but the
+model-vs-baseline comparison stays fair since both draw from the same pool.
 
 ---
 
