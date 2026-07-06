@@ -7,14 +7,14 @@
 #
 # At each date: take every player's latest game state up to that date, score
 # with the saved model, and grade the ranking against the player's ACTUAL next
-# 5 games -- the same horizon the is_heating_up label was trained on.
+# 5 games -- the same horizon the next_5_avg regression target was trained on.
 #
 # Historical Yahoo rosters can't be reconstructed (they changed month to
 # month), so "free agent" is approximated by dropping the top players by
-# season scoring pace to date -- those would be rostered in any real league --
-# plus anyone who scored like a top-150 player the PRIOR season. The second
-# filter keeps slow-starting stars (drafted, never on waivers) out of the pool
-# early in the year, before their current-season pace reflects who they are.
+# season scoring pace to date -- those would be rostered in any real league.
+# Prior-season stars are deliberately NOT exempted: several KNOWN_PICKUPS
+# (Malkin, Nelson, McCann, Schmaltz) were genuinely on waivers despite strong
+# prior seasons, so a prior-season filter would hide the cases being graded.
 
 import pandas as pd
 
@@ -29,9 +29,8 @@ MIN_LOOKAHEAD_GAMES = 3   # need at least this many future games to grade
 MIN_SEASON_GAMES = 5      # games played by the as-of date to be rankable
 MAX_DAYS_IDLE = 10        # skip players not dressing (injured / sent down)
 ROSTER_PROXY_CUTOFF = 150 # top-N by season pace ~= already rostered
-DRAFT_PROXY_CUTOFF = 150  # top-N by PRIOR-season FP/g ~= drafted, never a FA
-PRIOR_MIN_GAMES = 40      # prior-season sample needed to count as a proven star
 HOT_PERCENTILE = 0.75     # mirrors the training label's hot_quantile
+PICKUPS_PER_DATE = 5      # simulated adds per date, removed from later pools
 
 # The fantasy press's consensus best waiver adds of 2025-26, with roughly when
 # they got hot. A sane ranking should surface each of them around that time.
@@ -52,15 +51,11 @@ KNOWN_PICKUPS = {
 def loadFeatureData():
     df = mlFeatures.loadMoneyPuckData()
     df = mlFeatures.buildRollingFeatures(df)
-    prior = df[df['season'] == SEASON - 1]
-    prior_fp = prior.groupby('playerId').agg(
-        gp=('gameId', 'nunique'), fp=('game_fantasy_points', 'mean'))
-    prior_fp = prior_fp[prior_fp['gp'] >= PRIOR_MIN_GAMES]
-    drafted = set(prior_fp.nlargest(DRAFT_PROXY_CUTOFF, 'fp').index)
-    return df[df['season'] == SEASON].copy(), drafted
+    return df[df['season'] == SEASON].copy()
 
 
-def spotCheck(season_df, drafted, as_of_date, top_n=15):
+def spotCheck(season_df, as_of_date, top_n=15,
+              model_taken=frozenset(), naive_taken=frozenset()):
     past = season_df[season_df['gameDate'] <= as_of_date]
     future = season_df[season_df['gameDate'] > as_of_date]
 
@@ -89,16 +84,23 @@ def spotCheck(season_df, drafted, as_of_date, top_n=15):
     graded['hit'] = graded['next_pctile'] >= HOT_PERCENTILE
 
     # Roster proxy: the best season performers to date would not be free
-    # agents, and neither would last season's proven stars (drafted).
+    # agents.
     graded['seasonRank'] = graded['season_avg_so_far'].rank(ascending=False)
-    pool = graded[(graded['seasonRank'] > ROSTER_PROXY_CUTOFF)
-                  & ~graded['playerId'].isin(drafted)]
+    fa = graded[graded['seasonRank'] > ROSTER_PROXY_CUTOFF]
+
+    # Pseudo-simulation: players recommended at an earlier date are treated as
+    # picked up and off the wire. Model and chaser each shrink their own pool,
+    # so each strategy is replayed independently.
+    pool = fa[~fa['playerId'].isin(model_taken)]
     pool = pool.sort_values('ml_score', ascending=False).reset_index(drop=True)
+    naive_pool = fa[~fa['playerId'].isin(naive_taken)]
+    naive_pool = naive_pool.sort_values('rolling_10_game_fantasy_points', ascending=False).reset_index(drop=True)
 
     date_str = as_of_ts.date().isoformat()
+    sim_note = f"; {len(model_taken)} sim pickups excluded" if model_taken else ""
     print(f"\n{'=' * 78}")
     print(f"=== Spot check @ {date_str}  "
-          f"(free-agent pool: {len(pool)} of {len(graded)} graded players) ===")
+          f"(free-agent pool: {len(pool)} of {len(graded)} graded players{sim_note}) ===")
 
     top = pool.head(top_n)
     cols = ['name', 'position', 'ml_score', 'season_avg_so_far', 'next_fp', 'next_pctile', 'hit']
@@ -106,7 +108,7 @@ def spotCheck(season_df, drafted, as_of_date, top_n=15):
 
     # Did the model's top-N actually heat up more often than chance (25% by
     # construction) and more often than just chasing recent scoring?
-    naive = pool.sort_values('rolling_10_game_fantasy_points', ascending=False).head(top_n)
+    naive = naive_pool.head(top_n)
     print(f"\nTop-{top_n} hit rate: model {top['hit'].mean():.0%} | "
           f"last-10-FP baseline {naive['hit'].mean():.0%} | "
           f"pool base rate {pool['hit'].mean():.0%}")
@@ -119,20 +121,45 @@ def spotCheck(season_df, drafted, as_of_date, top_n=15):
             continue
         r = row.iloc[0]
         pool_row = pool[pool['name'] == player]
-        if not pool_row.empty:
+        if r['playerId'] in model_taken:
+            where = "picked up at an earlier sim date"
+        elif not pool_row.empty:
             where = f"FA rank {pool_row.index[0] + 1}/{len(pool)}"
-        elif r['playerId'] in drafted:
-            where = "drafted by proxy (prior-season star)"
         else:
             where = f"rostered by proxy (#{int(r['seasonRank'])} season pace)"
         print(f"  {player:18s} {where:32s} ml={r['ml_score']:.3f} "
               f"next5={r['next_fp']:.1f} FP/g  [{note}]")
 
-    return pool
+    picks = pool.head(PICKUPS_PER_DATE).assign(as_of=date_str)
+    naive_picks = naive_pool.head(PICKUPS_PER_DATE).assign(as_of=date_str)
+    return picks, naive_picks
 
 
 def runSpotChecks(dates=None, top_n=15):
-    dates = dates or DEFAULT_DATES
-    season_df, drafted = loadFeatureData()
+    """Replay the season in date order as a pseudo-simulation: the top
+    PICKUPS_PER_DATE recommendations at each date are treated as picked up and
+    removed from the free-agent pool at every later date."""
+    dates = sorted(dates or DEFAULT_DATES)
+    season_df = loadFeatureData()
+    model_taken, naive_taken = set(), set()
+    model_adds, naive_adds = [], []
     for as_of_date in dates:
-        spotCheck(season_df, drafted, as_of_date, top_n=top_n)
+        picks, naive_picks = spotCheck(season_df, as_of_date, top_n=top_n,
+                                       model_taken=model_taken,
+                                       naive_taken=naive_taken)
+        model_taken.update(picks['playerId'])
+        naive_taken.update(naive_picks['playerId'])
+        model_adds.append(picks)
+        naive_adds.append(naive_picks)
+
+    model_adds = pd.concat(model_adds, ignore_index=True)
+    naive_adds = pd.concat(naive_adds, ignore_index=True)
+    print(f"\n{'=' * 78}")
+    print(f"=== Season simulation: the model's top-{PICKUPS_PER_DATE} adds at each date ===")
+    cols = ['as_of', 'name', 'position', 'ml_score', 'next_fp', 'next_pctile', 'hit']
+    print(model_adds[cols].round(3).to_string(index=False))
+    print(f"\nSimulated adds ({len(model_adds)} per strategy): "
+          f"model hit rate {model_adds['hit'].mean():.0%}, "
+          f"avg realized next-5 {model_adds['next_fp'].mean():.2f} FP/g | "
+          f"last-10-FP chaser hit rate {naive_adds['hit'].mean():.0%}, "
+          f"avg {naive_adds['next_fp'].mean():.2f} FP/g")

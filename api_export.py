@@ -83,10 +83,13 @@ def export_data():
     # Heuristic ranking
     results = pickups.rankFreeAgents(stats_df, last5_df, allPlayerData, rostered_nhle_ids)
 
-    # ML predictions
+    # ML predictions. Models regress next-5-game FP/g; convert to 0-1
+    # percentile ranks so the blend and frontend score bars keep a bounded
+    # scale. Low predicted FP/g = cooling down, so the cooling score is
+    # inverted (higher = stronger drop candidate, as before).
     current_players = latestGameState()
-    current_players['ml_score'] = pickupModel.predict(current_players)
-    current_players['cooling_score'] = coolingModel.predict(current_players)
+    current_players['ml_score'] = pickupModel.predict(current_players).rank(pct=True)
+    current_players['cooling_score'] = 1 - coolingModel.predict(current_players).rank(pct=True)
     current_players = current_players.merge(
         allPlayerData[['id', 'full_name', 'positionCode', 'sweaterNumber']],
         left_on='playerId',
