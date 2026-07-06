@@ -1,12 +1,16 @@
 import argparse
 
+from src import backtest
 from src import dataProcessing
 from src import fantasyPoints
+from src import keepers
 from src import moneypuck
 from src import yahooAPI
+from src.features import draft as draftFeatures
 from src.features import mlFeatures
 from src.features import pickups
 from src.models import cooling as coolingModel
+from src.models import draft as draftModel
 from src.models import pickups as pickupModel
 
 CURRENT_SEASON = 2025  # MoneyPuck convention: 2025 = the 2025-26 season
@@ -120,17 +124,53 @@ def runPickups():
           .to_string())
 
 
+def trainDraft():
+    """Train the draft ranker on historical player-season data (Phase B, see PROJECT-PLAN.md)."""
+    # TODO: build the player-season aggregation table (src/moneypuck.py::buildPlayerSeasons)
+    # TODO: build draft features (draftFeatures.build_draft_features)
+    # TODO: call draftModel.train(df)
+    raise NotImplementedError
+
+
+def runDraft():
+    """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
+    # TODO: load this season's player-season features (mirror latestGameState() above,
+    #       but season-level per PROJECT-PLAN.md B1/B4 instead of rolling game-state)
+
+    # Draft pool must exclude anyone already kept -- keeper lists aren't in the Yahoo
+    # API until draft day, so they're maintained manually in data/raw/keepers.csv.
+    keeper_names = keepers.loadKeepers()
+    # TODO: current_players = keepers.filterOutKeepers(current_players, keeper_names)
+
+    # TODO: build draft features (draftFeatures.build_draft_features)
+    # TODO: predict with draftModel.predict(df)
+    # TODO: join name/position/age, sort by projected value
+    # TODO: save results to data/processed/draft_rankings.csv
+    raise NotImplementedError
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fantasy hockey tools")
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('train-pickups', help='train pickup + cooling models on historical seasons')
     sub.add_parser('pickups', help='rank available free agents (uses saved models)')
+    sub.add_parser('train-draft', help='train the draft ranker on historical player-seasons')
+    sub.add_parser('draft', help='rank this year\'s non-keeper players for the draft')
+    spot = sub.add_parser('spot-check', help='replay the pickup ranking at historical dates and grade it')
+    spot.add_argument('--date', type=int, help='single as-of date as YYYYMMDD (default: several across the season)')
+    spot.add_argument('--top', type=int, default=15, help='size of the ranked list to grade')
 
     args = parser.parse_args()
     if args.command == 'train-pickups':
         trainPickups()
     elif args.command == 'pickups':
         runPickups()
+    elif args.command == 'train-draft':
+        trainDraft()
+    elif args.command == 'draft':
+        runDraft()
+    elif args.command == 'spot-check':
+        backtest.runSpotChecks(dates=[args.date] if args.date else None, top_n=args.top)
 
 
 if __name__ == "__main__":

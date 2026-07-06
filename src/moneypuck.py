@@ -10,6 +10,8 @@ import time
 
 import pandas as pd
 
+from src import fantasyPoints
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RAW_DATA_DIR = os.path.join(BASE_DIR, '..', 'data', 'raw')
 PROCESSED_DIR = os.path.join(BASE_DIR, '..', 'data', 'processed')
@@ -89,3 +91,46 @@ def loadGameLogs(min_season=2020, history_file=HISTORY_FILE,
     df.to_csv(cache_file, index=False)
     print(f"Cached to {cache_file}")
     return df
+
+def buildPlayerSeasons(game_df):
+    """One row per (playerId, season), aggregated from full-situation game logs.
+
+    game_df must contain ALL situation rows (as returned by loadGameLogs) --
+    fantasyPoints.moneypuckGamePoints collapses them to one row per player-game
+    (situation == 'all', plus derived PPP/SHP/fantasyPoints) before aggregating.
+    Summing the raw situation rows directly would double-count every stat, since
+    the 'all' row already totals the situation-specific rows.
+    """
+    games = fantasyPoints.moneypuckGamePoints(game_df)
+
+    summary = games.groupby(['playerId', 'season']).agg(
+        gamesPlayed=('gameId', 'nunique'),
+        full_name=('name', lambda s: s.mode().iloc[0]),  # MoneyPuck's name has rare spelling
+                                                           # variants across rows -- take the
+                                                           # most common one per player-season
+        position=('position', lambda s: s.mode().iloc[0]),  # most common position that season
+        avgIcetime=('icetime', 'mean'),
+        avgGameScore=('gameScore', 'mean'),
+        avgCorsiPercentage=('onIce_corsiPercentage', 'mean'),
+        avgFenwickPercentage=('onIce_fenwickPercentage', 'mean'),
+        totalGoals=('I_F_goals', 'sum'),
+        totalPrimaryAssists=('I_F_primaryAssists', 'sum'),
+        totalSecondaryAssists=('I_F_secondaryAssists', 'sum'),
+        totalPoints=('I_F_points', 'sum'),
+        totalShotsOnGoal=('I_F_shotsOnGoal', 'sum'),
+        totalHits=('I_F_hits', 'sum'),
+        totalShotsBlocked=('shotsBlockedByPlayer', 'sum'),
+        totalXGoals=('I_F_xGoals', 'sum'),
+        totalHighDangerShots=('I_F_highDangerShots', 'sum'),
+        totalPPP=('powerPlayPoints', 'sum'),
+        totalSHP=('shorthandedPoints', 'sum'),
+        totalFP=('fantasyPoints', 'sum'),
+    ).reset_index()
+
+    summary['fpPerGame'] = summary['totalFP'] / summary['gamesPlayed']
+    summary['xGoalsSurplus'] = summary['totalGoals'] - summary['totalXGoals']
+    summary['highDangerShare'] = (
+        summary['totalHighDangerShots'] / summary['totalShotsOnGoal'].replace(0, 1)
+    )
+
+    return summary

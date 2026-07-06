@@ -9,6 +9,7 @@
 #   - Contract year / motivation factors (if data available)
 
 import pandas as pd
+from src import keepers, moneypuck
 
 
 def build_draft_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -17,5 +18,13 @@ def build_draft_features(df: pd.DataFrame) -> pd.DataFrame:
     and adds draft-specific features.
     Returns a new DataFrame with the added columns.
     """
-    # TODO: implement draft feature engineering
-    raise NotImplementedError
+    player_seasons = moneypuck.buildPlayerSeasons(df)
+    player_seasons = pd.get_dummies(player_seasons, columns=['position'], prefix='pos')
+    sorted_player_seasons = player_seasons.sort_values(['playerId','season'])
+    sorted_player_seasons['career_games'] = sorted_player_seasons.groupby('playerId')['gamesPlayed'].cumsum()
+    sorted_player_seasons['PP_share'] = sorted_player_seasons['totalPPP'] / sorted_player_seasons['totalFP']
+    sorted_player_seasons['hitblock_share'] = (
+        sorted_player_seasons['totalHits'] * 0.15 + sorted_player_seasons['totalShotsBlocked'] * 0.35
+    ) / sorted_player_seasons['totalFP']
+    
+    return sorted_player_seasons
