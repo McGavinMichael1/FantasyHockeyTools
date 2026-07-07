@@ -46,6 +46,7 @@ Yahoo API       -> src/yahooAPI.py (optional roster filtering)
                 -> src/features/{mlFeatures,pickups,draft,shared}.py
                 -> src/models/{pickups,cooling,draft,lstmPickups}.py
                 -> main.py (CLI: train-pickups, pickups, train-draft, draft, spot-check)
+                -> scripts/ (one-time builds: build_player_seasons.py, build_birthdates.py)
                 -> api_export.py (JSON for frontend/) -> frontend/ (Next.js) and ui/ (Streamlit, mostly stub)
 ```
 
@@ -61,6 +62,11 @@ Yahoo API       -> src/yahooAPI.py (optional roster filtering)
 - Splits are season-based, never random rows (train `<=2022`, validate `2023`).
 - Model `.pkl` files are gitignored — retrain locally; a fresh clone has no trained
   models and must run `train-pickups` before `pickups`/`spot-check`/`api_export.py` work.
+- Draft pipeline has two one-time build prerequisites (gitignored outputs, rebuild per
+  season): `scripts/build_player_seasons.py` -> `data/processed/player_seasons.csv` (season
+  aggregation), and `scripts/build_birthdates.py` -> `data/raw/player_birthdates.csv` (NHL
+  API birthDate cache for the age feature — `players_cache.csv` covers only current roster).
+  Draft features read these; they do not self-build. See `fht-draft-campaign`.
 
 Full rationale and file:line citations: `fht-architecture-contract`.
 

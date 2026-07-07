@@ -168,23 +168,25 @@ This is a *season-level regression* — simpler than the pickup classifier, and 
       are worth keeping; this one just removes *everyone's* keepers from the draft pool
 
 #### B1 — Player-season aggregation table
-- [ ] In `src/moneypuck.py`: `buildPlayerSeasons(game_df) -> DataFrame`, one row per
+- [x] In `src/moneypuck.py`: `buildPlayerSeasons(game_df) -> DataFrame`, one row per
       (playerId, season), aggregating from game logs (source: `2008_to_2024.csv` + current file):
       games played, total FP (from A2), FP per game, goals, assists, SOG, hits, blocks, PPP, SHP,
       avg icetime, avg gameScore, xGoals, goals − xGoals (shooting luck), high-danger share
-- [ ] Cache to `data/processed/player_seasons.csv` (this is small — a few MB — rebuild on demand)
-- [ ] **Acceptance check:** row count ≈ (number of seasons × ~900 skaters); spot-check one player's
-      season line vs hockey-reference
+- [x] Cache to `data/processed/player_seasons.csv` via `scripts/build_player_seasons.py`
+      (16,237 rows, ~5 MB — rebuild on demand with `min_season=2008`)
+- [x] **Acceptance check:** 16,237 rows / 18 seasons = 902 per season (≈ expected); McDavid
+      2023-24 spot-check 76 GP / 32 G / 100 A / 42 PPP — matches hockey-reference exactly
 
 #### B2 — Draft features (implement the existing stub `src/features/draft.py::build_draft_features`)
 One row per (playerId, season) = "what you knew at draft time," predicting the season *ahead*:
-- [ ] Prior-season: FP/game, games played, TOI/game, PP share of FP, hits+blocks share of FP
-- [ ] Trajectory: 3-season weighted FP/game (e.g. 50/30/20), season-over-season delta
-- [ ] Regression-to-mean signals: prior-season `goals − xGoals` (positive = ran hot, likely to fall)
-- [ ] Age at season start (join `players_cache.csv::birthDate`; for retired/old seasons players
-      missing from the cache, derive age from MoneyPuck name+history or drop — decide when you
-      see the join hit rate)
-- [ ] Position one-hot
+- [x] Prior-season: FP/game, games played, TOI/game, PP share of FP, hits+blocks share of FP
+      (own-season columns — row *is* the concluded season, so no shift; `PP_share`, `hitblock_share`)
+- [x] Trajectory: 3-season weighted FP/game (`fp_w3`, 50/30/20), season-over-season delta (`fp_delta`)
+- [x] Regression-to-mean signals: prior-season `goals − xGoals` (== own-season `xGoalsSurplus` column)
+- [x] Age at season start (`age_at_season_start`) — **derived from NHL API landing `birthDate`, NOT
+      `players_cache.csv`**: cache join hit only 18.4% on training seasons (retired players absent),
+      so built `data/raw/player_birthdates.csv` for all 3038 players → 100% coverage
+- [x] Position one-hot (`pos_*`, via `pd.get_dummies` concat — keeps raw `position` for B4/C)
 - [ ] Rookies/no-history players: **excluded in v1** (they need a different data source — parked)
 
 #### B3 — Baselines, then model (`src/models/draft.py` — the stub interface is already right)
@@ -471,6 +473,57 @@ gone, early-season sim adds include slow-starting superstars (Q. Hughes, Panarin
 Nov 1) who would never be on real waivers — absolute numbers are optimistic, but the
 model-vs-baseline comparison stays fair since both draw from the same pool.
 
+### July 2026 (Phase B1: player_seasons cache built)
+**GATE B1 passed (July 6, 2026).** Ran `scripts/build_player_seasons.py`
+(`loadGameLogs(min_season=2008)` → `buildPlayerSeasons` → `data/processed/player_seasons.csv`).
+Result: **16,237 rows across 18 seasons (2008–2025), 902 rows/season** — squarely in the expected
+~900-skaters band, so situation rows were *not* double-counted (aggregation correctly routed
+through `moneypuckGamePoints`). McDavid 2023-24 spot-check: **76 GP / 32 G / 100 A / 42 PPP** —
+G and A match hockey-reference exactly; PPP reads 42 vs official 44, the known/accepted 5-on-3
+undercount. Side effect: first run also wrote the game-level cache `moneypuck_games_2008.csv`
+(distinct from the pre-existing `moneypuck_games_2020.csv`). `buildPlayerSeasons` still does not
+self-cache — the `.to_csv` lives in the build script, run on demand. Next: B2 will refactor
+`build_draft_features` to read this season table directly instead of rebuilding it internally.
+
+### July 2026 (Phase B2: draft features complete)
+**All B2 features landed and verified against `player_seasons.csv` (July 6, 2026).**
+`build_draft_features` refactored to take the season table directly (no more internal
+`buildPlayerSeasons` rebuild every call). Features: `career_games`, `PP_share`, `hitblock_share`,
+`fp_delta` (season-over-season), `fp_w3` (50/30/20 weighted), position one-hot, `age_at_season_start`,
+plus the `target_fpPerGame` = `shift(-1)` next-season target.
+
+**Framing correction (matters for every feature):** the row *is* the most-recent-concluded season
+("what you knew at draft time"), so own-season stats are legitimate features — **no `shift(1)` on
+features**. Only the *target* shifts (`shift(-1)`, next season). Backward lags (`shift(1)`/`shift(2)`)
+appear only inside trajectory features that deliberately look back. Verified on McDavid: 2022 target
+(5.392) == 2023 `fpPerGame` exactly; `fp_w3(2023)` == 0.5·2023+0.3·2022+0.2·2021 exactly. NaN counts
+reconcile to the row: `fp_delta` NaN = 3038 (one per player's first season); `fp_w3` NaN = 5496
+(first two seasons of 3+ season players + all rows of shorter-tenure players).
+
+**Shift discipline is `groupby('playerId')`-scoped, always.** A plain `.shift()` bleeds a value across
+the player boundary (pulls the previous *player's* season). Every lag must be `g[col].shift(n)`.
+Corollary learned the hard way: `g['col']` bare is a `SeriesGroupBy` (can't do arithmetic); a method
+like `.shift()`/`.diff()` "cashes it in" to a `Series`. Current-season terms use the plain column (no
+lag → no groupby); only lag terms touch `g`.
+
+**Age: `players_cache.csv` is the wrong source; NHL API landing is right.** Measured the join hit
+rate first (per the plan's "decide when you see it"): `players_cache` is current-roster only, so it
+covered just **18.4%** of training-season (≤2021) rows and 27.2% overall — retired players simply
+aren't in it, and the coverage ramps season-by-season with attrition (2008: 1%, 2025: 67%). Dropping
+NaN-age rows would have discarded 82% of training data. Fix: `birthDate` from the NHL API
+`/player/{id}/landing` endpoint covers retired players too. Added `dataProcessing.getAllBirthDatesWithCache`
+(reuses the threaded `fetchAllPlayers` pattern, caches permanently since birthDates are immutable) and
+`scripts/build_birthdates.py`; fetched all 3038 players → **100% age coverage**, zero absurd ages
+(min 18.05, max 47.68 = Chelios 2008-09). `age_at_season_start` uses a real fractional age at an Oct-1
+season start, not year subtraction. **Lesson reinforced:** when a join is the data source, measure the
+hit rate before committing to it — the "obvious" cache can be catastrophically incomplete for
+historical rows.
+
+**Fixed a latent infinite-loop in `nhlAPI.getPlayerStats`** while there: its `while True` only broke on
+200/429, so any persistent 404/500 spun forever — invisible at one-off call volume, a guaranteed hang
+over 3038 calls. Now bounded (raises after 3 unexpected statuses; the `fetchAllPlayers` worker catches
+and skips). Affects the pickup pipeline too, strictly for the better.
+
 ---
 
 ## Resources & References
@@ -487,8 +540,16 @@ model-vs-baseline comparison stays fair since both draw from the same pool.
 
 **Next immediate task:**
 - [ ] B0: fill in `data/raw/keepers.csv`, implement `src/keepers.py`
-- [ ] B1: `buildPlayerSeasons(game_df)` in `src/moneypuck.py` — aggregate game logs to one row
-      per (playerId, season), cache to `data/processed/player_seasons.csv`
-- [ ] B2: draft features in `src/features/draft.py::build_draft_features`
+- [x] B1: `buildPlayerSeasons` + `scripts/build_player_seasons.py` — cached
+      `data/processed/player_seasons.csv` (16,237 rows), GATE B1 passed July 6, 2026
+- [x] B2: draft features in `src/features/draft.py::build_draft_features` — **done July 6, 2026**.
+      Takes `player_seasons` directly; `fp_delta`, `fp_w3`, position one-hot, `age_at_season_start`
+      (NHL API birthDate, 100% coverage), prior-season base cols, `target_fpPerGame` = `shift(-1)`.
+      All verified on real data; see Learning Log.
+- [ ] **B3 (next): baselines, then model.** Baseline 1 = last-season FP/g; Baseline 2 = 3-season
+      weighted (`fp_w3`). Record Spearman + MAE on val **before** any model. Then Ridge, then
+      XGBoost regressor. First wire the training-row hygiene: restrict to ≥20 GP in both feature
+      and target season, and `dropna(subset=['target_fpPerGame'])`. Splits: train ≤2021, val
+      2022+2023, test 2024.
 
 **Blocked on:** nothing. (C1 needs my league's keeper-cost rules from Yahoo settings before Phase C.)
