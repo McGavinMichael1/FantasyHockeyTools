@@ -47,26 +47,22 @@ Check these before starting Phase B work; all are cheap and read-only.
 
 ## Phase B1 -- player_seasons table
 
-`buildPlayerSeasons` already exists and reads clean (`src/moneypuck.py:95-136`, landed in PR #2 /
-baa1ab1) but has **never been cached or acceptance-checked** -- verify by absence:
-`data/processed/player_seasons.csv` does not exist (confirmed today; only
-`data/processed/moneypuck_games_2020.csv` is present, 159 MB).
-
-Target build (do not run casually -- reads the 2.6 GB history file; expect a LONG first build):
-```python
-from src import moneypuck
-df = moneypuck.loadGameLogs(min_season=2008)   # NOT the loadGameLogs default (2020) --
-                                                 # the draft plan trains on full 2008-2024 history
-seasons = moneypuck.buildPlayerSeasons(df)
-seasons.to_csv('data/processed/player_seasons.csv', index=False)  # buildPlayerSeasons does NOT
-                                                                    # cache itself -- this line
-                                                                    # doesn't exist anywhere yet
+**DONE (2026-07-06): GATE B1 passed.** Build the cache with the runbook script -- do NOT hand-roll a
+snippet anymore:
 ```
-`min_season=2008` also means `loadGameLogs` writes a *new* cache file,
-`data/processed/moneypuck_games_2008.csv`, distinct from the existing `..._2020.csv` -- the first
-run re-reads the full 2.6 GB file regardless of the 2020 cache's presence.
+.\.venv\Scripts\python.exe scripts/build_player_seasons.py
+```
+It runs `loadGameLogs(min_season=2008)` -> `buildPlayerSeasons` -> `data/processed/player_seasons.csv`
+and prints the GATE B1 acceptance checks. `buildPlayerSeasons` (`src/moneypuck.py:95-136`, landed
+PR #2) still does NOT self-cache -- the `.to_csv` lives only in that script. `min_season=2008` (not
+`loadGameLogs`' default of 2020) also writes a *new* game cache `data/processed/moneypuck_games_2008.csv`,
+a superset of `..._2020.csv` (the filename number is `min_season`, a floor); the first run re-reads
+the full 2.6 GB history regardless (minutes). Rebuild on demand each season or if `player_seasons.csv`
+is deleted. Full runbook row: `fht-operations` section 3.
 
-**GATE B1:** 2008-2024 is 17 seasons + the current season (2025) = 18 seasons. Expect row count
+**GATE B1 result (2026-07-06): PASSED** -- 16,237 rows / 18 seasons (2008–2025), 902/season; McDavid
+2023-24 = 32G/100A/42PPP (exact). The rationale below is retained as the acceptance reference for
+future rebuilds. 2008-2024 is 17 seasons + the current season (2025) = 18 seasons. Expect row count
 roughly `18 x ~900 skaters` ~= 15,000-17,000 rows.
 - If you see 2-3x that row count -> situations were double-counted, meaning
   `moneypuckGamePoints` was not applied before aggregation (it collapses situation rows to one
@@ -82,29 +78,33 @@ roughly `18 x ~900 skaters` ~= 15,000-17,000 rows.
 
 ## Phase B2 -- draft features
 
-`src/features/draft.py::build_draft_features` is WIP (verified by reading it today): it already
-builds position one-hots (`pd.get_dummies`), `career_games` (cumsum of `gamesPlayed` per player),
-`PP_share` (`totalPPP / totalFP`), and `hitblock_share`. Remaining, per `PROJECT-PLAN.md` B2
-(lines 178-187):
+**DONE (2026-07-06):** `src/features/draft.py::build_draft_features` now takes the `player_seasons`
+table directly (no internal `buildPlayerSeasons` rebuild) and builds every B2 feature: position
+one-hots (`pd.get_dummies` concat, keeps raw `position` for B4/C), `career_games`, `PP_share`,
+`hitblock_share`, `fp_delta` (season-over-season), `fp_w3` (50/30/20 weighted), `age_at_season_start`,
+plus the `target_fpPerGame` = `shift(-1)` target. All verified on real data (PROJECT-PLAN Learning
+Log). What each feature is, per `PROJECT-PLAN.md` B2:
 
-- 3-season weighted FP/game (e.g. 50/30/20) and season-over-season delta.
+- 3-season weighted FP/game (`fp_w3`, 50/30/20) and season-over-season delta (`fp_delta`). Both
+  use `groupby('playerId')`-scoped lags -- a plain `.shift()` bleeds a value across the player
+  boundary. Lag terms only; current-season terms stay the plain column.
 - Regression-to-mean signal: prior-season `xGoalsSurplus` (already computed in
   `buildPlayerSeasons`, `src/moneypuck.py:131`, as `totalGoals - totalXGoals`) -- positive means
-  the player ran hot on shooting luck and is more likely to regress down, not up.
-- Age at season start: join `data/raw/players_cache.csv::birthDate` (column confirmed present,
-  format `YYYY-MM-DD`). **Decision point:** `players_cache.csv` only holds *current* rosters
-  (168 KB, ~900 rows, refreshed by the NHL API pipeline), so pre-2015-ish seasons' players --
-  especially retired ones -- will not join. This can't be resolved without `player_seasons.csv`
-  existing first (Phase B1), so measure the actual join hit rate once you have it:
-  ```python
-  import pandas as pd
-  seasons = pd.read_csv('data/processed/player_seasons.csv')
-  cache = pd.read_csv('data/raw/players_cache.csv')
-  hit_rate = seasons['playerId'].isin(cache['id']).mean()
-  ```
-  `PROJECT-PLAN.md:184-185` says "derive or drop -- decide when you see the join hit rate." Don't
-  pre-decide; look at the number first.
-- Shift the target: each feature row must predict the **next** season's FP/game, not its own.
+  the player ran hot on shooting luck and is more likely to regress down, not up. Under the
+  own-season framing (below) this is just the row's own `xGoalsSurplus` column, no shift.
+- Age at season start (`age_at_season_start`): **RESOLVED (2026-07-06) -- derived from the NHL API
+  landing `birthDate`, NOT `players_cache.csv`.** The hit-rate check settled the "derive or drop"
+  fork: `players_cache.csv` is current-roster only, so it covered just **18.4%** of training-season
+  (<=2021) rows and 27.2% overall -- retired players aren't in it (coverage ramps 2008: 1% -> 2025:
+  67%). Dropping NaN-age rows would have discarded 82% of training data. Fix:
+  `scripts/build_birthdates.py` fetches `birthDate` for all 3038 players from `/player/{id}/landing`
+  (covers retired players) into the **permanent** cache `data/raw/player_birthdates.csv` -> **100%
+  coverage**. `build_draft_features` *reads* that cache (never fetches) and computes a fractional age
+  at an Oct-1 season start. Lesson: measure a join's hit rate before trusting the "obvious" cache as
+  a source. Runbook row: `fht-operations` section 3.
+- Target: `target_fpPerGame` = `g['fpPerGame'].shift(-1)` -- each row predicts the **next** season's
+  FP/game, not its own. The row *is* the concluded season ("what you knew at draft time"), so own-
+  season stats are legitimate features with **no `shift(1)`**; only the target shifts.
 
 **GATE B2 (leakage rule):** no feature may use same-season-or-later information relative to the
 season it predicts. This mirrors the `shift(1)` discipline already used in
@@ -269,10 +269,13 @@ Facts here drift as phases complete. Re-verify with:
   scoring is written.
 - `test -f src/keeper.py` (or `ls src/keeper.py`) -- confirm still absent; flips when Phase C
   starts.
-- `ls data/processed/player_seasons.csv` -- confirm still absent; flips when Phase B1 is built.
+- `ls data/processed/player_seasons.csv` -- **now EXISTS** (B1 done 2026-07-06, built by
+  `scripts/build_player_seasons.py`). Also `ls data/raw/player_birthdates.csv` (B2 age cache, built
+  by `scripts/build_birthdates.py`) -- both flip back to absent only if deleted for a rebuild.
 - `ls data/raw/keepers.csv` -- confirm still absent/empty; flips once B0 is filled in.
-- `.\.venv\Scripts\python.exe -m pytest -v` -- confirm still "4 passed, 1 failed"; flips if the
-  `loadGameLogs` guard-ordering bug is fixed.
+- `.\.venv\Scripts\python.exe -m pytest -v` -- confirm still "1 failed" (was "4 passed, 1 failed";
+  6 passed as of 2026-07-06 after the draft-ranker PR added tests); flips if the `loadGameLogs`
+  guard-ordering bug is fixed.
 - `grep -n "NotImplementedError" main.py src/models/draft.py` -- confirm `trainDraft`/`runDraft`
   and `models/draft.py`'s four functions still raise; flips as Phase B3/B4 land.
 - Re-read `PROJECT-PLAN.md`'s "Current Phase" section (bottom of file) each session -- it is the

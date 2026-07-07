@@ -153,3 +153,20 @@ def makeAllLast5DataFrame(player_ids):
 
 def getAllLast5WithCache(player_ids):
     return getWithCache(makeAllLast5DataFrame, player_ids, os.path.join(RAW_DATA_DIR, 'stats_last5.csv'))
+
+def extractBirthDate(data, player_id):
+    return {'playerId': player_id, 'birthDate': data.get('birthDate')}
+
+def makeAllBirthDatesDataFrame(player_ids):
+    return fetchAllPlayers(player_ids, extractBirthDate)
+
+def getAllBirthDatesWithCache(player_ids):
+    # birthDates are immutable, so cache permanently -- unlike getWithCache's
+    # 24h expiry, never refetch once the file exists. Covers retired players
+    # that players_cache.csv (current roster only) can't.
+    cache_file = os.path.join(RAW_DATA_DIR, 'player_birthdates.csv')
+    if os.path.exists(cache_file):
+        return pd.read_csv(cache_file)
+    df = makeAllBirthDatesDataFrame(player_ids)
+    df.to_csv(cache_file, index=False)
+    return df

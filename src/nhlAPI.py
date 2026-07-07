@@ -34,6 +34,7 @@ def getTeamNames():
 
 def getPlayerStats(player_id):
     url = f"https://api-web.nhle.com/v1/player/{player_id}/landing"
+    unexpected_attempts = 0
     while True:
         response = requests.get(url)
         if response.status_code == 429:
@@ -43,7 +44,15 @@ def getPlayerStats(player_id):
         elif response.status_code == 200:
             break
         else:
-            print("unexpected error occured")
+            # Bound this branch so a persistent 404/500 can't spin forever --
+            # getPlayerStats runs over thousands of playerIds during birthDate
+            # derivation. Raise after a few tries; callers (fetchAllPlayers'
+            # worker) catch it and skip that player.
+            unexpected_attempts += 1
+            if unexpected_attempts >= 3:
+                raise RuntimeError(
+                    f"NHL API returned {response.status_code} for player {player_id}")
+            time.sleep(2)
     print(f"Status code for {player_id}: {response.status_code}")  # Check if request succeeded
     print(f"Response text preview: {response.text[:200]}")    # See what's actually returned
     data = response.json()
