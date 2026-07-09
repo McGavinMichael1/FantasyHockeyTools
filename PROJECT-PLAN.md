@@ -524,6 +524,23 @@ historical rows.
 over 3038 calls. Now bounded (raises after 3 unexpected statuses; the `fetchAllPlayers` worker catches
 and skips). Affects the pickup pipeline too, strictly for the better.
 
+### July 2026 (PP_share unit fix)
+**`PP_share` was mixing units — corrected to fantasy points (July 7, 2026).** The B2 feature computed
+`totalPPP / totalFP`, i.e. the raw powerplay-*point* count (each PP goal or assist = 1) over total
+*fantasy* points. The PPP league weight happens to be 1, so it was dimensionally legal but understated
+PP reliance ~3× and — worse for the model — couldn't tell a goal-heavy PP producer from an assist-heavy
+one at equal PPP (a PP goal is worth 3+1 fantasy, an assist 2+1). It was also inconsistent with its
+sibling `hitblock_share`, which already converts to fantasy units (`hits*0.15 + blocks*0.35`). Fix:
+carry the 5on4 scoring breakdown through the pipeline — `moneypuckGamePoints` now emits `powerPlayGoals`
+/ `powerPlayAssists` (summed I_F_goals / primary+secondary assists on 5on4 rows), `buildPlayerSeasons`
+aggregates `totalPPGoals` / `totalPPAssists`, and `draft.py` computes
+`(totalPPGoals*3 + totalPPAssists*2 + totalPPP*1) / totalFP`. Class-(a) change: pinned in
+`tests/test_fantasyPoints.py` first (watched fail), then implemented; `player_seasons.csv` rebuilt
+(GATE B1 re-passed, McDavid 32G/100A/42PPP unchanged). Eyeball check on 2023: McDavid PP_share 0.10→0.32,
+PP specialists (Stamkos, Q. Hughes, Burakovsky) top the list, range 0–0.47, none >1. No model retrain
+needed — `train-draft`/`draft` are still stubs. Lesson: a share/ratio feature must have matching units
+in numerator and denominator; "the weight is 1 so it cancels" is a coincidence, not a design.
+
 ---
 
 ## Resources & References

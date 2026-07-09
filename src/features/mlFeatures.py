@@ -2,6 +2,7 @@ import pandas as pd
 
 from src import moneypuck
 from src import fantasyPoints
+from src.features.shared import select_matrix
 
 def loadMoneyPuckData():
     games = moneypuck.loadGameLogs(min_season=2020)
@@ -58,10 +59,14 @@ def buildLabel(df, hot_quantile=0.75, cold_quantile=0.25):
     df = df.dropna(subset=['next_5_avg'])
     return df
 
-def buildFeatureMatrix(df, label_col='is_heating_up'):
+def pickupFeatureCols(df):
+    """The pickup/cooling model's feature allowlist: all rolling-window stats
+    plus the season-to-date average and encoded position."""
     feature_cols = [col for col in df.columns if col.startswith('rolling_')]
     feature_cols.append('season_avg_so_far')
     feature_cols.append('position_encoded')
-    X = df[feature_cols]
-    y = df[label_col] if label_col in df.columns else None
-    return X, y
+    return feature_cols
+
+
+def buildFeatureMatrix(df, label_col='is_heating_up'):
+    return select_matrix(df, pickupFeatureCols(df), label_col)

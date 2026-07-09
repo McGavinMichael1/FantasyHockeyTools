@@ -123,6 +123,8 @@ def buildPlayerSeasons(game_df):
         totalXGoals=('I_F_xGoals', 'sum'),
         totalHighDangerShots=('I_F_highDangerShots', 'sum'),
         totalPPP=('powerPlayPoints', 'sum'),
+        totalPPGoals=('powerPlayGoals', 'sum'),
+        totalPPAssists=('powerPlayAssists', 'sum'),
         totalSHP=('shorthandedPoints', 'sum'),
         totalFP=('fantasyPoints', 'sum'),
     ).reset_index()

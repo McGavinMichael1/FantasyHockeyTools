@@ -38,7 +38,7 @@ def _moneypuck_row(playerId, gameId, situation, goals=0, pA=0, sA=0,
 def test_moneypuck_game_points_with_special_teams():
     # Player 1, game 100:
     #   all row:  1G, 1 primary A, 1 secondary A, 4 SOG, 2 hits, 1 block
-    #   5on4 row: 2 points  -> PPP = 2
+    #   5on4 row: 1G + 1 primary A = 2 points  -> PPP = 2 (PP goals 1, PP assists 1)
     #   4on5 row: 1 point   -> SHP = 1
     #   5on5 row: must be ignored
     # FP = 3*1 + 2*(1+1) + 0.15*4 + 0.15*2 + 0.35*1 + 1*2 + 1*1
@@ -46,7 +46,7 @@ def test_moneypuck_game_points_with_special_teams():
     df = pd.DataFrame([
         _moneypuck_row(1, 100, 'all', goals=1, pA=1, sA=1, sog=4, hits=2,
                        blocks=1, points=3),
-        _moneypuck_row(1, 100, '5on4', points=2),
+        _moneypuck_row(1, 100, '5on4', goals=1, pA=1, points=2),
         _moneypuck_row(1, 100, '4on5', points=1),
         _moneypuck_row(1, 100, '5on5', points=1),
     ])
@@ -55,8 +55,34 @@ def test_moneypuck_game_points_with_special_teams():
     assert len(result) == 1  # one row per player-game (the 'all' row)
     row = result.iloc[0]
     assert row['powerPlayPoints'] == 2
+    assert row['powerPlayGoals'] == 1
+    assert row['powerPlayAssists'] == 1
     assert row['shorthandedPoints'] == 1
     assert row['fantasyPoints'] == pytest.approx(11.25)
+
+
+def test_moneypuck_game_points_powerplay_goals_and_assists():
+    # PP goal/assist breakdown (from the 5on4 row) is carried through so draft
+    # features can value PP production in fantasy units, not just the raw PPP
+    # bonus. 5on4 row: 2 goals + 1 secondary assist = 3 points.
+    df = pd.DataFrame([
+        _moneypuck_row(1, 100, 'all', goals=2, sA=1, points=3),
+        _moneypuck_row(1, 100, '5on4', goals=2, sA=1, points=3),
+    ])
+    row = fantasyPoints.moneypuckGamePoints(df).iloc[0]
+    assert row['powerPlayGoals'] == 2
+    assert row['powerPlayAssists'] == 1  # primary + secondary PP assists
+    assert row['powerPlayPoints'] == 3
+
+
+def test_moneypuck_game_points_no_powerplay_rows_zero_pp_breakdown():
+    # A player with no 5on4 row gets PP goals = PP assists = 0, not NaN.
+    df = pd.DataFrame([
+        _moneypuck_row(2, 100, 'all', goals=1, points=1),
+    ])
+    row = fantasyPoints.moneypuckGamePoints(df).iloc[0]
+    assert row['powerPlayGoals'] == 0
+    assert row['powerPlayAssists'] == 0
 
 
 def test_moneypuck_game_points_no_special_teams_rows():

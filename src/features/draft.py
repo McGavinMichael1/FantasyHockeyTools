@@ -21,7 +21,15 @@ def build_draft_features(player_seasons) -> pd.DataFrame:
     """
     sorted_player_seasons = player_seasons.sort_values(['playerId','season'])
     sorted_player_seasons['career_games'] = sorted_player_seasons.groupby('playerId')['gamesPlayed'].cumsum()
-    sorted_player_seasons['PP_share'] = sorted_player_seasons['totalPPP'] / sorted_player_seasons['totalFP']
+    # Fantasy value generated on the powerplay / total fantasy value. Convert PP
+    # goals and assists to fantasy points (goals x3, assists x2) plus the +1 PPP
+    # bonus each earns -- same fantasy-unit treatment as hitblock_share below, so
+    # a goal-heavy PP producer scores higher than an assist-heavy one at equal PPP.
+    sorted_player_seasons['PP_share'] = (
+        sorted_player_seasons['totalPPGoals'] * 3
+        + sorted_player_seasons['totalPPAssists'] * 2
+        + sorted_player_seasons['totalPPP'] * 1
+    ) / sorted_player_seasons['totalFP']
     sorted_player_seasons['hitblock_share'] = (
         sorted_player_seasons['totalHits'] * 0.15 + sorted_player_seasons['totalShotsBlocked'] * 0.35
     ) / sorted_player_seasons['totalFP']

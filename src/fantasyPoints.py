@@ -31,9 +31,14 @@ def moneypuckGamePoints(games_df):
 
     games_df must contain ALL situation rows ('all', '5on4', '4on5', ...).
     Returns one row per player-game (the 'all' rows) with powerPlayPoints,
-    shorthandedPoints, and fantasyPoints columns added.
+    powerPlayGoals, powerPlayAssists, shorthandedPoints, and fantasyPoints
+    columns added.
     PPP = points in 5on4 rows, SHP = points in 4on5 rows (5on3 lands in
     'other' — slight undercount, accepted).
+    powerPlayGoals / powerPlayAssists carry the 5on4 scoring breakdown so
+    draft features can value PP production in fantasy units (a PP goal is
+    worth 3+1, a PP assist 2+1), not just the raw PPP bonus — see
+    src/features/draft.py PP_share.
     """
     result = games_df[games_df['situation'] == 'all'].copy()
     for situation, col in (('5on4', 'powerPlayPoints'), ('4on5', 'shorthandedPoints')):
@@ -44,6 +49,16 @@ def moneypuckGamePoints(games_df):
                   .reset_index())
         result = result.merge(points, on=['playerId', 'gameId'], how='left')
         result[col] = result[col].fillna(0)
+
+    pp = games_df[games_df['situation'] == '5on4'].copy()
+    pp['ppAssists'] = pp['I_F_primaryAssists'] + pp['I_F_secondaryAssists']
+    pp_breakdown = (pp.groupby(['playerId', 'gameId'])
+                    .agg(powerPlayGoals=('I_F_goals', 'sum'),
+                         powerPlayAssists=('ppAssists', 'sum'))
+                    .reset_index())
+    result = result.merge(pp_breakdown, on=['playerId', 'gameId'], how='left')
+    result[['powerPlayGoals', 'powerPlayAssists']] = (
+        result[['powerPlayGoals', 'powerPlayAssists']].fillna(0))
 
     result['fantasyPoints'] = (
         result['I_F_goals'] * SKATER_WEIGHTS['goals']
