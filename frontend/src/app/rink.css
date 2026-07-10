@@ -1,0 +1,76 @@
+/* The Rink — ice-sheet theme, scoped so the classic UI at / is unaffected */
+
+.rink-root {
+  /* Ice */
+  --ice: #f4f8fb;
+  --ice-deep: #e9f1f7;
+  --boards: #ffffff;
+
+  /* Ink */
+  --ink: #0c1822;
+  --ink-2: #46596a;
+  --ink-3: #8ba0af;
+
+  /* Rink markings */
+  --line: #ccdae5;
+  --line-soft: #dde8f0;
+
+  /* Goal-line red = heating up */
+  --hot: #c8102e;
+  --hot-deep: #9c0c24;
+  --hot-tint: #fbeaed;
+
+  /* Blue-line blue = cooling off */
+  --cold: #1b4db1;
+  --cold-deep: #14398a;
+  --cold-tint: #e8eef9;
+
+  min-height: 100dvh;
+  background: var(--ice);
+  color: var(--ink);
+  font-family: var(--font-body), 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rink-root *,
+.rink-root *::before,
+.rink-root *::after {
+  box-sizing: border-box;
+}
+
+/* :where() keeps these resets at zero specificity so component classes win */
+:where(.rink-root button) {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+:where(.rink-root input) {
+  font: inherit;
+  color: inherit;
+}
+
+.rink-root :focus-visible {
+  outline: 2px solid var(--cold);
+  outline-offset: 2px;
+}
+
+.rink-root ::selection {
+  background: var(--cold-tint);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rink-root *,
+  .rink-root *::before,
+  .rink-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

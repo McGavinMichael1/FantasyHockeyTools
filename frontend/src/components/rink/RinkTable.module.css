@@ -1,0 +1,296 @@
+.section {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 24px 32px 64px;
+}
+
+/* Controls row */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.search {
+  flex: 0 1 260px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--boards);
+  font-size: 13.5px;
+}
+
+.search::placeholder {
+  color: var(--ink-3);
+}
+
+.positions {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--boards);
+  overflow: hidden;
+}
+
+.posButton {
+  padding: 7px 13px;
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+  border-right: 1px solid var(--line-soft);
+}
+
+.posButton:last-child {
+  border-right: none;
+}
+
+.posButton:hover {
+  background: var(--ice-deep);
+}
+
+.posActive,
+.posActive:hover {
+  background: var(--ink);
+  color: var(--boards);
+}
+
+.count {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* Table */
+.tableWrap {
+  overflow-x: auto;
+  background: var(--boards);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(12, 24, 34, 0.05);
+}
+
+.table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--boards);
+  border-bottom: 2px solid var(--line);
+  padding: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.thButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 10px;
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.thButton:hover {
+  color: var(--ink);
+}
+
+.thNumeric .thButton {
+  justify-content: flex-end;
+}
+
+.sortMark {
+  font-size: 9px;
+  width: 10px;
+  color: var(--ink);
+}
+
+.thRank {
+  width: 44px;
+  padding: 10px 10px !important;
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--ice);
+}
+
+.rowOpen {
+  background: var(--ice);
+}
+
+.rank {
+  font-family: var(--font-display), 'Arial Black', sans-serif;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.tdNumeric {
+  text-align: right;
+}
+
+.playerCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playerName {
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.empty {
+  padding: 32px !important;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+/* Expanded detail */
+.detailRow td {
+  padding: 0 !important;
+  background: var(--ice-deep);
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.3fr) 1fr 1fr;
+  gap: 28px;
+  padding: 18px 22px 20px;
+}
+
+.detailBlock {
+  min-width: 0;
+}
+
+.detailHeading {
+  margin: 0 0 10px;
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.paceRow {
+  display: grid;
+  grid-template-columns: 52px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.paceLabel {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.paceTrack {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.paceBarNeutral,
+.paceBarHot,
+.paceBarCold {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  min-width: 3px;
+}
+
+.paceBarNeutral {
+  background: var(--ink-3);
+}
+
+.paceBarHot {
+  background: var(--hot);
+}
+
+.paceBarCold {
+  background: var(--cold);
+}
+
+.paceValue {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.detailStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(56px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.detailStats dt {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.detailStats dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rosteredChip {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: var(--cold-tint);
+  color: var(--cold-deep);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .section {
+    padding: 20px 16px 48px;
+  }
+
+  .detail {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .count {
+    margin-left: 0;
+  }
+}
