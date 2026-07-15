@@ -22,9 +22,22 @@ export function PositionChip({ position }: { position: Position }) {
   );
 }
 
-/** Thin 0–100 meter for model scores; red for heat, blue for cool. */
-export function ScoreMeter({ value, tone }: { value: number; tone: Tone }) {
+/** Thin 0–100 meter for model scores; red for heat, blue for cool, grey for
+ *  neutral quantities like draft confidence that aren't hot or cold. */
+export function ScoreMeter({
+  value,
+  tone,
+}: {
+  value: number;
+  tone: Tone | 'neutral';
+}) {
   const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
+  const fillClass =
+    tone === 'hot'
+      ? styles.meterHot
+      : tone === 'cold'
+        ? styles.meterCold
+        : styles.meterNeutral;
   return (
     <div className={styles.meter}>
       <div
@@ -34,10 +47,7 @@ export function ScoreMeter({ value, tone }: { value: number; tone: Tone }) {
         aria-valuemax={100}
         aria-valuenow={pct}
       >
-        <div
-          className={`${styles.meterFill} ${tone === 'hot' ? styles.meterHot : styles.meterCold}`}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={`${styles.meterFill} ${fillClass}`} style={{ width: `${pct}%` }} />
       </div>
       <span className={styles.meterValue}>{pct}</span>
     </div>

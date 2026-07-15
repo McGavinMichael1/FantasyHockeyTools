@@ -269,6 +269,54 @@
   font-weight: 600;
 }
 
+/* Draft detail: Claude summary text + SHAP factor list */
+.summaryText {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: normal;
+}
+
+.summaryEmpty {
+  color: var(--ink-3);
+}
+
+.factorList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.factorItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  white-space: normal;
+}
+
+.factorLabel {
+  color: var(--ink-2);
+}
+
+.factorValue {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.factorUp .factorValue {
+  color: var(--hot);
+}
+
+.factorDown .factorValue {
+  color: var(--cold);
+}
+
 .rosteredChip {
   display: inline-block;
   margin-top: 10px;
