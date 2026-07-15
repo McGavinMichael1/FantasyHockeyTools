@@ -541,6 +541,42 @@ PP specialists (Stamkos, Q. Hughes, Burakovsky) top the list, range 0–0.47, no
 needed — `train-draft`/`draft` are still stubs. Lesson: a share/ratio feature must have matching units
 in numerator and denominator; "the weight is 1 so it cancels" is a coincidence, not a design.
 
+### July 2026 (Phase B3: draft model — GATE B3 passed)
+**Feature hardening first (July 15, 2026), before any training:** target masked for gap seasons
+(`shift(-1)` only counts as "next season" when `season+1` actually follows — otherwise a 2019 row
+was being trained to predict 2021), `fp_w3` weights renormalized over available seasons (was NaN
+for every 1-2 season player, which also made Baseline B blind to sophomores), `totalFP` division
+guarded, and `target_gamesPlayed` added (same gap mask) so training can require ≥20 GP on the
+label side too.
+
+**GATE B3 results (July 15, 2026), train ≤2021 (7,723 rows) → val 2022+2023 (1,206 rows), rows
+filtered to ≥20 GP both sides + non-null target:**
+
+| Ranker | val Spearman | val MAE |
+|---|---|---|
+| Baseline A (last-season FP/g) | 0.7963 | 0.3686 |
+| Baseline B (fp_w3 50/30/20) | 0.7965 | 0.3537 |
+| Ridge (impute+standardize) | 0.8213 | 0.3287 |
+| **XGBoost (shipped)** | **0.8259** | **0.3277** |
+
+**GATE B3: PASS** — XGBoost beats both baselines on val Spearman. Best params: n_estimators=100,
+max_depth=5, learning_rate=0.05, subsample=0.7, colsample_bytree=0.7 (RandomizedSearchCV n_iter=20,
+PredefinedSplit on the season boundary, Spearman scorer, `refit=False` so the val number comes from
+a train-only fit — the auto-refit best_estimator_ would have been scored on rows it trained on).
+Final saved model refits on train+val. Ridge coefficient signs all sane: fp_w3 +0.29 and fpPerGame
++0.19 dominate, age −0.14, xGoalsSurplus slightly negative (regression-to-mean works as designed).
+Baselines landed *above* the expected 0.6–0.75 band (season-level PPG is stickier than expected);
+0.826 is nowhere near the 0.95+ leakage-alarm threshold. **Test-2024 has NOT been touched** — it
+gets its one look after B4 wiring, then never again.
+
+`src/models/draft.py` implemented on the pickups pattern; `save()` persists
+`{'model', 'feature_cols'}` so `predict()` reindexes to the exact training columns (missing pos_*
+→ 0, missing numeric column → raise). `predict()` applies no GP filter by design — at draft time
+we still want a projection for an injury-shortened season. Consequence seen in the eyeball smoke
+(top-10 on 2024 rows: McDavid, MacKinnon, Kucherov, Draisaitl, Matthews — correct elites): a
+couple of small-sample rows (e.g. Taylor Ward at 5.05 FP/g in a handful of games) crack the list,
+so **B4 rankings need a display-side GP floor** on the feature season.
+
 ---
 
 ## Resources & References
@@ -563,10 +599,20 @@ in numerator and denominator; "the weight is 1 so it cancels" is a coincidence, 
       Takes `player_seasons` directly; `fp_delta`, `fp_w3`, position one-hot, `age_at_season_start`
       (NHL API birthDate, 100% coverage), prior-season base cols, `target_fpPerGame` = `shift(-1)`.
       All verified on real data; see Learning Log.
-- [ ] **B3 (next): baselines, then model.** Baseline 1 = last-season FP/g; Baseline 2 = 3-season
-      weighted (`fp_w3`). Record Spearman + MAE on val **before** any model. Then Ridge, then
-      XGBoost regressor. First wire the training-row hygiene: restrict to ≥20 GP in both feature
-      and target season, and `dropna(subset=['target_fpPerGame'])`. Splits: train ≤2021, val
-      2022+2023, test 2024.
+- [x] B3: baselines → Ridge → XGBoost in `src/models/draft.py` — **GATE B3 passed July 15, 2026**
+      (val Spearman: baselines 0.7963/0.7965, Ridge 0.8213, XGBoost 0.8259; see Learning Log).
+      Model saved to `models/draft/model.pkl`. Test-2024 still untouched — one look, after B4.
+- [x] B4 wiring + frontend (July 15, 2026): `main.py train-draft`/`draft` live;
+      `draft` writes `data/processed/draft_rankings.csv` (704 players, ≥20 GP display floor,
+      draft-day age = feature-season age + 1). Missing `keepers.csv` now warns loudly and ranks
+      everyone (pre-draft-day mode) instead of raising — fill it on draft day to filter keepers.
+      `api_export.py` embeds the CSV as a `draft` section in `frontend_data.json`; The Rink UI
+      gained a "Draft board" tab (`frontend/src/components/rink/DraftBoard.tsx`, `?view=draft`).
+      Top-20 eyeball gate: PASS (MacKinnon/McDavid/Draisaitl/Kucherov/Celebrini; no small-sample
+      or aging flukes). NOTE: local clone was 1 commit behind origin/main (The Rink refactor,
+      7c7a454) and the draft tab was first built against the deleted classic UI — pull before
+      building on the frontend.
+- [ ] **B4 remainder:** the ONE-time test-2024 confirm (do it deliberately — it burns the only
+      held-out look), then fill `data/raw/keepers.csv` on draft day (B0).
 
 **Blocked on:** nothing. (C1 needs my league's keeper-cost rules from Yahoo settings before Phase C.)

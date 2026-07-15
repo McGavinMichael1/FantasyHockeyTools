@@ -1,19 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { Player } from '@/types/player';
+import type { Player, DraftPlayer } from '@/types/player';
 import ThreeStars from '@/components/rink/ThreeStars';
 import RinkTable from '@/components/rink/RinkTable';
+import DraftBoard from '@/components/rink/DraftBoard';
 import styles from './page.module.css';
 
 interface ApiResponse {
   pickups: Player[];
   cooling: Player[];
+  draft: DraftPlayer[];
   dataAge?: string;
   error?: string;
 }
 
-type Tab = 'pickups' | 'cooling';
+type Tab = 'pickups' | 'cooling' | 'draft';
 
 /** "130.6h ago" from the API → "5d old"; unparseable strings pass through. */
 function formatAge(age?: string): string | undefined {
@@ -27,13 +29,14 @@ function formatAge(age?: string): string | undefined {
 
 export default function RinkPage() {
   const [tab, setTab] = useState<Tab>('pickups');
-  const [data, setData] = useState<ApiResponse>({ pickups: [], cooling: [] });
+  const [data, setData] = useState<ApiResponse>({ pickups: [], cooling: [], draft: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get('view');
     if (view === 'cold' || view === 'cooling') setTab('cooling');
+    if (view === 'draft') setTab('draft');
   }, []);
 
   useEffect(() => {
@@ -44,7 +47,8 @@ export default function RinkPage() {
         if (json.error && json.pickups.length === 0) {
           setError(json.error);
         } else {
-          setData(json);
+          // exports written before the draft section shipped lack `draft`
+          setData({ ...json, draft: json.draft ?? [] });
           setError(null);
         }
       } catch {
@@ -59,6 +63,7 @@ export default function RinkPage() {
   const tone = tab === 'pickups' ? 'hot' : 'cold';
 
   const players = useMemo(() => {
+    if (tab === 'draft') return [];
     const list = tab === 'pickups' ? data.pickups : data.cooling;
     const key = tab === 'pickups' ? 'final_score' : 'cooling_score';
     return [...list].sort((a, b) => b[key] - a[key]);
@@ -90,6 +95,13 @@ export default function RinkPage() {
             >
               Cold streaks
             </button>
+            <button
+              className={`${styles.tab} ${tab === 'draft' ? styles.tabActive : ''}`}
+              onClick={() => setTab('draft')}
+              aria-pressed={tab === 'draft'}
+            >
+              Draft board
+            </button>
           </nav>
 
           <div className={styles.meta}>
@@ -115,6 +127,19 @@ export default function RinkPage() {
               <code className={styles.code}>python api_export.py</code>
             </p>
           </div>
+        ) : tab === 'draft' ? (
+          data.draft.length === 0 ? (
+            <div className={styles.state}>
+              <p className={styles.stateTitle}>No draft rankings yet</p>
+              <p>
+                Build them from the project root, then reload:
+                <code className={styles.code}>python main.py draft</code>
+                <code className={styles.code}>python api_export.py</code>
+              </p>
+            </div>
+          ) : (
+            <DraftBoard players={data.draft} />
+          )
         ) : (
           <>
             <ThreeStars players={players} tone={tone} />

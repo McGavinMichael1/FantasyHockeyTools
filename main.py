@@ -1,4 +1,7 @@
 import argparse
+import os
+
+import pandas as pd
 
 from src import backtest
 from src import dataProcessing
@@ -129,29 +132,66 @@ def runPickups():
           .to_string())
 
 
+def loadPlayerSeasonFeatures():
+    """Draft feature rows from the cached player-season table (built by
+    scripts/build_player_seasons.py -- see fht-operations; not rebuilt here
+    because that re-reads the 2.6 GB MoneyPuck history)."""
+    seasons_path = os.path.join('data', 'processed', 'player_seasons.csv')
+    if not os.path.exists(seasons_path):
+        raise FileNotFoundError(
+            f"{seasons_path} missing -- run scripts/build_player_seasons.py first")
+    player_seasons = pd.read_csv(seasons_path)
+    return draftFeatures.build_draft_features(player_seasons)
+
+
 def trainDraft():
     """Train the draft ranker on historical player-season data (Phase B, see PROJECT-PLAN.md)."""
-    # TODO: build the player-season aggregation table (src/moneypuck.py::buildPlayerSeasons)
-    # TODO: build draft features (draftFeatures.build_draft_features)
-    # TODO: call draftModel.train(df)
-    raise NotImplementedError
+    draftModel.train(loadPlayerSeasonFeatures())
 
 
 def runDraft():
     """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
-    # TODO: load this season's player-season features (mirror latestGameState() above,
-    #       but season-level per PROJECT-PLAN.md B1/B4 instead of rolling game-state)
+    df = loadPlayerSeasonFeatures()
+    current = df[df['season'] == CURRENT_SEASON].copy()
+    # Display-side GP floor: predict() itself applies no filter (an injury-shortened
+    # season still deserves a projection), but a 4-game 5-FP/g line is sample noise,
+    # not a draft pick.
+    current = current[current['gamesPlayed'] >= 20]
+    current['projected_fpPerGame'] = draftModel.predict(current)
+
+    rankings = current[['playerId', 'full_name', 'position', 'gamesPlayed',
+                        'fpPerGame', 'projected_fpPerGame']].copy()
+    # age at the UPCOMING season start (draft-day age), one year past the
+    # feature season's age_at_season_start
+    rankings['age'] = current['age_at_season_start'] + 1
+    rankings['projected_total'] = rankings['projected_fpPerGame'] * 78
+    rankings['delta_vs_last'] = rankings['projected_fpPerGame'] - rankings['fpPerGame']
 
     # Draft pool must exclude anyone already kept -- keeper lists aren't in the Yahoo
     # API until draft day, so they're maintained manually in data/raw/keepers.csv.
-    keeper_names = keepers.loadKeepers()
-    # TODO: current_players = keepers.filterOutKeepers(current_players, keeper_names)
+    # Missing/empty file = keepers not announced yet: warn loudly and rank everyone
+    # rather than refuse, so pre-draft-day rankings (and the frontend) still work.
+    try:
+        keeper_names = keepers.loadKeepers()
+        before = len(rankings)
+        rankings = keepers.filterOutKeepers(rankings, keeper_names)
+        print(f"Keepers: removed {before - len(rankings)} of {len(keeper_names)} listed keepers from the pool")
+    except (FileNotFoundError, ValueError) as e:
+        print(f"⚠️  No keeper list applied ({e})")
+        print("   Rankings include EVERY player. Fine before keepers are announced;")
+        print("   on draft day, fill data/raw/keepers.csv and re-run.")
 
-    # TODO: build draft features (draftFeatures.build_draft_features)
-    # TODO: predict with draftModel.predict(df)
-    # TODO: join name/position/age, sort by projected value
-    # TODO: save results to data/processed/draft_rankings.csv
-    raise NotImplementedError
+    rankings = rankings.sort_values('projected_fpPerGame', ascending=False)
+    out_path = os.path.join('data', 'processed', 'draft_rankings.csv')
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    rankings.to_csv(out_path, index=False)
+    print(f"\nWrote {len(rankings)} players to {out_path}")
+
+    print("\n=== Top 20 projected for next season (FP/game) ===")
+    print(rankings[['full_name', 'position', 'age', 'gamesPlayed',
+                    'fpPerGame', 'projected_fpPerGame', 'projected_total', 'delta_vs_last']]
+          .head(20)
+          .to_string(index=False))
 
 
 def main():
