@@ -187,6 +187,22 @@ def predict(df: pd.DataFrame) -> pd.Series:
     return pd.Series(preds, index=df.index, name='projected_fpPerGame')
 
 
+def shap_contributions(df: pd.DataFrame) -> pd.DataFrame:
+    """Per-row SHAP feature contributions from the trained XGBoost booster.
+
+    Uses the booster's native `pred_contribs=True` (no new dependency). Returns
+    a DataFrame indexed like `df`, one column per feature in the saved
+    `feature_cols`. The final column XGBoost returns is the bias/base value and
+    is dropped. Consumed by main.runDraft to explain each ranking.
+    """
+    payload = load()
+    X = _feature_matrix(df, payload['feature_cols'])
+    booster = payload['model'].get_booster()
+    contribs = booster.predict(xgb.DMatrix(X), pred_contribs=True)
+    return pd.DataFrame(contribs[:, :-1], index=df.index,
+                        columns=payload['feature_cols'])
+
+
 def load():
     """Load and return the saved payload: {'model', 'feature_cols'}."""
     with open(MODEL_PATH, 'rb') as f:
