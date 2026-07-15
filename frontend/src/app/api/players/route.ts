@@ -13,6 +13,7 @@ export async function GET() {
           error: 'Data not found. Run: python api_export.py',
           pickups: [],
           cooling: [],
+          draft: [],
         },
         { status: 404 }
       );
@@ -30,7 +31,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error loading player data:', error);
     return NextResponse.json(
-      { error: 'Failed to load data', pickups: [], cooling: [] },
+      { error: 'Failed to load data', pickups: [], cooling: [], draft: [] },
       { status: 500 }
     );
   }

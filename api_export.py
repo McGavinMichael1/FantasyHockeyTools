@@ -18,6 +18,7 @@ from src.models import pickups as pickupModel
 
 CURRENT_SEASON = 2025
 OUTPUT_PATH = os.path.join('data', 'processed', 'frontend_data.json')
+DRAFT_RANKINGS_PATH = os.path.join('data', 'processed', 'draft_rankings.csv')
 
 
 def get_headshot_url(player_id: int) -> str:
@@ -47,6 +48,34 @@ def latestGameState():
     os.makedirs(os.path.dirname(cache_file), exist_ok=True)
     current_players.to_csv(cache_file, index=False)
     return current_players
+
+
+def build_draft_list():
+    """Draft rankings from `python main.py draft`'s CSV (the single computation
+    path for draft projections -- this only reshapes it for the frontend).
+    Returns [] if the CSV hasn't been built, so pickup/cooling export still works."""
+    if not os.path.exists(DRAFT_RANKINGS_PATH):
+        print(f"{DRAFT_RANKINGS_PATH} not found -- run 'python main.py draft' "
+              "to include draft rankings; skipping draft section")
+        return []
+
+    df = pd.read_csv(DRAFT_RANKINGS_PATH)
+    draft_list = []
+    for _, row in df.iterrows():
+        player_id = int(row['playerId'])
+        draft_list.append({
+            'id': player_id,
+            'full_name': row['full_name'],
+            'positionCode': row['position'],
+            'headshot': get_headshot_url(player_id),
+            'age': round(float(row['age']), 1) if not pd.isna(row['age']) else None,
+            'gamesPlayed': int(row['gamesPlayed']),
+            'last_fpPerGame': round(float(row['fpPerGame']), 3),
+            'projected_fpPerGame': round(float(row['projected_fpPerGame']), 3),
+            'projected_total': round(float(row['projected_total']), 1),
+            'delta_vs_last': round(float(row['delta_vs_last']), 3),
+        })
+    return draft_list
 
 
 def export_data():
@@ -194,10 +223,13 @@ def export_data():
             'rostered': player_id in rostered_nhle_ids,
         })
 
+    draft_list = build_draft_list()
+
     # Write output
     output = {
         'pickups': pickup_list,
         'cooling': cooling_list,
+        'draft': draft_list,
         'generated_at': pd.Timestamp.now().isoformat(),
     }
 
@@ -205,7 +237,8 @@ def export_data():
     with open(OUTPUT_PATH, 'w') as f:
         json.dump(output, f, indent=2)
 
-    print(f"\nExported {len(pickup_list)} pickups and {len(cooling_list)} cooling candidates")
+    print(f"\nExported {len(pickup_list)} pickups, {len(cooling_list)} cooling candidates, "
+          f"and {len(draft_list)} draft rankings")
     print(f"Output: {OUTPUT_PATH}")
 
 

@@ -29,22 +29,30 @@ def build_draft_features(player_seasons) -> pd.DataFrame:
         sorted_player_seasons['totalPPGoals'] * 3
         + sorted_player_seasons['totalPPAssists'] * 2
         + sorted_player_seasons['totalPPP'] * 1
-    ) / sorted_player_seasons['totalFP']
+    ) / sorted_player_seasons['totalFP'].where(sorted_player_seasons['totalFP'] > 0)
     sorted_player_seasons['hitblock_share'] = (
         sorted_player_seasons['totalHits'] * 0.15 + sorted_player_seasons['totalShotsBlocked'] * 0.35
-    ) / sorted_player_seasons['totalFP']
+    ) / sorted_player_seasons['totalFP'].where(sorted_player_seasons['totalFP'] > 0)
     g = sorted_player_seasons.groupby('playerId')
     # features = this row's own concluded season (no shift)
     #   fpPerGame, PP_share, hitblock_share, xGoalsSurplus, avgIcetime already correct as-is
     # backward-looking trajectory (this IS "take prior seasons into account"):
     sorted_player_seasons['fp_delta']  = g['fpPerGame'].diff()            # t minus t-1
-    sorted_player_seasons['fp_w3'] = (                                     # 50/30/20 weighted
-        0.5*sorted_player_seasons['fpPerGame']
-    + 0.3*g['fpPerGame'].shift(1)
-    + 0.2*g['fpPerGame'].shift(2)
-    )
+    w = pd.concat([sorted_player_seasons['fpPerGame'] * 0.5,
+               g['fpPerGame'].shift(1) * 0.3,
+               g['fpPerGame'].shift(2) * 0.2], axis=1)
+    weights_present = w.notna().mul([0.5, 0.3, 0.2]).sum(axis=1)
+    sorted_player_seasons['fp_w3'] = w.sum(axis=1) / weights_present
     # target only (training rows only)
-    sorted_player_seasons['target_fpPerGame'] = g['fpPerGame'].shift(-1)
+    next_season = g['season'].shift(-1)
+    sorted_player_seasons['target_fpPerGame'] = g['fpPerGame'].shift(-1).where(
+        next_season == sorted_player_seasons['season'] + 1)
+    # GP in the target season, same gap-season mask as the target -- lets the
+    # model's train() require >=20 GP on the label side too, so an
+    # injury-shortened target season doesn't distort FP/game on the label.
+    sorted_player_seasons['target_gamesPlayed'] = g['gamesPlayed'].shift(-1).where(
+        next_season == sorted_player_seasons['season'] + 1)
+
 
     # Age at season start. birthDate comes from the NHL API landing endpoint
     # (data/raw/player_birthdates.csv, built by scripts/build_birthdates.py) --
