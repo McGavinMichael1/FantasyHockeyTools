@@ -1,10 +1,12 @@
 import argparse
+import json
 import os
 
 import pandas as pd
 
 from src import backtest
 from src import dataProcessing
+from src import draft_explain
 from src import fantasyPoints
 from src import keepers
 from src import moneypuck
@@ -167,6 +169,40 @@ def runDraft():
     rankings['projected_total'] = rankings['projected_fpPerGame'] * 78
     rankings['delta_vs_last'] = rankings['projected_fpPerGame'] - rankings['fpPerGame']
 
+    # --- Explainability: data-driven confidence + top SHAP factors ---
+    # Computed here, before the sort and keeper filter, so the columns ride
+    # along with their rows. Display-only: nothing below feeds the model.
+    # Seasons of prior history feeds confidence: distinct seasons each player
+    # appears in, up to and including the feature season.
+    seasons_of_history = (df[df['season'] <= CURRENT_SEASON]
+                          .groupby('playerId')['season'].nunique())
+    rankings['confidence'] = [
+        draft_explain.compute_confidence(
+            seasons_of_history=int(seasons_of_history.get(pid, 1)),
+            feature_gp=int(gp),
+            age=age,
+            projection=float(proj),
+            fp_w3=fp_w3,
+        )
+        for pid, gp, age, proj, fp_w3 in zip(
+            current['playerId'], current['gamesPlayed'], rankings['age'],
+            current['projected_fpPerGame'], current['fp_w3'])
+    ]
+
+    # Six factor columns: top 3 positive then top 3 negative SHAP contributions,
+    # each a JSON {"label", "value"} cell (empty string when a slot is unused).
+    contribs = draftModel.shap_contributions(current)
+    factor_cols = [f'factor_{i}' for i in range(1, 7)]
+    factor_rows = []
+    for idx in current.index:
+        factors = draft_explain.top_factors(contribs.loc[idx].to_dict(), top_n=3)
+        cells = [json.dumps({'label': f['label'], 'value': round(f['value'], 4)})
+                 for f in factors]
+        cells += [''] * (len(factor_cols) - len(cells))
+        factor_rows.append(cells[:len(factor_cols)])
+    for col, values in zip(factor_cols, zip(*factor_rows)):
+        rankings[col] = list(values)
+
     # Draft pool must exclude anyone already kept -- keeper lists aren't in the Yahoo
     # API until draft day, so they're maintained manually in data/raw/keepers.csv.
     # Missing/empty file = keepers not announced yet: warn loudly and rank everyone
@@ -189,7 +225,8 @@ def runDraft():
 
     print("\n=== Top 20 projected for next season (FP/game) ===")
     print(rankings[['full_name', 'position', 'age', 'gamesPlayed',
-                    'fpPerGame', 'projected_fpPerGame', 'projected_total', 'delta_vs_last']]
+                    'fpPerGame', 'projected_fpPerGame', 'projected_total',
+                    'delta_vs_last', 'confidence']]
           .head(20)
           .to_string(index=False))
 

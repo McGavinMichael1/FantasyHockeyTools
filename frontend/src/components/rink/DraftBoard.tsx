@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { DraftPlayer, Position } from '@/types/player';
-import { Headshot, PositionChip } from './bits';
+import { Headshot, PositionChip, ScoreMeter } from './bits';
 import styles from './RinkTable.module.css';
 import bitStyles from './bits.module.css';
 
@@ -97,13 +97,77 @@ const COLUMNS: Column[] = [
     sortValue: (p) => p.delta_vs_last,
     render: (p) => <ProjectionDeltaChip value={p.delta_vs_last} />,
   },
+  {
+    key: 'confidence',
+    label: 'Conf',
+    title:
+      'Model confidence (seasons of history, games played, age band, and how far the projection sits from recent form), 0–100',
+    numeric: true,
+    // players without a confidence sort last rather than mixing in at zero
+    sortValue: (p) => p.confidence ?? -1,
+    render: (p) =>
+      p.confidence === null ? (
+        '—'
+      ) : (
+        <ScoreMeter value={p.confidence / 100} tone="neutral" />
+      ),
+  },
 ];
+
+function ExpandedDraftDetail({ player }: { player: DraftPlayer }) {
+  return (
+    <div className={styles.detail}>
+      <div className={styles.detailBlock}>
+        <h4 className={styles.detailHeading}>Scouting summary</h4>
+        {player.summary ? (
+          <p className={styles.summaryText}>{player.summary}</p>
+        ) : (
+          <p className={`${styles.summaryText} ${styles.summaryEmpty}`}>—</p>
+        )}
+      </div>
+
+      <div className={styles.detailBlock}>
+        <h4 className={styles.detailHeading}>Confidence</h4>
+        {player.confidence === null ? (
+          <p className={`${styles.summaryText} ${styles.summaryEmpty}`}>—</p>
+        ) : (
+          <ScoreMeter value={player.confidence / 100} tone="neutral" />
+        )}
+      </div>
+
+      <div className={styles.detailBlock}>
+        <h4 className={styles.detailHeading}>What moved the ranking</h4>
+        {player.factors.length === 0 ? (
+          <p className={`${styles.summaryText} ${styles.summaryEmpty}`}>—</p>
+        ) : (
+          <ul className={styles.factorList}>
+            {player.factors.map((f) => (
+              <li
+                key={f.label}
+                className={`${styles.factorItem} ${
+                  f.value >= 0 ? styles.factorUp : styles.factorDown
+                }`}
+              >
+                <span className={styles.factorLabel}>{f.label}</span>
+                <span className={styles.factorValue}>
+                  {f.value >= 0 ? '+' : '−'}
+                  {Math.abs(f.value).toFixed(2)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DraftBoard({ players }: { players: DraftPlayer[] }) {
   const [sortKey, setSortKey] = useState('projected_fpPerGame');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [position, setPosition] = useState<Position | 'ALL'>('ALL');
   const [query, setQuery] = useState('');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const rows = useMemo(() => {
     let data = players;
@@ -208,17 +272,37 @@ export default function DraftBoard({ players }: { players: DraftPlayer[] }) {
               </tr>
             )}
             {rows.map((p, i) => (
-              <tr key={p.id} className={styles.row}>
-                <td className={styles.rank}>{i + 1}</td>
-                {COLUMNS.map((col) => (
-                  <td
-                    key={col.key}
-                    className={col.numeric ? styles.tdNumeric : undefined}
-                  >
-                    {col.render(p)}
-                  </td>
-                ))}
-              </tr>
+              <Fragment key={p.id}>
+                <tr
+                  className={`${styles.row} ${expandedId === p.id ? styles.rowOpen : ''}`}
+                  onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setExpandedId(expandedId === p.id ? null : p.id);
+                    }
+                  }}
+                  aria-expanded={expandedId === p.id}
+                >
+                  <td className={styles.rank}>{i + 1}</td>
+                  {COLUMNS.map((col) => (
+                    <td
+                      key={col.key}
+                      className={col.numeric ? styles.tdNumeric : undefined}
+                    >
+                      {col.render(p)}
+                    </td>
+                  ))}
+                </tr>
+                {expandedId === p.id && (
+                  <tr className={styles.detailRow}>
+                    <td colSpan={COLUMNS.length + 1}>
+                      <ExpandedDraftDetail player={p} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

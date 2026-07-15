@@ -44,6 +44,10 @@
   background: var(--cold);
 }
 
+.meterNeutral {
+  background: var(--ink-3);
+}
+
 .meterValue {
   font-size: 13px;
   font-weight: 600;

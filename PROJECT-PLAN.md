@@ -612,7 +612,28 @@ so **B4 rankings need a display-side GP floor** on the feature season.
       or aging flukes). NOTE: local clone was 1 commit behind origin/main (The Rink refactor,
       7c7a454) and the draft tab was first built against the deleted classic UI — pull before
       building on the frontend.
+- [x] B5 draft explainability + confidence + Claude summaries (July 15, 2026): per-player
+      explanation shipped end to end. `src/draft_explain.py` holds two pure, pytested functions —
+      `top_factors` (names/ranks SHAP contributions) and `compute_confidence` (transparent 0–100
+      weighted average: history depth 0.25, feature-season GP 0.30, peak-age band 0.20,
+      |projection − fp_w3| stability 0.25; missing age/fp_w3 go neutral, never penalized).
+      `src/models/draft.py::shap_contributions` wraps the booster's native `pred_contribs=True`
+      (no new modelling dependency). `main.py draft` now writes `confidence` + `factor_1..6`
+      (JSON `{label, value}` cells, top 3 positive then top 3 negative) into `draft_rankings.csv`.
+      `scripts/build_draft_summaries.py` is the canonical summary producer (claude-opus-4-8 +
+      `web_search_20260209`, resumable, needs `ANTHROPIC_API_KEY`); `data/processed/draft_summaries.json`
+      is the contract, so a Claude Code session is a valid alternative producer on a Pro sub.
+      `api_export.py` merges it; The Rink's draft board gained a Conf column + expandable detail.
+      Gates: confidence behaves as designed (Tkachuk's 28-game season = 78, the top-20 low;
+      Celebrini 20yo = 84 and Kucherov 33yo = 83 both age-penalized; Suzuki 75 GP/age 27 = 100).
+      Top-20 order unchanged. Summary eyeball gate: PASS on 5 spot-checks (MacKinnon's playoff
+      knee cleared, Draisaitl's 65 GP was a March lower-body injury not decline, Kucherov is the
+      reigning Hart winner the model marks down hardest on age) — all added real context rather
+      than restating stats. New dependency `anthropic==0.116.0`, pinned in pyproject + requirements.
 - [ ] **B4 remainder:** the ONE-time test-2024 confirm (do it deliberately — it burns the only
       held-out look), then fill `data/raw/keepers.csv` on draft day (B0).
+- [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an
+      API key the owner doesn't have — plan on a Claude Code session in chunks), then re-run
+      `api_export.py`. Only 5 of 704 players have summaries today.
 
 **Blocked on:** nothing. (C1 needs my league's keeper-cost rules from Yahoo settings before Phase C.)

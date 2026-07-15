@@ -19,6 +19,41 @@ from src.models import pickups as pickupModel
 CURRENT_SEASON = 2025
 OUTPUT_PATH = os.path.join('data', 'processed', 'frontend_data.json')
 DRAFT_RANKINGS_PATH = os.path.join('data', 'processed', 'draft_rankings.csv')
+DRAFT_SUMMARIES_PATH = os.path.join('data', 'processed', 'draft_summaries.json')
+FACTOR_COLS = [f'factor_{i}' for i in range(1, 7)]
+
+
+def _load_draft_summaries() -> dict:
+    """Load the {playerId: {summary, generated_at, model}} cache, or {} if the
+    file is missing/corrupt. Absence is normal -- summaries are optional and
+    batch-generated separately (scripts/build_draft_summaries.py)."""
+    if not os.path.exists(DRAFT_SUMMARIES_PATH):
+        return {}
+    try:
+        with open(DRAFT_SUMMARIES_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (ValueError, OSError) as e:
+        print(f"⚠️  Could not read {DRAFT_SUMMARIES_PATH} ({e}); exporting without summaries")
+        return {}
+
+
+def _parse_factors(row) -> list:
+    """Parse the factor_1..factor_6 JSON cells into [{label, value}], skipping
+    empty/malformed slots (pandas reads an unused slot as NaN). The sign of
+    value encodes direction, so the frontend colours by sign."""
+    factors = []
+    for col in FACTOR_COLS:
+        if col not in row.index:
+            continue
+        cell = row[col]
+        if isinstance(cell, str) and cell:
+            try:
+                obj = json.loads(cell)
+                factors.append({'label': obj['label'],
+                                'value': round(float(obj['value']), 3)})
+            except (ValueError, KeyError, TypeError):
+                pass
+    return factors
 
 
 def get_headshot_url(player_id: int) -> str:
@@ -60,9 +95,17 @@ def build_draft_list():
         return []
 
     df = pd.read_csv(DRAFT_RANKINGS_PATH)
+    summaries = _load_draft_summaries()
+    # Guard the explainability columns: a draft_rankings.csv written before
+    # they existed should still export rather than crash.
+    has_confidence = 'confidence' in df.columns
     draft_list = []
     for _, row in df.iterrows():
         player_id = int(row['playerId'])
+        entry = summaries.get(str(player_id))
+        confidence = None
+        if has_confidence and not pd.isna(row['confidence']):
+            confidence = int(row['confidence'])
         draft_list.append({
             'id': player_id,
             'full_name': row['full_name'],
@@ -74,6 +117,9 @@ def build_draft_list():
             'projected_fpPerGame': round(float(row['projected_fpPerGame']), 3),
             'projected_total': round(float(row['projected_total']), 1),
             'delta_vs_last': round(float(row['delta_vs_last']), 3),
+            'confidence': confidence,
+            'factors': _parse_factors(row),
+            'summary': entry['summary'] if entry else None,
         })
     return draft_list
 
