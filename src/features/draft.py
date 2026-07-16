@@ -8,9 +8,9 @@
 #   - Team powerplay usage trends
 #   - Contract year / motivation factors (if data available)
 
-import os
-
 import pandas as pd
+
+from src.features import shared
 
 
 def build_draft_features(player_seasons) -> pd.DataFrame:
@@ -54,27 +54,9 @@ def build_draft_features(player_seasons) -> pd.DataFrame:
         next_season == sorted_player_seasons['season'] + 1)
 
 
-    # Age at season start. birthDate comes from the NHL API landing endpoint
-    # (data/raw/player_birthdates.csv, built by scripts/build_birthdates.py) --
-    # players_cache.csv is current-roster only and misses retired players
-    # (~18% coverage on training seasons).
-    birthdates_path = os.path.join(
-        os.path.dirname(__file__), '..', '..', 'data', 'raw', 'player_birthdates.csv')
-    if os.path.exists(birthdates_path):
-        birthdates = (pd.read_csv(birthdates_path)[['playerId', 'birthDate']]
-                        .drop_duplicates('playerId'))
-        sorted_player_seasons = sorted_player_seasons.merge(
-            birthdates, on='playerId', how='left')
-        birth = pd.to_datetime(sorted_player_seasons['birthDate'], errors='coerce')
-        # MoneyPuck season 2023 == the 2023-24 season, which starts ~Oct 1, 2023.
-        season_start = pd.to_datetime(
-            sorted_player_seasons['season'].astype(str) + '-10-01')
-        sorted_player_seasons['age_at_season_start'] = (
-            (season_start - birth).dt.days / 365.25)
-    else:
-        print("player_birthdates.csv not found -- run scripts/build_birthdates.py; "
-              "age_at_season_start set to NaN")
-        sorted_player_seasons['age_at_season_start'] = pd.NA
+    # Age at season start -- shared with the goalie features (same birthdate
+    # cache, same Oct-1 convention). See src/features/shared.py.
+    sorted_player_seasons = shared.add_age_at_season_start(sorted_player_seasons)
 
     # Position one-hot. Keep the raw 'position' column too (concat instead of
     # get_dummies(columns=...) which would drop it) -- B4 rankings display and
