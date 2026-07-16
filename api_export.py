@@ -120,6 +120,10 @@ def build_draft_list():
             'projected_fpPerGame': round(float(row['projected_fpPerGame']), 3),
             'projected_total': round(float(row['projected_total']), 1),
             'delta_vs_last': round(float(row['delta_vs_last']), 3),
+            'vorp': (round(float(row['vorp']), 1)
+                     if 'vorp' in df.columns and not pd.isna(row['vorp']) else None),
+            'projected_gp': (round(float(row['projected_gp']), 1)
+                             if 'projected_gp' in df.columns and not pd.isna(row['projected_gp']) else None),
             'confidence': confidence,
             'factors': _parse_factors(row),
             'summary': entry['summary'] if entry else None,

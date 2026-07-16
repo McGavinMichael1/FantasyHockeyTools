@@ -1,4 +1,4 @@
-export type Position = 'C' | 'L' | 'R' | 'D';
+export type Position = 'C' | 'L' | 'R' | 'D' | 'G';
 
 export interface Player {
   id: number;
@@ -60,6 +60,8 @@ export interface DraftPlayer {
   projected_fpPerGame: number;
   projected_total: number;
   delta_vs_last: number;
+  vorp: number | null;
+  projected_gp: number | null;
   confidence: number | null;
   factors: DraftFactor[];
   summary: string | null;

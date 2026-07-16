@@ -12,6 +12,7 @@ export const POSITION_NAMES: Record<Position, string> = {
   L: 'Left wing',
   R: 'Right wing',
   D: 'Defense',
+  G: 'Goalie',
 };
 
 export function PositionChip({ position }: { position: Position }) {
