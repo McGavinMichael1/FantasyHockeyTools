@@ -18,6 +18,9 @@ uv.lock
 .vscode/
 .idea/
 
+# Local git worktrees
+.worktrees/
+
 # OS
 .DS_Store
 
