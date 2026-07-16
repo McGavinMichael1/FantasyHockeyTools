@@ -55,6 +55,8 @@ Yahoo API       -> src/yahooAPI.py (optional roster filtering)
 ## Load-bearing decisions (do not relitigate without new evidence)
 
 - MoneyPuck is the single stats source for modeling; NHL API is identity/roster only.
+  Owner-approved exception: goalie W/L/SO/GS season records come from the NHL API
+  (see `docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`).
 - One canonical scoring source per stat type: `fantasyPoints.SKATER_WEIGHTS` and
   `fantasyPoints.GOALIE_WEIGHTS` (goalie `losses` are regulation-only, owner-confirmed).
 - LSTM (`src/models/lstmPickups.py`) is intentionally parked until after draft season.

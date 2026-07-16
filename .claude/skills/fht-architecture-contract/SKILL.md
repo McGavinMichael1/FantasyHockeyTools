@@ -63,7 +63,7 @@ comment documenting an incident. Do not relitigate without new evidence.
 
 | Decision | Rationale (verified) |
 |---|---|
-| MoneyPuck is the single stats source for modeling; NHL API only for identity/`birthDate`/`positionCode`/rosters | `PROJECT-PLAN.md:61-64`; removes duplicated fantasy-point logic and the 700-request threaded stats fetch |
+| MoneyPuck is the single stats source for modeling; NHL API only for identity/`birthDate`/`positionCode`/rosters (owner-approved exception: goalie W/L/SO/GS season records come from the NHL API — see `docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`) | `PROJECT-PLAN.md:61-64`; removes duplicated fantasy-point logic and the 700-request threaded stats fetch |
 | One canonical scoring function, `fantasyPoints.SKATER_WEIGHTS` (`src/fantasyPoints.py:1-14`) | Header comment states it is "the single source of truth." Incident: the ML label silently diverged to G/A/SOG-only for months before this was enforced (see `PROJECT-PLAN.md` Learning Log) — the fix was one dict + tests, not scattered constants |
 | LSTM parked; XGBoost is the product model | `PROJECT-PLAN.md:68-70`; `src/models/lstmPickups.py` header dated July 2026 says keep parked until after draft season |
 | Train/predict CLI split (`train-pickups`/`pickups`/`train-draft`/`draft`) | `PROJECT-PLAN.md:77`; `main.py:152-173` — Streamlit is meant to be the product interface, scripts are the workbench |

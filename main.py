@@ -318,7 +318,7 @@ def runDraft():
 
 
 def runKeeper():
-    """Rank the authenticated Yahoo roster's best four skater keepers."""
+    """Rank the authenticated Yahoo roster's best four keepers."""
     projections = buildFullProjections()
     roster = yahooAPI.getMyRoster()
     rankings = keeper.analyze_keepers(roster, projections)
@@ -349,7 +349,7 @@ def main():
     sub.add_parser('train-draft', help='train the draft ranker on historical player-seasons')
     sub.add_parser('train-goalies', help='train the goalie draft ranker on historical goalie-seasons')
     sub.add_parser('draft', help='rank this year\'s non-keeper players for the draft')
-    sub.add_parser('keeper', help='rank four skater keepers from the authenticated Yahoo roster')
+    sub.add_parser('keeper', help='rank four keepers from the authenticated Yahoo roster')
     spot = sub.add_parser('spot-check', help='replay the pickup ranking at historical dates and grade it')
     spot.add_argument('--date', type=int, help='single as-of date as YYYYMMDD (default: several across the season)')
     spot.add_argument('--top', type=int, default=15, help='size of the ranked list to grade')
