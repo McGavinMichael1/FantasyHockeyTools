@@ -65,6 +65,30 @@ export interface DraftPlayer {
   summary: string | null;
 }
 
+export interface KeeperRecommendation {
+  id: number | null;
+  full_name: string;
+  positionCode: Position;
+  headshot: string | null;
+  keeper_rank: number;
+  assigned_round: number;
+  pick_cost: number;
+  raw_keeper_value: number;
+  net_keeper_value: number;
+  last_fpPerGame: number;
+  gamesPlayed: number;
+  projected_fpPerGame: number;
+  projected_total: number;
+  confidence: number | null;
+}
+
+export interface KeeperSection {
+  season: string;
+  summary: string | null;
+  summary_generated_at: string | null;
+  recommendations: KeeperRecommendation[];
+}
+
 export interface PickupRecommendation extends Player {
   rank: number;
 }

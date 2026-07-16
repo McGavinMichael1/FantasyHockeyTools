@@ -14,6 +14,7 @@ export async function GET() {
           pickups: [],
           cooling: [],
           draft: [],
+          keeper: null,
         },
         { status: 404 }
       );
@@ -21,17 +22,21 @@ export async function GET() {
 
     const data = JSON.parse(readFileSync(DATA_PATH, 'utf-8'));
     const stats = statSync(DATA_PATH);
-    const ageMs = Date.now() - stats.mtimeMs;
+    const exportedAt = Date.parse(data.generated_at);
+    const ageMs = Number.isNaN(exportedAt)
+      ? Date.now() - stats.mtimeMs
+      : Date.now() - exportedAt;
     const ageHours = Math.round(ageMs / (1000 * 60 * 60) * 10) / 10;
 
     return NextResponse.json({
       ...data,
+      keeper: data.keeper ?? null,
       dataAge: `${ageHours}h ago`,
     });
   } catch (error) {
     console.error('Error loading player data:', error);
     return NextResponse.json(
-      { error: 'Failed to load data', pickups: [], cooling: [], draft: [] },
+      { error: 'Failed to load data', pickups: [], cooling: [], draft: [], keeper: null },
       { status: 500 }
     );
   }

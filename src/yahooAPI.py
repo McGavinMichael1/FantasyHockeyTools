@@ -22,6 +22,15 @@ def getRosteredIds(lg):
             rostered_names.add(player['name'])
     return rostered_names
 
+
+def getMyRoster(lg=None):
+    """Return the authenticated Yahoo manager's current roster."""
+    league = lg or getLeague()
+    team_key = league.team_key()
+    if not team_key:
+        raise RuntimeError("Yahoo did not return a team for the authenticated account")
+    return league.to_team(team_key).roster(league.current_week())
+
 def getRosteredNHLIds(rostered_names, players_df):
     players_df = dataProcessing.flattenPlayerNames(players_df)
     candidate_names = players_df['full_name'].tolist()
@@ -36,7 +45,3 @@ def getRosteredNHLIds(rostered_names, players_df):
         else:
             print(f"No good match found for {name}")
     return rostered_ids
-
-
-
-# def getMyRoster():

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Export pickup/cooling data as JSON for the frontend."""
 
+import argparse
 import json
 import os
 import time
@@ -20,6 +21,8 @@ CURRENT_SEASON = 2025
 OUTPUT_PATH = os.path.join('data', 'processed', 'frontend_data.json')
 DRAFT_RANKINGS_PATH = os.path.join('data', 'processed', 'draft_rankings.csv')
 DRAFT_SUMMARIES_PATH = os.path.join('data', 'processed', 'draft_summaries.json')
+KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
+KEEPER_SUMMARY_PATH = os.path.join('data', 'processed', 'keeper_summary.json')
 FACTOR_COLS = [f'factor_{i}' for i in range(1, 7)]
 
 
@@ -122,6 +125,96 @@ def build_draft_list():
             'summary': entry['summary'] if entry else None,
         })
     return draft_list
+
+
+def _load_keeper_summary() -> dict:
+    if not os.path.exists(KEEPER_SUMMARY_PATH):
+        return {}
+    try:
+        with open(KEEPER_SUMMARY_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (ValueError, OSError) as e:
+        print(f"Could not read {KEEPER_SUMMARY_PATH} ({e}); exporting keeper rankings without a summary")
+        return {}
+
+
+def _optional_number(row, column, digits=None):
+    value = row.get(column)
+    if pd.isna(value):
+        return None
+    value = float(value)
+    return round(value, digits) if digits is not None else value
+
+
+def _optional_int(row, column):
+    value = _optional_number(row, column)
+    return int(value) if value is not None else None
+
+
+def build_keeper_section():
+    """Shape cached keeper rankings and their one-time LLM summary for the UI."""
+    if not os.path.exists(KEEPER_RANKINGS_PATH):
+        print(f"{KEEPER_RANKINGS_PATH} not found -- run 'python main.py keeper' first")
+        return None
+
+    rankings = pd.read_csv(KEEPER_RANKINGS_PATH)
+    if 'is_recommended' not in rankings.columns:
+        return None
+    recommendations = rankings[
+        rankings['is_recommended'].astype(str).str.lower() == 'true'
+    ].sort_values('keeper_rank')
+    if recommendations.empty:
+        return None
+
+    season = str(recommendations.iloc[0].get('target_season', ''))
+    summary_cache = _load_keeper_summary()
+    summary = summary_cache.get('summary') if summary_cache.get('season') == season else None
+    keeper_list = []
+    for _, row in recommendations.iterrows():
+        player_id = _optional_int(row, 'playerId')
+        keeper_list.append({
+            'id': player_id,
+            'full_name': row['full_name'],
+            'positionCode': row['position'],
+            'headshot': get_headshot_url(player_id) if player_id is not None else None,
+            'keeper_rank': _optional_int(row, 'keeper_rank'),
+            'assigned_round': _optional_int(row, 'assigned_round'),
+            'pick_cost': _optional_number(row, 'pick_cost', 1),
+            'raw_keeper_value': _optional_number(row, 'raw_keeper_value', 1),
+            'net_keeper_value': _optional_number(row, 'net_keeper_value', 1),
+            'last_fpPerGame': _optional_number(row, 'fpPerGame', 3),
+            'gamesPlayed': _optional_int(row, 'gamesPlayed'),
+            'projected_fpPerGame': _optional_number(row, 'projected_fpPerGame', 3),
+            'projected_total': _optional_number(row, 'projected_total', 1),
+            'confidence': _optional_int(row, 'confidence'),
+        })
+
+    return {
+        'season': season,
+        'summary': summary,
+        'summary_generated_at': summary_cache.get('generated_at') if summary else None,
+        'recommendations': keeper_list,
+    }
+
+
+def export_keeper_only():
+    """Update only the cached keeper block without refreshing live player data."""
+    output = {}
+    if os.path.exists(OUTPUT_PATH):
+        try:
+            with open(OUTPUT_PATH, 'r', encoding='utf-8') as f:
+                output = json.load(f)
+        except (ValueError, OSError):
+            output = {}
+
+    output.setdefault('pickups', [])
+    output.setdefault('cooling', [])
+    output.setdefault('draft', [])
+    output['keeper'] = build_keeper_section()
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2)
+    print(f"Exported cached keeper data to {OUTPUT_PATH}")
 
 
 def export_data():
@@ -276,6 +369,7 @@ def export_data():
         'pickups': pickup_list,
         'cooling': cooling_list,
         'draft': draft_list,
+        'keeper': build_keeper_section(),
         'generated_at': pd.Timestamp.now().isoformat(),
     }
 
@@ -289,4 +383,13 @@ def export_data():
 
 
 if __name__ == '__main__':
-    export_data()
+    parser = argparse.ArgumentParser(description='Export data for the frontend.')
+    parser.add_argument(
+        '--keeper-only', action='store_true',
+        help='export cached keeper data without refreshing pickup or cooling data',
+    )
+    args = parser.parse_args()
+    if args.keeper_only:
+        export_keeper_only()
+    else:
+        export_data()

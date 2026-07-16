@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { Player, DraftPlayer } from '@/types/player';
+import Link from 'next/link';
+import type { Player, DraftPlayer, KeeperSection } from '@/types/player';
 import ThreeStars from '@/components/rink/ThreeStars';
 import RinkTable from '@/components/rink/RinkTable';
 import DraftBoard from '@/components/rink/DraftBoard';
@@ -11,6 +12,7 @@ interface ApiResponse {
   pickups: Player[];
   cooling: Player[];
   draft: DraftPlayer[];
+  keeper?: KeeperSection | null;
   dataAge?: string;
   error?: string;
 }
@@ -102,6 +104,9 @@ export default function RinkPage() {
             >
               Draft board
             </button>
+            <Link className={styles.tab} href="/keeper">
+              Keeper board
+            </Link>
           </nav>
 
           <div className={styles.meta}>
