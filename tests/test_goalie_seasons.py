@@ -1,6 +1,9 @@
 import pandas as pd
+import pytest
 
 from src import dataProcessing
+from src import moneypuck
+from src.features import goalies as goalie_features
 
 
 LANDING_FIXTURE = {
@@ -95,3 +98,84 @@ def test_get_goalie_seasons_with_cache_appends_missing_ids(tmp_path, monkeypatch
 
     assert fetched == [2]
     assert sorted(result['playerId'].tolist()) == [1, 2]
+
+
+def _mp_situation_fixture(path):
+    rows = []
+    for situation, icetime, xg, goals, ongoal in [
+        ('all', 180000.0, 140.0, 120.0, 1500.0),
+        ('5on5', 150000.0, 90.0, 80.0, 1100.0),
+        ('4on5', 15000.0, 40.0, 30.0, 300.0),
+        ('5on4', 12000.0, 5.0, 5.0, 50.0),
+        ('other', 3000.0, 5.0, 5.0, 50.0),
+    ]:
+        rows.append({'playerId': 1, 'season': 2023, 'name': 'Test Goalie',
+                     'team': 'WPG', 'position': 'G', 'situation': situation,
+                     'games_played': 60, 'icetime': icetime, 'xGoals': xg,
+                     'goals': goals, 'ongoal': ongoal})
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def test_load_goalie_seasons_keeps_only_all_situation(tmp_path):
+    history = tmp_path / 'hist.csv'
+    current = tmp_path / 'curr.csv'
+    _mp_situation_fixture(history)
+    _mp_situation_fixture(current)
+
+    df = moneypuck.loadGoalieSeasons(history_file=str(history),
+                                     current_file=str(current))
+
+    assert 'situation' not in df.columns
+    # Both files carry the same (playerId, season), so the stint-groupby sums
+    # the two 'all' rows into one: xGoals = 140 x 2 = 280. If situation rows
+    # leaked, xGoals would include 90+40+5+5 per file (560 total).
+    assert len(df) == 1
+    assert df['xGoals'].sum() == 280.0
+
+
+def test_load_goalie_seasons_raises_when_file_missing(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        moneypuck.loadGoalieSeasons(history_file=str(tmp_path / 'nope.csv'),
+                                    current_file=str(tmp_path / 'nope2.csv'))
+
+
+def test_build_goalie_seasons_scores_regulation_losses_only():
+    mp = pd.DataFrame([{'playerId': 1, 'season': 2023, 'name': 'Test Goalie',
+                        'games_played': 60, 'icetime': 180000.0,
+                        'xGoals': 150.0, 'goals': 158.0, 'ongoal': 1814.0}])
+    nhl = pd.DataFrame([{'playerId': 1, 'season': 2023, 'gamesPlayed': 60,
+                         'gamesStarted': 60, 'wins': 37, 'losses': 19,
+                         'otLosses': 4, 'shutouts': 5, 'goalsAgainst': 158,
+                         'shotsAgainst': 1814}])
+
+    out = goalie_features.build_goalie_seasons(mp, nhl)
+
+    assert len(out) == 1
+    row = out.iloc[0]
+    assert row['position'] == 'G'
+    assert row['full_name'] == 'Test Goalie'
+    assert row['saves'] == 1814 - 158
+    # 45 + 92.5 - 19 - 79 + 248.4 + 15 = 302.9 -- otLosses=4 must NOT subtract
+    assert row['fantasyPoints'] == pytest.approx(302.9)
+    assert row['fpPerGame'] == pytest.approx(302.9 / 60)
+    assert row['gsax'] == pytest.approx(150.0 - 158.0)
+    assert row['save_pct'] == pytest.approx(1 - 158.0 / 1814.0)
+    assert row['xsave_delta'] == pytest.approx((150.0 - 158.0) / 1814.0)
+
+
+def test_build_goalie_seasons_drops_rows_without_nhl_match():
+    mp = pd.DataFrame([
+        {'playerId': 1, 'season': 2023, 'name': 'Matched Goalie',
+         'games_played': 60, 'icetime': 180000.0, 'xGoals': 150.0,
+         'goals': 158.0, 'ongoal': 1814.0},
+        {'playerId': 2, 'season': 2023, 'name': 'Unmatched Goalie',
+         'games_played': 10, 'icetime': 30000.0, 'xGoals': 25.0,
+         'goals': 30.0, 'ongoal': 300.0},
+    ])
+    nhl = pd.DataFrame([{'playerId': 1, 'season': 2023, 'gamesPlayed': 60,
+                         'gamesStarted': 60, 'wins': 37, 'losses': 19,
+                         'otLosses': 4, 'shutouts': 5, 'goalsAgainst': 158,
+                         'shotsAgainst': 1814}])
+
+    out = goalie_features.build_goalie_seasons(mp, nhl)
+    assert out['playerId'].tolist() == [1]  # no NHL record -> no FP -> dropped

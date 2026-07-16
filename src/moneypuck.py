@@ -19,6 +19,12 @@ PROCESSED_DIR = os.path.join(BASE_DIR, '..', 'data', 'processed')
 HISTORY_FILE = os.path.join(RAW_DATA_DIR, '2008_to_2024.csv')   # all situations, 2008-2024
 CURRENT_FILE = os.path.join(RAW_DATA_DIR, 'moneypuck_current.csv')  # all situations, current season
 
+GOALIE_DIR = os.path.join(RAW_DATA_DIR, 'goalies')
+GOALIE_HISTORY_SEASONS_FILE = os.path.join(GOALIE_DIR, 'goalies_2008_to_2024_seasons.csv')
+GOALIE_CURRENT_SEASONS_FILE = os.path.join(GOALIE_DIR, 'goalies_current_seasons.csv')
+GOALIE_SEASON_COLUMNS = ['playerId', 'season', 'name', 'situation',
+                         'games_played', 'icetime', 'xGoals', 'goals', 'ongoal']
+
 STALE_DAYS = 3
 
 # The subset of MoneyPuck's ~150 columns the pipeline uses — keeps the
@@ -136,3 +142,31 @@ def buildPlayerSeasons(game_df):
     )
 
     return summary
+
+
+def loadGoalieSeasons(history_file=GOALIE_HISTORY_SEASONS_FILE,
+                      current_file=GOALIE_CURRENT_SEASONS_FILE):
+    """Season-level MoneyPuck goalie rows, 'all'-situation only.
+
+    The raw files carry one row per situation per goalie-season (and one row
+    per team stint for traded goalies); the 'all' row already totals the
+    situation rows, so only 'all' survives and stints are summed. `goals`
+    here means goals AGAINST; `ongoal` is shots on goal against.
+    """
+    for path in (history_file, current_file):
+        if not os.path.exists(path):
+            raise FileNotFoundError(
+                f"{path} missing -- download the goalie season CSVs from "
+                "moneypuck.com/data.htm into data/raw/goalies/ "
+                "(see that folder's README.md for which file is which)")
+    frames = [pd.read_csv(f, usecols=GOALIE_SEASON_COLUMNS)
+              for f in (history_file, current_file)]
+    df = pd.concat(frames, ignore_index=True)
+    df = df[df['situation'] == 'all'].drop(columns=['situation'])
+    return (df.groupby(['playerId', 'season'], as_index=False)
+              .agg(name=('name', 'first'),
+                   games_played=('games_played', 'sum'),
+                   icetime=('icetime', 'sum'),
+                   xGoals=('xGoals', 'sum'),
+                   goals=('goals', 'sum'),
+                   ongoal=('ongoal', 'sum')))
