@@ -65,8 +65,8 @@ def build_prompt(season: str, candidates: list[dict]) -> str:
         + '\n\n'.join(player_lines)
         + "\n\nWrite one concise paragraph (80-120 words) explaining why these are "
         "the strongest players to keep. Ground it in the model projection, prior "
-        "production, replacement value, and cheap round cost. Do not mention goalies, "
-        "invent facts, or add a heading."
+        "production, replacement value, and cheap round cost. Do not "
+        "invent facts or add a heading."
     )
 
 
