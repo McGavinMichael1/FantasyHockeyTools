@@ -194,25 +194,30 @@ markdown line, then five `# TODO` comments, no logic. Target: Streamlit board lo
 draft, plus a best-available-by-position panel. `ui/pages/keeper.py` does not exist yet either
 (confirmed) -- planned as your roster with keeper values, top 4 highlighted.
 
-**Goalies v1 = NO ML.** Rank by last-season fantasy points via a `calculateGoaliePoints`
-function -- **verified absent today**: `grep -rn "calculateGoaliePoints" **/*.py` finds nothing;
-`src/fantasyPoints.py` currently defines only `SKATER_WEIGHTS`, `calculateSkaterPoints`, and
-`moneypuckGamePoints`. This needs to be written from scratch using the goalie weights table
-already recorded at `PROJECT-PLAN.md:306-314`:
+**Goalie ranker -- SHIPPED 2026-07-16** (full spec:
+`docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`; gates G1/G3/G4 recorded in the
+PROJECT-PLAN Learning Log). The old "v1 = no ML, last-season-only, separate table" plan is
+superseded -- goalies are now VORP-interleaved with skaters on the same board.
 
-| Stat | Value |
-|---|---|
-| Games Started (GS) | 0.75 |
-| Wins (W) | 2.5 |
-| Losses (L) | -1 |
-| Goals Against (GA) | -0.5 |
-| Saves (SV) | 0.15 |
-| Shutouts (SHO) | 3 |
-
-Source the stats from the NHL API landing endpoint (`src/nhlAPI.py`, `/player/{id}/landing`),
-mirroring the identity/roster role NHL API already plays elsewhere in this pipeline (MoneyPuck
-stays the skater-modeling source; goalies v1 doesn't need MoneyPuck at all since there's no ML
-here). Label the output "last season, not a projection" -- do not imply it's forward-looking.
+- **Scoring:** `fantasyPoints.GOALIE_WEIGHTS` + `calculateGoaliePoints` (`src/fantasyPoints.py`) --
+  now the single goalie scoring source of truth, same discipline as `SKATER_WEIGHTS` (GS 0.75, W
+  2.5, L -1, GA -0.5, SV 0.15, SHO 3). `losses` is **regulation-only** (owner-confirmed 2026-07-16:
+  the league doesn't record OT/SO losses; use the NHL API `losses` field as-is, never add
+  `otLosses`).
+- **Data:** contrary to the old "no MoneyPuck" plan, it *does* use MoneyPuck goalie skill stats.
+  `data/raw/goalies/*.csv` (MoneyPuck) is merged with NHL API goalie season records
+  (`src/moneypuck.py::loadGoalieSeasons` + `src/dataProcessing.py`'s permanent
+  `data/raw/goalie_nhl_seasons.csv` cache) into `data/processed/goalie_seasons.csv` by
+  `scripts/build_goalie_seasons.py`. Features: `src/features/goalies.py`.
+- **Ranker:** `src/models/goalieDraft.py`, wired to `main.py train-goalies`. GATE G3 **failed**
+  (XGBoost val Spearman 0.346 beat Baseline A 0.278 but not Baseline B `fp_w3` 0.413), so it ships
+  **Baseline B** -- the saved payload is `{'kind': 'baseline_b'}` and `predict()` returns `fp_w3`.
+  This is the explicit "ship the baseline" branch of GATE B3/G3, not a failure state. Goalie
+  season-over-season predictability is far below skaters' (~0.41 vs ~0.80 val Spearman) because
+  workload volatility dominates.
+- **Board:** `main.py draft` interleaves goalies with skaters by VORP (first goalie ~#13 overall,
+  GATE G4 PASS); missing `goalie_seasons.csv` or an untrained goalie model degrades to skaters-only
+  with a printed hint. Goalies are also full keeper candidates on the keeper board.
 
 **FINAL GATE:** run a mock draft against last year's results -- would this board (rankings +
 keeper recommendations + goalie table) have beaten the actual 2025 draft? This is the end-to-end
@@ -265,19 +270,23 @@ through `fht-quality-gates`.
 ## Provenance and maintenance
 
 Facts here drift as phases complete. Re-verify with:
-- `grep -rn "calculateGoaliePoints" src/` -- confirm still absent; flips when Phase D's goalie
-  scoring is written.
-- `test -f src/keeper.py` (or `ls src/keeper.py`) -- confirm still absent; flips when Phase C
-  starts.
+- `grep -rn "calculateGoaliePoints" src/` -- **now EXISTS** (shipped 2026-07-16 in
+  `src/fantasyPoints.py` alongside `GOALIE_WEIGHTS`); the goalie ranker lives in
+  `src/models/goalieDraft.py`.
+- `test -f src/keeper.py` (or `ls src/keeper.py`) -- **now EXISTS** (keeper analyzer shipped;
+  goalie-inclusive as of 2026-07-16). The Phase C body prose below still reads "does not exist yet"
+  and is stale — trust the code and PROJECT-PLAN's Current Phase over that section.
 - `ls data/processed/player_seasons.csv` -- **now EXISTS** (B1 done 2026-07-06, built by
   `scripts/build_player_seasons.py`). Also `ls data/raw/player_birthdates.csv` (B2 age cache, built
   by `scripts/build_birthdates.py`) -- both flip back to absent only if deleted for a rebuild.
 - `ls data/raw/keepers.csv` -- confirm still absent/empty; flips once B0 is filled in.
-- `.\.venv\Scripts\python.exe -m pytest -v` -- confirm still "1 failed" (was "4 passed, 1 failed";
-  6 passed as of 2026-07-06 after the draft-ranker PR added tests); flips if the `loadGameLogs`
-  guard-ordering bug is fixed.
-- `grep -n "NotImplementedError" main.py src/models/draft.py` -- confirm `trainDraft`/`runDraft`
-  and `models/draft.py`'s four functions still raise; flips as Phase B3/B4 land.
+- `.\.venv\Scripts\python.exe -m pytest -v` -- as of 2026-07-16: **48 passed, 2 failed** (both
+  pre-existing: the `loadGameLogs` guard-ordering bug and
+  `test_draft_summaries::test_all_summary_calls_allow_the_larger_token_budget`).
+- `grep -n "NotImplementedError" main.py src/models/draft.py` -- **no longer raises**:
+  `trainDraft`/`runDraft`/`runKeeper` and `models/draft.py`'s four functions are all implemented
+  (Phase B3/B4 landed). The Phase B3/B4 body prose still says "raises `NotImplementedError`" and is
+  stale.
 - Re-read `PROJECT-PLAN.md`'s "Current Phase" section (bottom of file) each session -- it is the
   authoritative statement of where this campaign actually stands, and this skill's phase-by-phase
   structure should track it, not the other way around.

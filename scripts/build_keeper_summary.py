@@ -60,13 +60,13 @@ def build_prompt(season: str, candidates: list[dict]) -> str:
     return (
         f"You are advising a fantasy hockey manager in a four-keeper league for "
         f"{season}. Keepers cost the manager's final four draft picks, assigned "
-        f"from round 18 through round 15. These are the model's recommended skater "
+        f"from round 18 through round 15. These are the model's recommended "
         f"keepers, ranked by keeper value:\n\n"
         + '\n\n'.join(player_lines)
         + "\n\nWrite one concise paragraph (80-120 words) explaining why these are "
         "the strongest players to keep. Ground it in the model projection, prior "
-        "production, replacement value, and cheap round cost. Do not mention goalies, "
-        "invent facts, or add a heading."
+        "production, replacement value, and cheap round cost. Do not "
+        "invent facts or add a heading."
     )
 
 

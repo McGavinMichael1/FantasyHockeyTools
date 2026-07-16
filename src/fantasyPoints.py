@@ -26,6 +26,32 @@ def calculateSkaterPoints(stats):
     return points
 
 
+# League scoring weights for goalies — the single source of truth, same
+# discipline as SKATER_WEIGHTS. `losses` is regulation-only (owner confirmed
+# 2026-07-16): this league does not record OT/SO losses as losses, so use
+# the NHL API `losses` field as-is and never add otLosses.
+GOALIE_WEIGHTS = {
+    'gamesStarted': 0.75,
+    'wins': 2.5,
+    'losses': -1,
+    'goalsAgainst': -0.5,
+    'saves': 0.15,
+    'shutouts': 3,
+}
+
+
+def calculateGoaliePoints(stats):
+    """League fantasy points for one goalie stat line (dict or pandas Series).
+
+    Keys are NHL-API field names; `saves` is derived upstream as
+    shotsAgainst - goalsAgainst. Missing keys count as zero.
+    """
+    points = 0
+    for stat, weight in GOALIE_WEIGHTS.items():
+        points += (stats.get(stat, 0) or 0) * weight
+    return points
+
+
 def moneypuckGamePoints(games_df):
     """League fantasy points from MoneyPuck game logs.
 

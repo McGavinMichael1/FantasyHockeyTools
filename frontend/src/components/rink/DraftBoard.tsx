@@ -84,10 +84,19 @@ const COLUMNS: Column[] = [
   {
     key: 'projected_total',
     label: 'Proj FP',
-    title: 'Projected season total (FP per game × 78 games)',
+    title: 'Projected season total (FP/game × projected games: 78 for skaters; weighted recent starts for goalies)',
     numeric: true,
     sortValue: (p) => p.projected_total,
     render: (p) => p.projected_total.toFixed(0),
+  },
+  {
+    key: 'vorp',
+    label: 'VORP',
+    title: 'Value over replacement player (projected FP above a replacement-level pick at the position)',
+    numeric: true,
+    // old frontend_data.json snapshots lack vorp -- sort them last, render a dash
+    sortValue: (p) => p.vorp ?? Number.NEGATIVE_INFINITY,
+    render: (p) => (p.vorp != null ? p.vorp.toFixed(1) : '—'),
   },
   {
     key: 'delta_vs_last',
@@ -163,7 +172,7 @@ function ExpandedDraftDetail({ player }: { player: DraftPlayer }) {
 }
 
 export default function DraftBoard({ players }: { players: DraftPlayer[] }) {
-  const [sortKey, setSortKey] = useState('projected_fpPerGame');
+  const [sortKey, setSortKey] = useState('vorp');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [position, setPosition] = useState<Position | 'ALL'>('ALL');
   const [query, setQuery] = useState('');
@@ -201,7 +210,7 @@ export default function DraftBoard({ players }: { players: DraftPlayer[] }) {
     }
   }
 
-  const positions: (Position | 'ALL')[] = ['ALL', 'C', 'L', 'R', 'D'];
+  const positions: (Position | 'ALL')[] = ['ALL', 'C', 'L', 'R', 'D', 'G'];
 
   return (
     <section className={styles.section} aria-label="Draft board">
@@ -227,7 +236,7 @@ export default function DraftBoard({ players }: { players: DraftPlayer[] }) {
           ))}
         </div>
         <span className={styles.count}>
-          {rows.length} skater{rows.length === 1 ? '' : 's'}
+          {rows.length} player{rows.length === 1 ? '' : 's'}
         </span>
       </div>
 

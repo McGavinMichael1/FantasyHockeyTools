@@ -140,7 +140,7 @@ export default function KeeperPage() {
           <>
             <section className={styles.hero}>
               <div>
-                <p className={styles.kicker}>{keeper.season} &middot; Four skaters</p>
+                <p className={styles.kicker}>{keeper.season} &middot; Four keepers</p>
                 <h1>Spend your last picks where they become an advantage.</h1>
                 <p className={styles.intro}>
                   Each recommendation measures a player&apos;s projected edge over position
@@ -150,7 +150,7 @@ export default function KeeperPage() {
               <div className={styles.heroStamp}>
                 <span>Keeper format</span>
                 <strong>4</strong>
-                <small>skaters only</small>
+                <small>any position</small>
               </div>
             </section>
 

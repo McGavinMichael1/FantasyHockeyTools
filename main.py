@@ -13,14 +13,17 @@ from src import keepers
 from src import moneypuck
 from src import yahooAPI
 from src.features import draft as draftFeatures
+from src.features import goalies as goalieFeatures
 from src.features import mlFeatures
 from src.features import pickups
 from src.models import cooling as coolingModel
 from src.models import draft as draftModel
+from src.models import goalieDraft as goalieDraftModel
 from src.models import pickups as pickupModel
 
 CURRENT_SEASON = 2025  # MoneyPuck convention: 2025 = the 2025-26 season
 KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
+GOALIE_SEASONS_PATH = os.path.join('data', 'processed', 'goalie_seasons.csv')
 
 
 def loadLabeledHistory():
@@ -153,6 +156,20 @@ def trainDraft():
     draftModel.train(loadPlayerSeasonFeatures())
 
 
+def loadGoalieSeasonFeatures():
+    """Goalie draft feature rows from the cached goalie-season table (built by
+    scripts/build_goalie_seasons.py -- see data/raw/goalies/README.md)."""
+    if not os.path.exists(GOALIE_SEASONS_PATH):
+        raise FileNotFoundError(
+            f"{GOALIE_SEASONS_PATH} missing -- run scripts/build_goalie_seasons.py first")
+    return goalieFeatures.build_goalie_features(pd.read_csv(GOALIE_SEASONS_PATH))
+
+
+def trainGoalies():
+    """Train the goalie draft ranker (GATE G3 protocol, see the spec)."""
+    goalieDraftModel.train(loadGoalieSeasonFeatures())
+
+
 def buildCurrentDraftProjections():
     """Build every current-season skater projection used by draft and keeper tools."""
     df = loadPlayerSeasonFeatures()
@@ -204,12 +221,63 @@ def buildCurrentDraftProjections():
     return rankings
 
 
+GOALIE_GP_CAP = 65        # a goalie season tops out around 65 starts
+GOALIE_DISPLAY_MIN_GP = 15  # display floor, mirrors goalieDraft.MIN_GP
+
+
+def buildCurrentGoalieProjections():
+    """Current-season goalie projections shaped like the skater board.
+
+    projected_total = projected FP/GP x projected GP, where projected GP is
+    the 50/30/20 weighted games played capped at GOALIE_GP_CAP -- the x78
+    skater assumption is wrong for goalies, where workload IS the value.
+    No confidence/factor columns in v1 (the ranker may be Baseline B).
+    """
+    df = loadGoalieSeasonFeatures()
+    current = df[df['season'] == CURRENT_SEASON].copy()
+    current['projected_fpPerGame'] = goalieDraftModel.predict(current)
+
+    rankings = current[['playerId', 'full_name', 'position', 'gamesPlayed',
+                        'fpPerGame', 'projected_fpPerGame']].copy()
+    rankings['age'] = current['age_at_season_start'] + 1
+    rankings['projected_gp'] = current['gp_w3'].clip(upper=GOALIE_GP_CAP)
+    rankings['projected_total'] = (rankings['projected_fpPerGame']
+                                   * rankings['projected_gp'])
+    rankings['delta_vs_last'] = (rankings['projected_fpPerGame']
+                                 - rankings['fpPerGame'])
+    return rankings
+
+
+def buildFullProjections():
+    """Skater + goalie projection board. Goalie prerequisites missing (no
+    goalie_seasons.csv or no trained goalie model) degrades to skaters-only
+    with a loud warning -- never silently, never fatally."""
+    projections = buildCurrentDraftProjections()
+    projections['projected_gp'] = 78
+    try:
+        projections = pd.concat(
+            [projections, buildCurrentGoalieProjections()], ignore_index=True)
+    except FileNotFoundError as e:
+        print(f"⚠️  Goalie projections unavailable ({e})")
+        print("   Board is SKATERS-ONLY. Run scripts/build_goalie_seasons.py and")
+        print("   'python main.py train-goalies' to include goalies.")
+    return projections
+
+
 def runDraft():
     """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
-    rankings = buildCurrentDraftProjections()
-    # Display-side GP floor: an injury-shortened season can still carry keeper
-    # value, but a 4-game 5-FP/g line is too noisy for the draft board.
-    rankings = rankings[rankings['gamesPlayed'] >= 20].copy()
+    rankings = buildFullProjections()
+    # Display-side GP floors: an injury-shortened season can still carry keeper
+    # value, but a tiny-sample rate stat is too noisy for the draft board.
+    is_goalie = rankings['position'] == 'G'
+    rankings = rankings[
+        (~is_goalie & (rankings['gamesPlayed'] >= 20))
+        | (is_goalie & (rankings['gamesPlayed'] >= GOALIE_DISPLAY_MIN_GP))
+    ].copy()
+
+    # VORP before the keeper filter: replacement level is about league-wide
+    # talent depth, not about who happens to still be draftable.
+    rankings['vorp'] = keeper.vorp_column(rankings)
 
     # Draft pool must exclude anyone already kept -- keeper lists aren't in the Yahoo
     # API until draft day, so they're maintained manually in data/raw/keepers.csv.
@@ -225,23 +293,33 @@ def runDraft():
         print("   Rankings include EVERY player. Fine before keepers are announced;")
         print("   on draft day, fill data/raw/keepers.csv and re-run.")
 
-    rankings = rankings.sort_values('projected_fpPerGame', ascending=False)
+    # VORP is the default cross-position order (owner decision 2026-07-16).
+    rankings = rankings.sort_values('vorp', ascending=False)
     out_path = os.path.join('data', 'processed', 'draft_rankings.csv')
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     rankings.to_csv(out_path, index=False)
     print(f"\nWrote {len(rankings)} players to {out_path}")
 
-    print("\n=== Top 20 projected for next season (FP/game) ===")
+    print("\n=== Top 20 by VORP (cross-position) ===")
     print(rankings[['full_name', 'position', 'age', 'gamesPlayed',
-                    'fpPerGame', 'projected_fpPerGame', 'projected_total',
-                    'delta_vs_last', 'confidence']]
+                    'fpPerGame', 'projected_fpPerGame', 'projected_gp',
+                    'projected_total', 'vorp', 'delta_vs_last']]
           .head(20)
           .to_string(index=False))
 
+    goalie_rows = rankings[rankings['position'] == 'G']
+    if not goalie_rows.empty:
+        print("\n=== Top 10 goalies (GATE G4 eyeball) ===")
+        print(goalie_rows[['full_name', 'age', 'gamesPlayed', 'fpPerGame',
+                           'projected_fpPerGame', 'projected_gp',
+                           'projected_total', 'vorp']]
+              .head(10)
+              .to_string(index=False))
+
 
 def runKeeper():
-    """Rank the authenticated Yahoo roster's best four skater keepers."""
-    projections = buildCurrentDraftProjections()
+    """Rank the authenticated Yahoo roster's best four keepers."""
+    projections = buildFullProjections()
     roster = yahooAPI.getMyRoster()
     rankings = keeper.analyze_keepers(roster, projections)
     rankings['target_season'] = keeper.target_season_label(CURRENT_SEASON)
@@ -269,8 +347,9 @@ def main():
     sub.add_parser('train-pickups', help='train pickup + cooling models on historical seasons')
     sub.add_parser('pickups', help='rank available free agents (uses saved models)')
     sub.add_parser('train-draft', help='train the draft ranker on historical player-seasons')
+    sub.add_parser('train-goalies', help='train the goalie draft ranker on historical goalie-seasons')
     sub.add_parser('draft', help='rank this year\'s non-keeper players for the draft')
-    sub.add_parser('keeper', help='rank four skater keepers from the authenticated Yahoo roster')
+    sub.add_parser('keeper', help='rank four keepers from the authenticated Yahoo roster')
     spot = sub.add_parser('spot-check', help='replay the pickup ranking at historical dates and grade it')
     spot.add_argument('--date', type=int, help='single as-of date as YYYYMMDD (default: several across the season)')
     spot.add_argument('--top', type=int, default=15, help='size of the ranked list to grade')
@@ -282,6 +361,8 @@ def main():
         runPickups()
     elif args.command == 'train-draft':
         trainDraft()
+    elif args.command == 'train-goalies':
+        trainGoalies()
     elif args.command == 'draft':
         runDraft()
     elif args.command == 'keeper':

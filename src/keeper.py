@@ -1,4 +1,4 @@
-"""Skater-only keeper value calculations.
+"""Keeper value calculations for skaters and goalies.
 
 This module is deliberately independent of Yahoo, the draft model, and the
 frontend. Callers provide a Yahoo roster and a projected skater board.
@@ -12,8 +12,8 @@ from rapidfuzz import process
 
 KEEPER_COUNT = 4
 KEEPER_ROUNDS = (18, 17, 16, 15)
-REPLACEMENT_RANKS = {"C": 24, "L": 24, "R": 24, "D": 48}
-SKATER_POSITIONS = frozenset(REPLACEMENT_RANKS)
+REPLACEMENT_RANKS = {"C": 24, "L": 24, "R": 24, "D": 48, "G": 20}
+ELIGIBLE_POSITIONS = frozenset(REPLACEMENT_RANKS)
 
 
 def target_season_label(feature_season: int) -> str:
@@ -25,26 +25,22 @@ def _position(value) -> str | None:
     if pd.isna(value):
         return None
     value = str(value).upper()
-    return {"C": "C", "LW": "L", "L": "L", "RW": "R", "R": "R", "D": "D"}.get(value)
-
-
-def _goalie(yahoo_player: dict) -> bool:
-    positions = yahoo_player.get("eligible_positions") or []
-    if isinstance(positions, str):
-        positions = [positions]
-    return (
-        "G" in {str(position).upper() for position in positions}
-        or str(yahoo_player.get("selected_position") or "").upper() == "G"
-        or str(yahoo_player.get("position_type") or "").upper() == "G"
-    )
+    return {"C": "C", "LW": "L", "L": "L", "RW": "R", "R": "R", "D": "D", "G": "G"}.get(value)
 
 
 def replacement_levels(projections: pd.DataFrame) -> dict[str, float]:
+    """Positional replacement totals. A position absent from the board is
+    skipped with a warning (e.g. goalies in skaters-only degraded mode);
+    a position present but shallower than its rank is a data bug -> raise."""
     levels = {}
     for position, rank in REPLACEMENT_RANKS.items():
         players = projections[projections["position"] == position].sort_values(
             "projected_total", ascending=False
         )
+        if players.empty:
+            print(f"⚠️  No projected {position} rows on the board; "
+                  f"skipping the {position} replacement level")
+            continue
         if len(players) < rank:
             raise ValueError(f"Need at least {rank} projected {position}s for keeper values")
         levels[position] = float(players.iloc[rank - 1]["projected_total"])
@@ -63,12 +59,22 @@ def round_pick_costs(projections: pd.DataFrame) -> dict[int, float]:
     return costs
 
 
+def vorp_column(projections: pd.DataFrame) -> pd.Series:
+    """Value over positional replacement for every row: projected_total minus
+    the position's replacement level. NaN where no level exists (position
+    missing from the board), so degraded skaters-only exports still work."""
+    levels = replacement_levels(projections)
+    return pd.to_numeric(projections["projected_total"], errors="coerce") - (
+        projections["position"].map(levels)
+    )
+
+
 def analyze_keepers(roster: list[dict], projections: pd.DataFrame) -> pd.DataFrame:
     """Return every Yahoo roster row with keeper values and four recommendations."""
     board = projections.copy()
     board["position"] = board["position"].map(_position)
     board["projected_total"] = pd.to_numeric(board["projected_total"], errors="coerce")
-    board = board[board["position"].isin(SKATER_POSITIONS)].dropna(
+    board = board[board["position"].isin(ELIGIBLE_POSITIONS)].dropna(
         subset=["projected_total"]
     )
     levels = replacement_levels(board)
@@ -93,12 +99,6 @@ def analyze_keepers(roster: list[dict], projections: pd.DataFrame) -> pd.DataFra
             "raw_keeper_value": pd.NA,
             "net_keeper_value": pd.NA,
         }
-        if _goalie(yahoo_player):
-            row["match_status"] = "goalie"
-            row["excluded_reason"] = "Goalies are excluded from keeper analysis"
-            rows.append(row)
-            continue
-
         match = process.extractOne(row["yahoo_name"], names, score_cutoff=85)
         if not match:
             row["excluded_reason"] = "No projection match"
@@ -108,8 +108,8 @@ def analyze_keepers(roster: list[dict], projections: pd.DataFrame) -> pd.DataFra
         _, score, index = match
         player = board.iloc[index].to_dict()
         position = player.get("position")
-        if position not in SKATER_POSITIONS:
-            row["excluded_reason"] = "Not a skater projection"
+        if position not in ELIGIBLE_POSITIONS:
+            row["excluded_reason"] = "No positional projection"
             rows.append(row)
             continue
 
