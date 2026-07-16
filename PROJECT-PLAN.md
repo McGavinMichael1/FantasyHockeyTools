@@ -245,6 +245,12 @@ worthless as a keeper if the draft is full of 60-FP players at his position.
       (W/L/GA/SV/SO — the fields are in the league scoring table below), apply
       `calculateGoaliePoints`, rank by last-season fantasy points, show as its own table with a
       "last season, not a projection" label. Good enough to not draft blind at 2 G slots.
+      > **SUPERSEDED 2026-07-16:** goalies now have a trained ranker (not last-season-only, and
+      > interleaved with skaters by VORP rather than shown as a separate table) — see
+      > `docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md` and the goalie
+      > analyzer Learning Log entry / Current Phase items below. `GOALIE_WEIGHTS` +
+      > `calculateGoaliePoints` shipped in `src/fantasyPoints.py`; the ranker is
+      > `src/models/goalieDraft.py`.
 - [ ] Run a **mock draft against last year's results** as the end-to-end test: would this board
       have beaten my actual 2025 draft?
 
@@ -577,6 +583,38 @@ we still want a projection for an injury-shortened season. Consequence seen in t
 couple of small-sample rows (e.g. Taylor Ward at 5.05 FP/g in a handful of games) crack the list,
 so **B4 rankings need a display-side GP floor** on the feature season.
 
+### July 2026 (Goalie analyzer — GATES G1, G3, G4)
+**Shipped 2026-07-16 (branch `codex/keeper-analyzer`, commits d6aa10e..770e427). Design spec:
+`docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`.** Goalies went from "no
+scoring path" to a full draft/keeper ranker interleaved with skaters by VORP. Scoring is
+`fantasyPoints.GOALIE_WEIGHTS` + `calculateGoaliePoints` (single source of truth, same discipline
+as `SKATER_WEIGHTS`; `losses` is regulation-only — owner-confirmed the league doesn't record OT/SO
+losses, so no `otLosses` term). Data flows `data/raw/goalies/*.csv` (MoneyPuck skill stats) merged
+with NHL API season records into `data/processed/goalie_seasons.csv`; the ranker is
+`src/models/goalieDraft.py`; CLI is `main.py train-goalies`.
+
+**GATE G1 (data build, 2026-07-16): PASSED.** `scripts/build_goalie_seasons.py` produced **1,702
+rows across 18 seasons (2008–2025)** at a **100.0% MoneyPuck↔NHL-API merge hit rate**. Hellebuyck
+2023-24 spot-check matched hockey-reference exactly: GP 60, GS 60, W 37, L 19 (regulation-only), SO
+5, SV 1656, FP 310.9 (5.18/gm). (The Phase D plan's "~1,400–1,700" upper estimate was slightly
+stale — the actual count is 1,702.)
+
+**GATE G3 (model, 2026-07-16): FAILED → shipped Baseline B.** Val Spearman: Baseline A (last-season
+FP/g) **0.2784**, Baseline B (`fp_w3` 50/30/20) **0.4130**, XGBoost **0.3460**. XGBoost beat A but
+not B, so the gate failed and **Baseline B (`fp_w3`) ships as the goalie ranker** — the saved
+payload is `{'kind': 'baseline_b'}` and `predict()` returns `fp_w3`. Ridge coefficient signs are
+sane (`fp_w3` +0.153, `gs_share` +0.073). Test-2024 was **never touched** (the gate failed, so the
+one-look rule never triggered). Lesson: goalie season-over-season predictability is far below
+skaters' (~0.41 vs ~0.80 val Spearman) — workload volatility (who gets the starts) dominates, so a
+trajectory baseline is the honest ranker and ML polish didn't earn its place here.
+
+**GATE G4 (eyeball, 2026-07-16): PASSED.** Top-10 goalies on the VORP board are all workhorse
+starters: Vasilevskiy, Hellebuyck, Oettinger, Sorokin, Shesterkin, Thompson, Saros, Swayman,
+Gustavsson, Vejmelka (`projected_gp` 51–60 against a 65-start cap). The first goalie (Vasilevskiy)
+lands at #13 overall by VORP — goalies and skaters interleave sensibly rather than sitting in a
+separate table. Degraded skaters-only mode verified (missing `goalie_seasons.csv` or no trained
+goalie model → board drops goalies and prints how to enable them).
+
 ---
 
 ## Resources & References
@@ -635,5 +673,22 @@ so **B4 rankings need a display-side GP floor** on the feature season.
 - [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an
       API key the owner doesn't have — plan on a Claude Code session in chunks), then re-run
       `api_export.py`. Only 5 of 704 players have summaries today.
+
+**Goalie analyzer — DONE 2026-07-16** (part of Phase D, ahead of the UI work; branch
+`codex/keeper-analyzer`, commits d6aa10e..770e427; spec
+`docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`):
+- [x] Goalie scoring: `fantasyPoints.GOALIE_WEIGHTS` + `calculateGoaliePoints` (regulation-only
+      losses, owner-confirmed).
+- [x] G1 data build: `scripts/build_goalie_seasons.py` merges `data/raw/goalies/*.csv` (MoneyPuck)
+      with NHL API season records → `data/processed/goalie_seasons.csv` (1,702 rows / 18 seasons,
+      100% merge hit rate; Hellebuyck 2023-24 exact). Permanent cache `data/raw/goalie_nhl_seasons.csv`.
+- [x] Goalie features `src/features/goalies.py`; ranker `src/models/goalieDraft.py` +
+      `main.py train-goalies`.
+- [x] G3 model gate: FAILED (XGBoost 0.346 beat Baseline A 0.278 but not Baseline B 0.413) →
+      shipped Baseline B (`fp_w3`) as the ranker. Test-2024 untouched.
+- [x] G4 eyeball gate: PASS — top-10 all workhorse starters, first goalie #13 overall by VORP,
+      goalies interleave with skaters; skaters-only degrade mode verified.
+- [x] Goalies are full keeper candidates (goalie-inclusive keeper board) + goalie rows/VORP
+      ordering on The Rink draft board.
 
 **Blocked on:** nothing. (C1 needs my league's keeper-cost rules from Yahoo settings before Phase C.)

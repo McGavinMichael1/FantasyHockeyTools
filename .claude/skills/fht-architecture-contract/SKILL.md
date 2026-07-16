@@ -9,41 +9,52 @@ This is a solo ML fantasy-hockey toolkit (Yahoo league nhl.l.33072) with three t
 analyzer (working prototype), draft analyzer (Phase B, in progress), keeper analyzer (Phase C,
 not started). Read this before touching scoring, features, splits, or module boundaries.
 
-## 1. System map (as of 2026-07-05)
+## 1. System map (as of 2026-07-16)
 
 ```
 DATA SOURCES                      MODULES                              ENTRY POINTS
-MoneyPuck CSVs (manual DL)  ---->  src/moneypuck.py (all MoneyPuck IO)
-  data/raw/2008_to_2024.csv        src/fantasyPoints.py (SKATER_WEIGHTS,
-  data/raw/moneypuck_current.csv     canonical scoring)          ---->  main.py (argparse CLI:
-                                    src/features/mlFeatures.py           train-pickups, pickups,
-NHL API (api-web.nhle.com)  ---->  src/nhlAPI.py (raw calls)             train-draft, draft,
-  identity/birthDate/roster        src/dataProcessing.py (fetch/cache)   spot-check)
+MoneyPuck CSVs (manual DL)  ---->  src/moneypuck.py (all MoneyPuck IO,
+  data/raw/2008_to_2024.csv          incl. loadGoalieSeasons)
+  data/raw/moneypuck_current.csv   src/fantasyPoints.py (SKATER_WEIGHTS
+  data/raw/goalies/*.csv             + GOALIE_WEIGHTS,           ---->  main.py (argparse CLI:
+    (goalie skill stats)             canonical scoring)                 train-pickups, pickups,
+                                    src/features/mlFeatures.py           train-draft, train-goalies,
+NHL API (api-web.nhle.com)  ---->  src/nhlAPI.py (raw calls)             draft, keeper, spot-check)
+  identity/birthDate/roster        src/dataProcessing.py (fetch/cache,
+  + goalie season records            goalie season cache)
                                     src/keepers.py (keepers.csv IO)
 Yahoo Fantasy API           ---->  src/yahooAPI.py (OAuth, roster)  ---->  api_export.py (JSON
                                     src/backtest.py (spot-check)            for frontend/)
                                     src/features/{shared,pickups,     ---->  ui/ (Streamlit,
-                                      draft}.py (feature building)         mostly stub)
+                                      draft,goalies}.py (features)         mostly stub)
                                     src/models/{pickups,cooling,      ---->  frontend/ (Next.js,
-                                      draft,lstmPickups}.py (train/          reads frontend_data.json)
-                                      predict/load/save)
+                                      draft,goalieDraft,lstmPickups}.py      reads frontend_data.json)
+                                      (train/predict/load/save)
 ```
+
+Goalie data flow (shipped 2026-07-16): `data/raw/goalies/*.csv` (MoneyPuck goalie skill stats) is
+read by `src/moneypuck.py::loadGoalieSeasons` and merged with NHL API goalie season records (cached
+permanently in `data/raw/goalie_nhl_seasons.csv` by `src/dataProcessing.py`) into
+`data/processed/goalie_seasons.csv` via `scripts/build_goalie_seasons.py`. Features come from
+`src/features/goalies.py`; the ranker is `src/models/goalieDraft.py` (`main.py train-goalies`). See
+`fht-draft-campaign` Phase D and the PROJECT-PLAN Learning Log (GATES G1/G3/G4).
 
 Working product: `src/moneypuck.py`, `src/fantasyPoints.py`, `src/features/mlFeatures.py`,
 `src/models/pickups.py`, `src/models/cooling.py`, `src/backtest.py`, `main.py:runPickups`,
 `src/features/pickups.py::rankFreeAgents` (`src/features/pickups.py:24-36`), `ui/app.py` (title
 page only).
 
-Stubs — raise `NotImplementedError` or are TODO-only, verified by reading each file:
-- `src/features/shared.py:15-21` (`build_shared_features`)
-- `src/features/pickups.py:15-22` (`build_pickup_features`)
-- `src/models/draft.py:15-41` (`train`, `predict`, `load`, `save` — all four)
-- `main.py:127-132` (`trainDraft`), `main.py:135-149` (`runDraft`)
-- `ui/pages/pickups.py` and `ui/pages/draft.py` — comment-only TODO lists, no logic
-- `src/features/draft.py` (`build_draft_features`) is WIP, not a stub: it builds position
-  one-hots, `career_games`, `PP_share`, `hitblock_share` from `buildPlayerSeasons`, but has no
-  trajectory/age/target features yet (Phase B2 remainder).
+Stubs — raise `NotImplementedError` or are TODO-only, verified by reading each file (2026-07-16):
+- `src/features/shared.py` (`build_shared_features`) — still raises `NotImplementedError`
+- `src/features/pickups.py` (`build_pickup_features`) — still raises `NotImplementedError`
+- `ui/pages/pickups.py` and `ui/pages/draft.py` — comment-only TODO lists, no logic (the live draft
+  board is the Next.js "The Rink" frontend, not this Streamlit page)
 - `src/models/lstmPickups.py` — intentionally parked (see decisions table), not broken.
+
+No longer stubs (implemented Phase B4 / goalie campaign, verified no `NotImplementedError` remains):
+`src/models/draft.py` (`train`/`predict`/`load`/`save`), `src/features/draft.py`
+(`build_draft_features` — full B2 features), `main.py` `trainDraft`/`runDraft`/`runKeeper`, and the
+goalie modules `src/models/goalieDraft.py` / `src/features/goalies.py` (`main.py train-goalies`).
 
 ## 2. Load-bearing decisions
 
@@ -96,8 +107,7 @@ comment documenting an incident. Do not relitigate without new evidence.
 | `latestGameState()` duplicated | `main.py:36-66` and `api_export.py:28-49` — identical cache/compute logic, two copies |
 | NHL-API scoring path omits hits/blocks | `calculateSkaterPoints` (`src/fantasyPoints.py:17-26`) has no `hits`/`blocks` terms because the NHL landing endpoint doesn't return them; `moneypuckGamePoints` does include them. The heuristic (`rankFreeAgents`) and ML score are therefore on different scales and are only blended after each is independently normalized (`main.py:108-112`, `api_export.py:99-102`) |
 | No CI | Verified: no `.github/workflows/`, no CI config in the repo |
-| Test suite fails on `main` | `.\.venv\Scripts\python.exe -m pytest -v` → 4 passed, 1 failed (verified 2026-07-05): `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations`. Root cause is a guard ordering bug in `src/moneypuck.py::loadGameLogs` (raises `FileNotFoundError` at line 76 before the cache-hit check at lines 80-83). See `fht-debugging-playbook` for the full analysis — do not re-diagnose here. |
-| Goalies have no scoring path | No goalie weights or function exist in `src/fantasyPoints.py`; `rankFreeAgents` explicitly filters goalies out (`src/features/pickups.py:32`) |
+| Test suite fails on `main` | `.\.venv\Scripts\python.exe -m pytest -v` → 48 passed, 2 failed (verified 2026-07-16): `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` (guard ordering bug in `src/moneypuck.py::loadGameLogs` — raises `FileNotFoundError` before the cache-hit check) and `tests/test_draft_summaries.py::test_all_summary_calls_allow_the_larger_token_budget` (pre-existing, predates the goalie branch). See `fht-debugging-playbook` for the full analysis — do not re-diagnose here. |
 
 ## When NOT to use this skill
 
@@ -116,9 +126,9 @@ comment documenting an incident. Do not relitigate without new evidence.
 ## Provenance and maintenance
 
 Facts here drift. Re-verify with:
-- `pytest`: `.\.venv\Scripts\python.exe -m pytest -v` (repo root) — confirm pass/fail counts still match "4 passed, 1 failed."
+- `pytest`: `.\.venv\Scripts\python.exe -m pytest -v` (repo root) — confirm pass/fail counts still match "48 passed, 2 failed" (both failures pre-existing: `test_moneypuck` guard-ordering + `test_draft_summaries` token-budget).
 - `CURRENT_SEASON`/season-string duplication: `grep -rn "CURRENT_SEASON = 2025\|20252026" main.py api_export.py src/backtest.py src/dataProcessing.py`.
 - `.gitignore` model-binary line: `grep -n "models" .gitignore` — confirm `models/**/*.pkl` still present and still contradicts `PROJECT-PLAN.md`'s decision 9.
-- Stub status: `grep -rn "NotImplementedError" src/features/shared.py src/features/pickups.py src/models/draft.py main.py` — confirm the same functions still raise.
+- Stub status: `grep -rn "NotImplementedError" src/features/shared.py src/features/pickups.py` — confirm `build_shared_features`/`build_pickup_features` still raise (draft, keeper, and goalie paths are now implemented and no longer raise).
 - Settled decisions text: re-read `PROJECT-PLAN.md` lines 59-85 ("Design Decisions Going Forward") in case the owner amends them.
 - `ASSUMED` labels: this skill makes none directly, but see `.claude/skills/OPEN-QUESTIONS.md` for unresolved audience/priority assumptions that other sibling skills carry.
