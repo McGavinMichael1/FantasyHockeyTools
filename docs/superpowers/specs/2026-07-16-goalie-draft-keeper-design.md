@@ -1,11 +1,25 @@
 # Goalie draft + keeper ranking - design
 
-Drafted 2026-07-16, awaiting owner review. Adds goalies to the draft analyzer
-and keeper analyzer with a trained goalie ranker. This **supersedes** the old
-"Goalies v1 = NO ML" decision in PROJECT-PLAN.md Phase D — the owner requested
-a trained model on 2026-07-16 and supplied the MoneyPuck goalie data to power
-it. Pickups stay skaters-only; goalie streaming is an explicitly separate
-future feature (starters are rarely on waivers).
+Drafted 2026-07-16; open decisions settled with the owner the same day. Adds
+goalies to the draft analyzer and keeper analyzer with a trained goalie
+ranker. This **supersedes** the old "Goalies v1 = NO ML" decision in
+PROJECT-PLAN.md Phase D — the owner requested a trained model on 2026-07-16
+and supplied the MoneyPuck goalie data to power it. Pickups stay skaters-only;
+goalie streaming is an explicitly separate future feature (starters are rarely
+on waivers).
+
+## Decisions settled with owner (2026-07-16)
+
+- **Losses are regulation-only.** The league does not record OT/SO losses as
+  losses, and OTL earns/costs nothing. Use the NHL API `losses` field as-is.
+- **The six goalie categories are the complete scoring picture** — no SV%,
+  GAA, or OTL categories exist in the league.
+- **Goalie replacement rank is 20.** Teams roster two goalies each; no
+  third-goalie benching habit in this league.
+- **The draft board's default cross-position order is VORP.** Every row in
+  `draft_rankings.csv` (skaters and goalies) gains a `vorp` column.
+- **Goalies are full keeper candidates.** They compete for the four keeper
+  slots purely on net keeper value; the math decides.
 
 ## Scope and non-goals
 
@@ -49,11 +63,9 @@ and any cross-position draft comparison use
 `projected_total - replacement_level[position]` uniformly. Within-position
 ordering is unchanged by this.
 
-**ASSUMED (owner to verify in Yahoo settings):** `losses` means NHL-definition
-regulation losses (the NHL API `losses` field, excluding `otLosses`), because
-the league scoring table lists no OTL category. If Yahoo's L includes OT/SO
-losses, flip one line in the goalie_seasons build — recorded in
-`.claude/skills/OPEN-QUESTIONS.md`.
+**Confirmed by owner 2026-07-16:** `losses` means NHL-definition regulation
+losses (the NHL API `losses` field, excluding `otLosses`). OT/SO losses are
+not recorded as losses in this league and earn/cost nothing.
 
 ## Data
 
@@ -167,8 +179,14 @@ default expectation. Small-sample caveat goes in the Learning Log either way.
   gamesPlayed, capped at 65** (deterministic heuristic; `× 78` is a skater
   assumption). A `projected_gp` column is added for transparency (78 for
   skaters).
+- `draft` computes a `vorp` column for **every** row (skaters and goalies):
+  `projected_total - replacement_level[position]`, from the same
+  `replacement_levels()` function the keeper analyzer uses, run on the
+  combined skater+goalie projection table before any keeper filtering. VORP
+  is the board's default cross-position order.
 - If the goalie model/data prerequisites are missing, `draft` warns loudly
-  and emits skaters only — never silently, never fatally.
+  and emits skaters only — never silently, never fatally (`vorp` still
+  computed for the skater rows).
 
 `src/keeper.py`:
 
@@ -179,9 +197,11 @@ default expectation. Small-sample caveat goes in the Learning Log either way.
 - Replacement level for G comes from the same `replacement_levels()` function
   operating on the now-goalie-inclusive projection table.
 
-Frontend/UI: draft board gets `G` in the position filter and renders the
-goalie rows it now receives; keeper page drops the "goalies are intentionally
-excluded" note and renders goalie candidates like skaters. The keeper LLM
+Frontend/UI: draft board gets `G` in the position filter, renders the goalie
+rows it now receives, and **default-sorts the all-positions view by `vorp`**
+(per-position views may keep projected FP/G ordering); keeper page drops the
+"goalies are intentionally excluded" note and renders goalie candidates like
+skaters. The keeper LLM
 summary prompt (`scripts/build_keeper_summary.py`) drops its "do not mention
 goalies" instruction. No new routes, no new sections in `frontend_data.json`.
 
@@ -218,7 +238,8 @@ recorded in PROJECT-PLAN.md's Learning Log, and Current Phase is updated.
 5. **Model**: `src/models/goalieDraft.py`, baselines → Ridge → XGBoost,
    GATE G3 verdict, `main.py train-goalies`.
 6. **Draft integration**: goalie rows + `projected_gp` in
-   `draft_rankings.csv`, graceful degradation, GATE G4 eyeball.
+   `draft_rankings.csv`, `vorp` for all rows, graceful degradation,
+   GATE G4 eyeball.
 7. **Keeper integration**: replacement rank G, exclusion removal,
    keeper-summary prompt update, tests.
 8. **Frontend/UI**: position filter, keeper page copy, verify old
@@ -228,8 +249,5 @@ recorded in PROJECT-PLAN.md's Learning Log, and Current Phase is updated.
    `fht-architecture-contract` skill updates ("Goalies have no scoring path"
    weak-point row comes out).
 
-## Open questions for the owner
-
-1. Yahoo `L` semantics: regulation-only (assumed) or including OT/SO losses?
-2. Replacement rank for G: 20 assumed (pure starters). If league mates
-   habitually roster 3 goalies, ~25 is defensible — one constant either way.
+All open questions were answered by the owner on 2026-07-16 — see "Decisions
+settled with owner" at the top.
