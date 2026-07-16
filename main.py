@@ -8,6 +8,7 @@ from src import backtest
 from src import dataProcessing
 from src import draft_explain
 from src import fantasyPoints
+from src import keeper
 from src import keepers
 from src import moneypuck
 from src import yahooAPI
@@ -19,6 +20,7 @@ from src.models import draft as draftModel
 from src.models import pickups as pickupModel
 
 CURRENT_SEASON = 2025  # MoneyPuck convention: 2025 = the 2025-26 season
+KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
 
 
 def loadLabeledHistory():
@@ -151,14 +153,10 @@ def trainDraft():
     draftModel.train(loadPlayerSeasonFeatures())
 
 
-def runDraft():
-    """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
+def buildCurrentDraftProjections():
+    """Build every current-season skater projection used by draft and keeper tools."""
     df = loadPlayerSeasonFeatures()
     current = df[df['season'] == CURRENT_SEASON].copy()
-    # Display-side GP floor: predict() itself applies no filter (an injury-shortened
-    # season still deserves a projection), but a 4-game 5-FP/g line is sample noise,
-    # not a draft pick.
-    current = current[current['gamesPlayed'] >= 20]
     current['projected_fpPerGame'] = draftModel.predict(current)
 
     rankings = current[['playerId', 'full_name', 'position', 'gamesPlayed',
@@ -203,6 +201,16 @@ def runDraft():
     for col, values in zip(factor_cols, zip(*factor_rows)):
         rankings[col] = list(values)
 
+    return rankings
+
+
+def runDraft():
+    """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
+    rankings = buildCurrentDraftProjections()
+    # Display-side GP floor: an injury-shortened season can still carry keeper
+    # value, but a 4-game 5-FP/g line is too noisy for the draft board.
+    rankings = rankings[rankings['gamesPlayed'] >= 20].copy()
+
     # Draft pool must exclude anyone already kept -- keeper lists aren't in the Yahoo
     # API until draft day, so they're maintained manually in data/raw/keepers.csv.
     # Missing/empty file = keepers not announced yet: warn loudly and rank everyone
@@ -231,6 +239,30 @@ def runDraft():
           .to_string(index=False))
 
 
+def runKeeper():
+    """Rank the authenticated Yahoo roster's best four skater keepers."""
+    projections = buildCurrentDraftProjections()
+    roster = yahooAPI.getMyRoster()
+    rankings = keeper.analyze_keepers(roster, projections)
+    rankings['target_season'] = keeper.target_season_label(CURRENT_SEASON)
+
+    os.makedirs(os.path.dirname(KEEPER_RANKINGS_PATH), exist_ok=True)
+    rankings.to_csv(KEEPER_RANKINGS_PATH, index=False)
+
+    recommended = rankings[rankings['is_recommended']].sort_values('keeper_rank')
+    print(f"\nWrote {len(rankings)} roster rows to {KEEPER_RANKINGS_PATH}")
+    if recommended.empty:
+        print("No skater keeper recommendations were matched to the projection board.")
+        return
+
+    print("\n=== Recommended keepers ===")
+    print(recommended[[
+        'keeper_rank', 'full_name', 'position', 'projected_fpPerGame',
+        'projected_total', 'raw_keeper_value', 'assigned_round', 'pick_cost',
+        'net_keeper_value'
+    ]].to_string(index=False))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fantasy hockey tools")
     sub = parser.add_subparsers(dest='command', required=True)
@@ -238,6 +270,7 @@ def main():
     sub.add_parser('pickups', help='rank available free agents (uses saved models)')
     sub.add_parser('train-draft', help='train the draft ranker on historical player-seasons')
     sub.add_parser('draft', help='rank this year\'s non-keeper players for the draft')
+    sub.add_parser('keeper', help='rank four skater keepers from the authenticated Yahoo roster')
     spot = sub.add_parser('spot-check', help='replay the pickup ranking at historical dates and grade it')
     spot.add_argument('--date', type=int, help='single as-of date as YYYYMMDD (default: several across the season)')
     spot.add_argument('--top', type=int, default=15, help='size of the ranked list to grade')
@@ -251,6 +284,8 @@ def main():
         trainDraft()
     elif args.command == 'draft':
         runDraft()
+    elif args.command == 'keeper':
+        runKeeper()
     elif args.command == 'spot-check':
         backtest.runSpotChecks(dates=[args.date] if args.date else None, top_n=args.top)
 
