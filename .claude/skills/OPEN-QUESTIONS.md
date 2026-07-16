@@ -57,3 +57,14 @@ change breaking an untested caller. These drive fht-debugging-playbook and fht-q
 (b) beating the "chase last-10-games fantasy points" baseline on the backtest's top-K hit rate
 for pickups; and (c) the mock-draft test — would this board have beaten the owner's actual 2025
 draft? Model work that doesn't clear these bars ships the baseline instead.
+
+## 6. Do Yahoo goalie "Losses" include OT/SO losses? (added 2026-07-16, goalie design)
+
+**ASSUMED — needs owner check of Yahoo league settings for nhl.l.33072:** The goalie design
+(`docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`) assumes `L` = NHL-definition
+regulation losses (the NHL API `losses` field, excluding `otLosses`), because the league's
+goalie scoring table in PROJECT-PLAN.md lists no OTL category. If Yahoo's L charges OT/SO
+losses to the goalie too, flip the one line in `scripts/build_goalie_seasons.py` that maps
+NHL API fields to `calculateGoaliePoints` inputs (`losses` -> `losses + otLosses`) and rebuild
+`goalie_seasons.csv`. Also unconfirmed there: replacement rank for G is assumed 20
+(10 teams x 2 starting G slots); if league mates habitually roster a third goalie, ~25.
