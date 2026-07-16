@@ -62,9 +62,44 @@ python main.py pickups
 streamlit run ui/app.py
 ```
 
+### Run the Frontend Dashboard (Next.js)
+
+The dashboard reads a JSON snapshot exported from the trained models, so it's a
+two-step process: export the data, then start the dev server.
+
+1. **Train the models first** (if you haven't) — the export needs them:
+   ```bash
+   python main.py train-pickups
+   ```
+
+2. **Export the dashboard data.** This regenerates `data/processed/frontend_data.json`:
+   ```bash
+   python api_export.py
+   ```
+   Re-run this whenever you want the dashboard to reflect new data or a retrained model.
+
+   > **Windows note:** if this crashes with a `UnicodeEncodeError` while the NHL API
+   > caches rebuild, set UTF-8 mode first:
+   > ```powershell
+   > $env:PYTHONUTF8='1'; python api_export.py
+   > ```
+
+3. **Start the dev server** (from the `frontend/` directory):
+   ```bash
+   cd frontend
+   npm install        # first time only
+   npm run dev
+   ```
+
+4. Open the dashboard at **http://localhost:3000**.
+
+To serve a production build instead of the dev server, use `npm run build` then
+`npm run start`.
+
 ## Project Structure
 
 - `main.py` - CLI entry point for training and predictions
+- `api_export.py` - Exports `data/processed/frontend_data.json` for the Next.js dashboard
 - `src/` - Core functionality
   - `dataProcessing.py` - NHL API data fetching and processing
   - `fantasyPoints.py` - Fantasy points calculations
@@ -73,6 +108,7 @@ streamlit run ui/app.py
   - `features/` - Feature engineering for ML models
   - `models/` - ML model training and prediction
 - `ui/` - Streamlit web interface
+- `frontend/` - Next.js dashboard (reads `frontend_data.json`)
 - `tests/` - Unit tests
 - `data/` - Local data cache (gitignored)
 - `models/` - Saved trained models

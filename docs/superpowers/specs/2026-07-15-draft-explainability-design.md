@@ -42,9 +42,11 @@ api_export.py ◄─────────┴───────────
 
 - Reads `draft_rankings.csv`, takes top 200 (`--top N`).
 - Per player: one Claude API call — model `claude-opus-4-8`, server tool
-  `web_search_20260209` with `max_uses: 3`. Prompt = stats line + projection + SHAP
-  factors + confidence; asks for 1–2 sentences reconciling the model's view with
-  current context (injury, team/role change); must not restate what the stats say.
+  `web_search_20260209` with a rank-based search budget: `max_uses: 5` for the
+  top 50 projected players and `3` for the remainder. Every request has
+  `max_tokens: 4096`. Prompt = enriched stats/context + projection + SHAP factors +
+  confidence; asks for 3–4 sentences reconciling the model's view with current
+  context (injury, team/role change, PP1-vs-PP2 role); must not restate the stats.
 - **Resumable cache:** append to `data/processed/draft_summaries.json` after every
   player; re-runs skip existing entries; `--force` regenerates. Gitignored.
 - Auth: `ANTHROPIC_API_KEY` from env; fail fast with a clear message if unset.
