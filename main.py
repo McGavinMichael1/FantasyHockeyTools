@@ -13,14 +13,17 @@ from src import keepers
 from src import moneypuck
 from src import yahooAPI
 from src.features import draft as draftFeatures
+from src.features import goalies as goalieFeatures
 from src.features import mlFeatures
 from src.features import pickups
 from src.models import cooling as coolingModel
 from src.models import draft as draftModel
+from src.models import goalieDraft as goalieDraftModel
 from src.models import pickups as pickupModel
 
 CURRENT_SEASON = 2025  # MoneyPuck convention: 2025 = the 2025-26 season
 KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
+GOALIE_SEASONS_PATH = os.path.join('data', 'processed', 'goalie_seasons.csv')
 
 
 def loadLabeledHistory():
@@ -153,6 +156,20 @@ def trainDraft():
     draftModel.train(loadPlayerSeasonFeatures())
 
 
+def loadGoalieSeasonFeatures():
+    """Goalie draft feature rows from the cached goalie-season table (built by
+    scripts/build_goalie_seasons.py -- see data/raw/goalies/README.md)."""
+    if not os.path.exists(GOALIE_SEASONS_PATH):
+        raise FileNotFoundError(
+            f"{GOALIE_SEASONS_PATH} missing -- run scripts/build_goalie_seasons.py first")
+    return goalieFeatures.build_goalie_features(pd.read_csv(GOALIE_SEASONS_PATH))
+
+
+def trainGoalies():
+    """Train the goalie draft ranker (GATE G3 protocol, see the spec)."""
+    goalieDraftModel.train(loadGoalieSeasonFeatures())
+
+
 def buildCurrentDraftProjections():
     """Build every current-season skater projection used by draft and keeper tools."""
     df = loadPlayerSeasonFeatures()
@@ -269,6 +286,7 @@ def main():
     sub.add_parser('train-pickups', help='train pickup + cooling models on historical seasons')
     sub.add_parser('pickups', help='rank available free agents (uses saved models)')
     sub.add_parser('train-draft', help='train the draft ranker on historical player-seasons')
+    sub.add_parser('train-goalies', help='train the goalie draft ranker on historical goalie-seasons')
     sub.add_parser('draft', help='rank this year\'s non-keeper players for the draft')
     sub.add_parser('keeper', help='rank four skater keepers from the authenticated Yahoo roster')
     spot = sub.add_parser('spot-check', help='replay the pickup ranking at historical dates and grade it')
@@ -282,6 +300,8 @@ def main():
         runPickups()
     elif args.command == 'train-draft':
         trainDraft()
+    elif args.command == 'train-goalies':
+        trainGoalies()
     elif args.command == 'draft':
         runDraft()
     elif args.command == 'keeper':
