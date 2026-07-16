@@ -118,3 +118,24 @@ def test_moneypuck_game_points_keeps_players_and_games_separate():
     assert result.loc[(2, 100), 'fantasyPoints'] == pytest.approx(0.3)  # 2 hits
     assert result.loc[(1, 101), 'shorthandedPoints'] == 1
     assert result.loc[(1, 101), 'fantasyPoints'] == pytest.approx(0.3 + 1)  # 2 SOG + 1 SHP
+
+
+def test_calculate_goalie_points_matches_hand_computed_season():
+    # Hellebuyck-tier season: 60 GS, 37 W, 19 L, 158 GA, 1656 SV, 5 SO
+    # = 60*0.75 + 37*2.5 + 19*-1 + 158*-0.5 + 1656*0.15 + 5*3
+    # = 45 + 92.5 - 19 - 79 + 248.4 + 15 = 302.9
+    stats = {'gamesStarted': 60, 'wins': 37, 'losses': 19,
+             'goalsAgainst': 158, 'saves': 1656, 'shutouts': 5}
+    assert fantasyPoints.calculateGoaliePoints(stats) == pytest.approx(302.9)
+
+
+def test_calculate_goalie_points_defaults_missing_stats_to_zero():
+    assert fantasyPoints.calculateGoaliePoints({}) == 0
+    assert fantasyPoints.calculateGoaliePoints({'wins': 2}) == pytest.approx(5.0)
+
+
+def test_goalie_weights_are_the_six_league_categories_exactly():
+    assert fantasyPoints.GOALIE_WEIGHTS == {
+        'gamesStarted': 0.75, 'wins': 2.5, 'losses': -1,
+        'goalsAgainst': -0.5, 'saves': 0.15, 'shutouts': 3,
+    }
