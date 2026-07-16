@@ -27,6 +27,9 @@ uv.lock
 # Data files
 data/**/*.csv
 data/processed/*.json
+# Timestamped backups of the above -- the *.json rule misses them (they end
+# in .bak-<stamp>), so without this they show up as untracked commit bait.
+data/processed/*.json.bak-*
 oauth2.json
 
 # Generated plots/reports
@@ -42,3 +45,9 @@ frontend/.env*.local
 models/**/*.pkl
 # Claude Code local settings (personal, not shared)
 .claude/settings.local.json
+
+# Codex-targeted export of the skill library. .claude/skills/fht-* is the
+# canonical copy (see CLAUDE.md); .agents/ is a generated mirror that drifts
+# (stale .Codex/ path refs, missing newer skills), so it stays local.
+.agents/
+AGENTS.md

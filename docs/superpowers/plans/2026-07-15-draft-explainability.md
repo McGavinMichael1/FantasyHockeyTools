@@ -8,6 +8,12 @@
 
 **Tech Stack:** Python 3.12, pandas, xgboost (native booster `pred_contribs`), the `anthropic` SDK (new dependency) with the server-side `web_search_20260209` tool, pytest; Next.js/React + CSS modules for the frontend.
 
+> **Summary-policy amendment (July 15, 2026):** The original Task 5 code sketch
+> below is superseded for search depth, length, and token allowance. The top 50
+> projected players receive up to 5 searches, remaining players receive 3, every
+> request uses `max_tokens=4096`, and summaries are 3–4 sentences. The canonical
+> current contract is the approved design spec and `scripts/build_draft_summaries.py`.
+
 ## Global Constraints
 
 - Always invoke the venv interpreter explicitly: `.\.venv\Scripts\python.exe` (system `python` may be wrong on Windows).

@@ -13,6 +13,7 @@ question shape:
 - **fht-operations** — env setup, every CLI command, cache/config, season rollover. Read before running or retraining anything.
 - **fht-domain-reference** — MoneyPuck columns, situation rows, scoring semantics, hockey/fantasy terms.
 - **fht-draft-campaign** — draft/keeper analyzer roadmap (Phase B/C work items).
+- **fht-player-summaries** — generating/refreshing the Claude draft summaries (in-session vs API script) and pushing them through `api_export.py` to the frontend. Read before touching `draft_summaries.json` or the summary prompt.
 - **fht-quality-gates** — what to test, how to validate a model result is real.
 - **fht-debugging-playbook** — known live issues and root-cause steps.
 - **fht-research-frontier** — model-improvement ideas, tuning, what NOT to add (e.g. LSTM stays parked).
