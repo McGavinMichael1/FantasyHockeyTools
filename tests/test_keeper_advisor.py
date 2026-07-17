@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, timezone
+import json
 
 import pandas as pd
 import pytest
@@ -136,3 +137,53 @@ def test_write_context_is_json_and_creates_parent(tmp_path):
     keeper_advisor.write_context(context, target)
     assert target.exists()
     assert target.read_text(encoding="utf-8").startswith("{")
+
+
+def test_context_normalizes_non_finite_optional_history_and_factor_values():
+    board, rankings, skaters, goalies = _rankings_and_histories()
+    skaters.loc[skaters["playerId"] == 91, "xGoalsSurplus"] = float("inf")
+    rankings.loc[rankings["playerId"] == 91, "factor_1"] = (
+        '{"label":"Three-season form","value":1e309}'
+    )
+
+    context = keeper_advisor.build_context(
+        rankings,
+        board,
+        skater_history=skaters,
+        goalie_history=goalies,
+        generated_at=datetime(2026, 7, 17, tzinfo=timezone.utc),
+    )
+
+    skater = next(row for row in context["roster"] if row["player_id"] == 91)
+    assert skater["history"][-1]["xGoalsSurplus"] is None
+    if skater["factors"]:
+        assert skater["factors"] == [
+            {"label": "Three-season form", "value": None},
+        ]
+    json.dumps(context, allow_nan=False)
+
+
+def test_context_rejects_non_finite_official_keeper_decision_data():
+    board, rankings, skaters, goalies = _rankings_and_histories()
+    official_index = rankings.index[rankings["is_recommended"]].tolist()[0]
+    rankings.loc[official_index, "raw_keeper_value"] = float("inf")
+
+    with pytest.raises(ValueError, match="non-finite decision data"):
+        keeper_advisor.build_context(
+            rankings,
+            board,
+            skater_history=skaters,
+            goalie_history=goalies,
+            generated_at=datetime(2026, 7, 17, tzinfo=timezone.utc),
+        )
+
+
+def test_write_context_atomically_replaces_an_existing_target(tmp_path):
+    target = tmp_path / "keeper_advisor_context.json"
+    target.write_text('{"context_id":"old"}', encoding="utf-8")
+    context = _build(datetime(2026, 7, 17, tzinfo=timezone.utc))
+
+    keeper_advisor.write_context(context, target)
+
+    assert json.loads(target.read_text(encoding="utf-8")) == context
+    assert not target.with_suffix(target.suffix + ".tmp").exists()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 from datetime import datetime, timezone
 from itertools import combinations
@@ -33,6 +34,10 @@ GOALIE_HISTORY_FIELDS = (
     "season", "gamesPlayed", "gamesStarted", "fpPerGame", "wins", "losses",
     "shutouts", "saves", "goalsAgainst", "save_pct", "gsax",
 )
+DECISION_COLUMNS = (
+    "raw_keeper_value", "net_keeper_value", "pick_cost", "replacement_level",
+    "projected_total", "projected_fpPerGame",
+)
 
 
 def _clean(value: Any) -> Any:
@@ -49,6 +54,8 @@ def _clean(value: Any) -> Any:
         pass
     if hasattr(value, "item"):
         value = value.item()
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
     if isinstance(value, (str, int, float, bool)):
         return value
     return str(value)
@@ -88,6 +95,24 @@ def _history(history: pd.DataFrame | None, player_id: int | None,
         {field: _clean(row.get(field)) for field in fields if field in rows.columns}
         for _, row in rows.iterrows()
     ]
+
+
+def _ensure_finite_decision_data(rankings: pd.DataFrame) -> None:
+    """NaN means a value is absent (e.g. unmatched player); inf means the math broke."""
+    scope = rankings
+    if "match_status" in rankings.columns:
+        scope = rankings[rankings["match_status"] == "matched"]
+    for column in DECISION_COLUMNS:
+        if column not in scope.columns:
+            continue
+        values = pd.to_numeric(scope[column], errors="coerce")
+        offenders = scope.loc[values.abs() == float("inf")]
+        if offenders.empty:
+            continue
+        names = ", ".join(str(name) for name in offenders.get("yahoo_name", offenders.index))
+        raise ValueError(
+            f"Keeper rankings contain non-finite decision data ({column}: {names})"
+        )
 
 
 def _board_comparisons(projections: pd.DataFrame) -> dict[int, dict]:
@@ -227,6 +252,7 @@ def build_context(rankings: pd.DataFrame, projections: pd.DataFrame,
                   generated_at: datetime | None = None) -> dict:
     if rankings.empty:
         raise ValueError("Cannot build keeper advisor context from an empty roster")
+    _ensure_finite_decision_data(rankings)
     records = _roster_records(rankings, projections, skater_history, goalie_history)
     official = (
         rankings[rankings["is_recommended"].astype(bool)]
@@ -248,6 +274,11 @@ def build_context(rankings: pd.DataFrame, projections: pd.DataFrame,
         )
     if rules["keeper_tenure"] == "unknown":
         warnings.append("Maximum keeper tenure is unknown")
+    pick_costs = keeper.round_pick_costs(projections)
+    if any(not math.isfinite(cost) for cost in pick_costs.values()):
+        raise ValueError(
+            "Projection board produced non-finite decision data in keeper pick costs"
+        )
     payload = {
         "schema_version": SCHEMA_VERSION,
         "season": seasons[0],
@@ -263,7 +294,7 @@ def build_context(rankings: pd.DataFrame, projections: pd.DataFrame,
         "official_top_four": official_ids,
         "roster": records,
         "scenario_data": {
-            "sets": _scenario_sets(records, keeper.round_pick_costs(projections)),
+            "sets": _scenario_sets(records, pick_costs),
         },
     }
     timestamp = generated_at or datetime.now(timezone.utc)
