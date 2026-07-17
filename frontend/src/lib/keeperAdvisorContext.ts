@@ -15,14 +15,87 @@ export const ADVISOR_CONTEXT_PATH = join(
 
 
 function isContext(value: unknown): value is AdvisorContext {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-  const context = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
+  const context = value;
   return context.schema_version === 1 && typeof context.context_id === 'string' &&
     typeof context.generated_at === 'string' && typeof context.season === 'string' &&
-    Array.isArray(context.official_top_four) && context.official_top_four.length === 4 &&
-    Array.isArray(context.roster) &&
-    typeof context.scenario_data === 'object' && context.scenario_data !== null &&
-    Array.isArray((context.scenario_data as { sets?: unknown }).sets);
+    isRecord(context.league) &&
+    isTopFour(context.official_top_four) &&
+    Array.isArray(context.roster) && context.roster.every(isAdvisorContextPlayer) &&
+    isScenarioData(context.scenario_data);
+}
+
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+
+function isInteger(value: unknown): value is number {
+  return Number.isInteger(value);
+}
+
+
+function isNullableString(value: unknown): value is string | null {
+  return typeof value === 'string' || value === null;
+}
+
+
+function isNullableFiniteNumber(value: unknown): value is number | null {
+  return value === null || isFiniteNumber(value);
+}
+
+
+function isNullableInteger(value: unknown): value is number | null {
+  return value === null || isInteger(value);
+}
+
+
+function isTopFour(value: unknown): value is number[] {
+  return Array.isArray(value) && value.length === 4 && value.every(isInteger) &&
+    new Set(value).size === 4;
+}
+
+
+function isAdvisorContextPlayer(value: unknown): value is AdvisorContextPlayer {
+  return isRecord(value) &&
+    isNullableInteger(value.player_id) &&
+    typeof value.yahoo_player_id === 'string' &&
+    typeof value.yahoo_name === 'string' &&
+    isNullableString(value.full_name) &&
+    isNullableString(value.position) &&
+    typeof value.match_status === 'string' &&
+    isNullableString(value.excluded_reason) &&
+    typeof value.is_recommended === 'boolean' &&
+    isNullableFiniteNumber(value.keeper_rank) &&
+    isNullableFiniteNumber(value.raw_keeper_value) &&
+    isNullableFiniteNumber(value.projected_total) &&
+    isNullableFiniteNumber(value.age);
+}
+
+
+function isScenarioPlayer(value: unknown): boolean {
+  return isRecord(value) && isInteger(value.player_id) &&
+    isInteger(value.assigned_round) && isFiniteNumber(value.pick_cost) &&
+    isFiniteNumber(value.raw_keeper_value) && isFiniteNumber(value.net_keeper_value);
+}
+
+
+function isScenarioSet(value: unknown): value is ScenarioSet {
+  return isRecord(value) && Array.isArray(value.player_ids) &&
+    value.player_ids.every(isInteger) && Array.isArray(value.players) &&
+    value.players.every(isScenarioPlayer) && isFiniteNumber(value.total_model_value) &&
+    isFiniteNumber(value.total_net_keeper_value);
+}
+
+
+function isScenarioData(value: unknown): value is AdvisorContext['scenario_data'] {
+  return isRecord(value) && Array.isArray(value.sets) && value.sets.every(isScenarioSet);
 }
 
 

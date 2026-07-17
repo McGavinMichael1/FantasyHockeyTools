@@ -54,11 +54,85 @@ const context: AdvisorContext = {
 };
 
 
-test('loadAdvisorContext accepts the exact server artifact', () => {
+function writeArtifact(value: unknown) {
   const directory = mkdtempSync(join(tmpdir(), 'keeper-advisor-'));
   const path = join(directory, 'context.json');
-  writeFileSync(path, JSON.stringify(context), 'utf8');
-  assert.deepEqual(loadAdvisorContext(path), context);
+  writeFileSync(path, JSON.stringify(value), 'utf8');
+  return path;
+}
+
+
+test('loadAdvisorContext accepts the exact server artifact', () => {
+  assert.deepEqual(loadAdvisorContext(writeArtifact(context)), context);
+});
+
+
+test('loadAdvisorContext rejects duplicate and non-numeric top-four IDs', () => {
+  const duplicateIds = structuredClone(context);
+  duplicateIds.official_top_four = [1, 2, 3, 3];
+  const nonNumericIds = structuredClone(context);
+  nonNumericIds.official_top_four = [1, 2, 3, '4'] as unknown as number[];
+
+  for (const artifact of [duplicateIds, nonNumericIds]) {
+    assert.throws(
+      () => loadAdvisorContext(writeArtifact(artifact)),
+      { message: 'keeper advisor context has an unsupported or malformed schema' },
+    );
+  }
+});
+
+
+test('loadAdvisorContext rejects a malformed roster player', () => {
+  const missingFields = structuredClone(context) as unknown as { roster: unknown[] };
+  missingFields.roster[0] = { player_id: 1, yahoo_name: 'Player 1' };
+  const nonRecord = structuredClone(context) as unknown as { roster: unknown[] };
+  nonRecord.roster[0] = ['not', 'a', 'player'];
+
+  for (const artifact of [missingFields, nonRecord]) {
+    assert.throws(
+      () => loadAdvisorContext(writeArtifact(artifact)),
+      { message: 'keeper advisor context has an unsupported or malformed schema' },
+    );
+  }
+});
+
+
+test('loadAdvisorContext rejects a malformed scenario set', () => {
+  const invalidPlayerIds = structuredClone(context) as unknown as {
+    scenario_data: { sets: unknown[] };
+  };
+  invalidPlayerIds.scenario_data.sets[0] = {
+    player_ids: [1, 2, 3, '4'],
+    players: [],
+    total_model_value: 300,
+    total_net_keeper_value: 100,
+  };
+  const invalidScenarioPlayer = structuredClone(context) as unknown as {
+    scenario_data: { sets: Array<Record<string, unknown>> };
+  };
+  invalidScenarioPlayer.scenario_data.sets[0].players = [{ player_id: 1 }];
+  const invalidTotal = structuredClone(context) as unknown as {
+    scenario_data: { sets: Array<Record<string, unknown>> };
+  };
+  invalidTotal.scenario_data.sets[0].total_model_value = null;
+
+  for (const artifact of [invalidPlayerIds, invalidScenarioPlayer, invalidTotal]) {
+    assert.throws(
+      () => loadAdvisorContext(writeArtifact(artifact)),
+      { message: 'keeper advisor context has an unsupported or malformed schema' },
+    );
+  }
+});
+
+
+test('loadAdvisorContext rejects a malformed league', () => {
+  const malformed = structuredClone(context) as unknown as { league: unknown };
+  malformed.league = ['not', 'a', 'record'];
+
+  assert.throws(
+    () => loadAdvisorContext(writeArtifact(malformed)),
+    { message: 'keeper advisor context has an unsupported or malformed schema' },
+  );
 });
 
 
