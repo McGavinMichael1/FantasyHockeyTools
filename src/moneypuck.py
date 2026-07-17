@@ -144,6 +144,56 @@ def buildPlayerSeasons(game_df):
     return summary
 
 
+def buildPickupStats(game_df, season):
+    """One row per player for the pickup heuristic: season totals plus
+    last-5-game totals for the given season, scored with full league weights
+    (incl. hits/blocks; no plusMinus/GWG -- the accepted MoneyPuck
+    approximation).
+
+    game_df must contain ALL situation rows (loadGameLogs output) --
+    moneypuckGamePoints collapses them; summing raw rows double-counts.
+    The season id is a parameter so this module doesn't grow its own copy
+    of the CURRENT_SEASON constant.
+    """
+    season_games = game_df[game_df['season'] == season]
+    if season_games.empty:
+        return pd.DataFrame(columns=[
+            'playerId', 'name', 'position', 'gamesPlayed', 'goals',
+            'assists', 'points', 'shots', 'hits', 'blocks',
+            'powerPlayPoints', 'shorthandedPoints', 'fantasyPoints',
+            'season_ppg', 'avgToiSeconds', 'last5_goals', 'last5_assists',
+            'last5_points', 'last5_fantasyPoints'])
+    games = fantasyPoints.moneypuckGamePoints(season_games)
+    games = games.sort_values(['playerId', 'gameDate'])
+    games['assists'] = games['I_F_primaryAssists'] + games['I_F_secondaryAssists']
+
+    totals = games.groupby('playerId').agg(
+        name=('name', lambda s: s.mode().iloc[0]),
+        position=('position', lambda s: s.mode().iloc[0]),
+        gamesPlayed=('gameId', 'nunique'),
+        goals=('I_F_goals', 'sum'),
+        assists=('assists', 'sum'),
+        points=('I_F_points', 'sum'),
+        shots=('I_F_shotsOnGoal', 'sum'),
+        hits=('I_F_hits', 'sum'),
+        blocks=('shotsBlockedByPlayer', 'sum'),
+        powerPlayPoints=('powerPlayPoints', 'sum'),
+        shorthandedPoints=('shorthandedPoints', 'sum'),
+        fantasyPoints=('fantasyPoints', 'sum'),
+        avgToiSeconds=('icetime', 'mean'),
+    ).reset_index()
+    totals['season_ppg'] = totals['fantasyPoints'] / totals['gamesPlayed'].replace(0, 1)
+
+    last5 = (games.groupby('playerId').tail(5)
+             .groupby('playerId').agg(
+                 last5_goals=('I_F_goals', 'sum'),
+                 last5_assists=('assists', 'sum'),
+                 last5_points=('I_F_points', 'sum'),
+                 last5_fantasyPoints=('fantasyPoints', 'sum'),
+             ).reset_index())
+    return totals.merge(last5, on='playerId', how='left')
+
+
 def loadGoalieSeasons(history_file=GOALIE_HISTORY_SEASONS_FILE,
                       current_file=GOALIE_CURRENT_SEASONS_FILE):
     """Season-level MoneyPuck goalie rows, 'all'-situation only.
