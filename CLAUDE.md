@@ -78,8 +78,10 @@ Full rationale and file:line citations: `fht-architecture-contract`.
 ## Known issues
 
 - `main.py pickups` / `api_export.py` crash with `UnicodeEncodeError` (cp1252) on Windows
-  consoles when the NHL API caches rebuild — `src/nhlAPI.py` prints response previews
-  containing non-ASCII player names. Workaround: `$env:PYTHONUTF8='1'` before running.
+  consoles when the `players_cache.csv` roster cache rebuilds (~32 requests) — `src/nhlAPI.py`
+  prints response previews containing non-ASCII player names. The old ~1400-request per-player
+  fetch that used to trigger this far more often is gone (MoneyPuck-only pickups migration).
+  Workaround: `$env:PYTHONUTF8='1'` before running.
 - Test suite currently has 2 known pre-existing failures: `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` (guard-ordering bug in `src/moneypuck.py::loadGameLogs`) and `tests/test_draft_summaries.py::test_all_summary_calls_allow_the_larger_token_budget` (token-budget assertion; discovered 2026-07-16 during the goalie campaign — it predates the branch and is unrelated to goalie work). See `fht-debugging-playbook`.
 - No CI configured.
 - `train-draft` / `draft` / `keeper` / `train-goalies` CLI commands are implemented (draft board shipped Phase B4; goalie ranker shipped 2026-07-16). Remaining Phase B/C/D work is tracked in `fht-draft-campaign` and PROJECT-PLAN's Current Phase.

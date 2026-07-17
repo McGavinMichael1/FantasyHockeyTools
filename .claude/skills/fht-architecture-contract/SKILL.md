@@ -14,8 +14,9 @@ not started). Read this before touching scoring, features, splits, or module bou
 ```
 DATA SOURCES                      MODULES                              ENTRY POINTS
 MoneyPuck CSVs (manual DL)  ---->  src/moneypuck.py (all MoneyPuck IO,
-  data/raw/2008_to_2024.csv          incl. loadGoalieSeasons)
-  data/raw/moneypuck_current.csv   src/fantasyPoints.py (SKATER_WEIGHTS
+  data/raw/2008_to_2024.csv          incl. loadGoalieSeasons,
+  data/raw/moneypuck_current.csv     buildPickupStats)
+                                    src/fantasyPoints.py (SKATER_WEIGHTS
   data/raw/goalies/*.csv             + GOALIE_WEIGHTS,           ---->  main.py (argparse CLI:
     (goalie skill stats)             canonical scoring)                 train-pickups, pickups,
                                     src/features/mlFeatures.py           train-draft, train-goalies,
@@ -63,7 +64,7 @@ comment documenting an incident. Do not relitigate without new evidence.
 
 | Decision | Rationale (verified) |
 |---|---|
-| MoneyPuck is the single stats source for modeling; NHL API only for identity/`birthDate`/`positionCode`/rosters (owner-approved exception: goalie W/L/SO/GS season records come from the NHL API — see `docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`) | `PROJECT-PLAN.md:61-64`; removes duplicated fantasy-point logic and the 700-request threaded stats fetch |
+| MoneyPuck is the single stats source for modeling; NHL API only for identity/`birthDate`/`positionCode`/rosters (owner-approved exception: goalie W/L/SO/GS season records come from the NHL API — see `docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`) | `PROJECT-PLAN.md:61-64`; removed the duplicated fantasy-point logic and the two ~700-request threaded stats fetches (~1400 requests total — `getAllStatsWithCache`/`getAllLast5WithCache`/`calculateSkaterPoints` deleted) — the pickup heuristic now reads `moneypuck.buildPickupStats` (`src/moneypuck.py:147`) |
 | One canonical scoring function, `fantasyPoints.SKATER_WEIGHTS` (`src/fantasyPoints.py:1-14`) | Header comment states it is "the single source of truth." Incident: the ML label silently diverged to G/A/SOG-only for months before this was enforced (see `PROJECT-PLAN.md` Learning Log) — the fix was one dict + tests, not scattered constants |
 | LSTM parked; XGBoost is the product model | `PROJECT-PLAN.md:68-70`; `src/models/lstmPickups.py` header dated July 2026 says keep parked until after draft season |
 | Train/predict CLI split (`train-pickups`/`pickups`/`train-draft`/`draft`) | `PROJECT-PLAN.md:77`; `main.py:152-173` — Streamlit is meant to be the product interface, scripts are the workbench |
@@ -90,9 +91,10 @@ comment documenting an incident. Do not relitigate without new evidence.
   threshold let shot-blocking defensemen trigger "heating up" on ordinary noise; see the comment
   at `src/features/mlFeatures.py:46-50`).
 - **Scoring weights come from one place.** Anything computing fantasy points must read
-  `fantasyPoints.SKATER_WEIGHTS`, never a local copy. Two scoring paths exist and are expected
-  to differ slightly: `calculateSkaterPoints` (NHL-API path, `src/fantasyPoints.py:17-26`) and
-  `moneypuckGamePoints` (MoneyPuck path, `src/fantasyPoints.py:29-57`).
+  `fantasyPoints.SKATER_WEIGHTS`, never a local copy. There is now ONE skater scoring path,
+  `moneypuckGamePoints` (`src/fantasyPoints.py:44`) — `calculateSkaterPoints` (the old NHL-API
+  path) is deleted, so the heuristic ranker and the ML label are the same scoring approximation
+  (both omit `plusMinus`/`gameWinningGoals`, per the header comment at `src/fantasyPoints.py:1-4`).
 - **Caches are gitignored, not committed.** `data/**/*.csv`, `data/processed/*.json`, and
   `models/**/*.pkl` are all in `.gitignore` (`.gitignore:25-26,39`). The `.pkl` line's comment
   is "retrain locally" — this **contradicts** the stale `PROJECT-PLAN.md:82-83` claim that
@@ -105,7 +107,6 @@ comment documenting an incident. Do not relitigate without new evidence.
 |---|---|
 | Season constants duplicated across entry points | Three copies of the season id (`main.py`, `api_export.py`, `src/backtest.py`) plus two hardcoded `20252026` literals. The authoritative file:line catalog — and the annual-rollover checklist that maintains it — lives in `fht-operations`' constants catalog; don't maintain a second copy here. |
 | `latestGameState()` duplicated | `main.py:36-66` and `api_export.py:28-49` — identical cache/compute logic, two copies |
-| NHL-API scoring path omits hits/blocks | `calculateSkaterPoints` (`src/fantasyPoints.py:17-26`) has no `hits`/`blocks` terms because the NHL landing endpoint doesn't return them; `moneypuckGamePoints` does include them. The heuristic (`rankFreeAgents`) and ML score are therefore on different scales and are only blended after each is independently normalized (`main.py:108-112`, `api_export.py:99-102`) |
 | No CI | Verified: no `.github/workflows/`, no CI config in the repo |
 | Test suite fails on `main` | `.\.venv\Scripts\python.exe -m pytest -v` → 48 passed, 2 failed (verified 2026-07-16): `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` (guard ordering bug in `src/moneypuck.py::loadGameLogs` — raises `FileNotFoundError` before the cache-hit check) and `tests/test_draft_summaries.py::test_all_summary_calls_allow_the_larger_token_budget` (pre-existing, predates the goalie branch). See `fht-debugging-playbook` for the full analysis — do not re-diagnose here. |
 
