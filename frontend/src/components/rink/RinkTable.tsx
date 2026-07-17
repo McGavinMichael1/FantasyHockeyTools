@@ -43,14 +43,6 @@ function buildColumns(tone: Tone): Column[] {
     { key: 'goals', label: 'G', title: 'Goals', numeric: true, sortValue: (p) => p.goals, render: (p) => p.goals },
     { key: 'assists', label: 'A', title: 'Assists', numeric: true, sortValue: (p) => p.assists, render: (p) => p.assists },
     { key: 'points', label: 'PTS', title: 'Points', numeric: true, sortValue: (p) => p.points, render: (p) => p.points },
-    {
-      key: 'plusMinus',
-      label: '+/−',
-      title: 'Plus-minus',
-      numeric: true,
-      sortValue: (p) => p.plusMinus,
-      render: (p) => (p.plusMinus > 0 ? `+${p.plusMinus}` : p.plusMinus),
-    },
     { key: 'powerPlayPoints', label: 'PPP', title: 'Power-play points', numeric: true, sortValue: (p) => p.powerPlayPoints, render: (p) => p.powerPlayPoints },
     { key: 'shots', label: 'SOG', title: 'Shots on goal', numeric: true, sortValue: (p) => p.shots, render: (p) => p.shots },
     {

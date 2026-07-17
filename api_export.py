@@ -9,7 +9,6 @@ import time
 import pandas as pd
 
 from src import dataProcessing
-from src import fantasyPoints
 from src import moneypuck
 from src import yahooAPI
 from src.features import mlFeatures
@@ -62,6 +61,14 @@ def _parse_factors(row) -> list:
 def get_headshot_url(player_id: int) -> str:
     """NHL headshot URL for a player."""
     return f"https://assets.nhle.com/mugs/nhl/20252026/{player_id}.png"
+
+
+def _format_toi(seconds) -> str:
+    """Mean icetime in seconds -> 'MM:SS' for display."""
+    if pd.isna(seconds):
+        return '0:00'
+    minutes, secs = divmod(int(round(float(seconds))), 60)
+    return f"{minutes}:{secs:02d}"
 
 
 def latestGameState():
@@ -225,20 +232,13 @@ def export_data():
     """Generate JSON data for frontend consumption."""
     moneypuck.checkCurrentFreshness()
 
-    # Get all player data from NHL API
+    # Identity/roster only -- the sole remaining NHL API use in this path
     allPlayerData = dataProcessing.getAllPlayersWithCache()
     allPlayerData = dataProcessing.flattenPlayerNames(allPlayerData)
 
-    # Get stats
-    stats_df = dataProcessing.getAllStatsWithCache(allPlayerData['id'])
-    stats_df['fantasyPoints'] = stats_df.apply(
-        lambda row: fantasyPoints.calculateSkaterPoints(row), axis=1
-    )
-
-    last5_df = dataProcessing.getAllLast5WithCache(allPlayerData['id'])
-    last5_df['fantasyPoints'] = last5_df.apply(
-        lambda row: fantasyPoints.calculateSkaterPoints(row), axis=1
-    )
+    # Heuristic stats from MoneyPuck (full league scoring incl. hits/blocks)
+    game_df = moneypuck.loadGameLogs(min_season=2020)
+    pickup_stats = moneypuck.buildPickupStats(game_df, CURRENT_SEASON)
 
     # Get rostered players (optional)
     rostered_nhle_ids = set()
@@ -253,7 +253,7 @@ def export_data():
         print(f"Yahoo API error: {e}")
 
     # Heuristic ranking
-    results = pickups.rankFreeAgents(stats_df, last5_df, allPlayerData, rostered_nhle_ids)
+    results = pickups.rankFreeAgents(pickup_stats, allPlayerData, rostered_nhle_ids)
 
     # ML predictions. Models regress next-5-game FP/g; convert to 0-1
     # percentile ranks so the blend and frontend score bars keep a bounded
@@ -277,8 +277,7 @@ def export_data():
     )
     combined = results.merge(
         current_players[['playerId', 'ml_score', 'cooling_score']],
-        left_on='player_id',
-        right_on='playerId',
+        on='playerId',
         how='left'
     )
     combined = combined.dropna(subset=['ml_score'])
@@ -289,26 +288,25 @@ def export_data():
     pickup_list = []
     for _, row in pickup_df.iterrows():
         pickup_list.append({
-            'id': int(row['player_id']),
+            'id': int(row['playerId']),
             'full_name': row['full_name'],
             'positionCode': row['positionCode'],
-            'headshot': get_headshot_url(int(row['player_id'])),
-            'sweaterNumber': int(row.get('sweaterNumber', 0)) if not pd.isna(row.get('sweaterNumber')) else 0,
+            'headshot': get_headshot_url(int(row['playerId'])),
+            'sweaterNumber': int(row['sweaterNumber']) if not pd.isna(row.get('sweaterNumber')) else 0,
             'gamesPlayed': int(row['gamesPlayed']),
-            'goals': int(row['goals_season']),
-            'assists': int(row['assists_season']),
-            'points': int(row['points_season']),
-            'plusMinus': int(row['plusMinus_season']),
-            'powerPlayPoints': int(row.get('powerPlayPoints', 0)),
-            'shorthandedPoints': int(row.get('shorthandedPoints', 0)),
-            'shots': int(row['shots_season']),
-            'avgToi': str(row.get('avgToi_season', '0:00')),
-            'fantasyPoints': float(row['fantasyPoints_season']),
+            'goals': int(round(row['goals'])),
+            'assists': int(round(row['assists'])),
+            'points': int(round(row['points'])),
+            'powerPlayPoints': int(round(row['powerPlayPoints'])),
+            'shorthandedPoints': int(round(row['shorthandedPoints'])),
+            'shots': int(round(row['shots'])),
+            'avgToi': _format_toi(row['avgToiSeconds']),
+            'fantasyPoints': float(row['fantasyPoints']),
             'season_ppg': float(row['season_ppg']),
-            'last5_goals': int(row['goals_last5']),
-            'last5_assists': int(row['assists_last5']),
-            'last5_points': int(row['points_last5']),
-            'last5_fantasyPoints': float(row['fantasyPoints_last5']),
+            'last5_goals': int(round(row['last5_goals'])),
+            'last5_assists': int(round(row['last5_assists'])),
+            'last5_points': int(round(row['last5_points'])),
+            'last5_fantasyPoints': float(row['last5_fantasyPoints']),
             'weighted_score': float(row['weighted_score']),
             'ml_score': float(row['ml_score']),
             'final_score': float(row['final_score']),
@@ -320,45 +318,38 @@ def export_data():
     cooling_df = current_players.sort_values('cooling_score', ascending=False).head(50)
     cooling_list = []
 
-    # Need to get stats for cooling players too
-    stats_merged = stats_df.merge(
+    # Need to get stats for cooling players too -- pickup_stats covers ALL
+    # current-season players (rostered included), unlike the filtered ranker output.
+    stats_lookup = pickup_stats.merge(
         allPlayerData[['id', 'full_name', 'positionCode', 'sweaterNumber']],
-        left_on='player_id',
-        right_on='id',
-        how='left'
-    )
-    last5_merged = last5_df.set_index('player_id')
+        left_on='playerId', right_on='id', how='left'
+    ).set_index('playerId')
 
     for _, row in cooling_df.iterrows():
         player_id = int(row['playerId'])
-        player_stats = stats_merged[stats_merged['player_id'] == player_id]
-        l5 = last5_merged.loc[player_id] if player_id in last5_merged.index else None
-
-        if player_stats.empty:
+        if player_id not in stats_lookup.index:
             continue
-
-        ps = player_stats.iloc[0]
+        ps = stats_lookup.loc[player_id]
         cooling_list.append({
             'id': player_id,
-            'full_name': row.get('full_name', row.get('display_name', 'Unknown')),
-            'positionCode': row.get('positionCode', ps.get('positionCode', 'C')),
+            'full_name': row.get('full_name') if not pd.isna(row.get('full_name')) else ps['name'],
+            'positionCode': row.get('positionCode') if not pd.isna(row.get('positionCode')) else ps['position'],
             'headshot': get_headshot_url(player_id),
-            'sweaterNumber': int(ps.get('sweaterNumber', 0)) if not pd.isna(ps.get('sweaterNumber')) else 0,
+            'sweaterNumber': int(ps['sweaterNumber']) if not pd.isna(ps.get('sweaterNumber')) else 0,
             'gamesPlayed': int(row['gamesPlayed']),
-            'goals': int(ps.get('goals', 0)),
-            'assists': int(ps.get('assists', 0)),
-            'points': int(ps.get('points', 0)),
-            'plusMinus': int(ps.get('plusMinus', 0)),
-            'powerPlayPoints': int(ps.get('powerPlayPoints', 0)),
-            'shorthandedPoints': int(ps.get('shorthandedPoints', 0)),
-            'shots': int(ps.get('shots', 0)),
-            'avgToi': str(ps.get('avgToi', '0:00')),
-            'fantasyPoints': float(ps.get('fantasyPoints', 0)),
-            'season_ppg': float(ps.get('fantasyPoints', 0) / max(1, int(ps.get('gamesPlayed', 1)))),
-            'last5_goals': int(l5.get('goals', 0)) if l5 is not None else 0,
-            'last5_assists': int(l5.get('assists', 0)) if l5 is not None else 0,
-            'last5_points': int(l5.get('points', 0)) if l5 is not None else 0,
-            'last5_fantasyPoints': float(l5.get('fantasyPoints', 0)) if l5 is not None else 0,
+            'goals': int(round(ps['goals'])),
+            'assists': int(round(ps['assists'])),
+            'points': int(round(ps['points'])),
+            'powerPlayPoints': int(round(ps['powerPlayPoints'])),
+            'shorthandedPoints': int(round(ps['shorthandedPoints'])),
+            'shots': int(round(ps['shots'])),
+            'avgToi': _format_toi(ps['avgToiSeconds']),
+            'fantasyPoints': float(ps['fantasyPoints']),
+            'season_ppg': float(ps['season_ppg']),
+            'last5_goals': int(round(ps['last5_goals'])),
+            'last5_assists': int(round(ps['last5_assists'])),
+            'last5_points': int(round(ps['last5_points'])),
+            'last5_fantasyPoints': float(ps['last5_fantasyPoints']),
             'weighted_score': 0,
             'ml_score': float(row.get('ml_score', 0)),
             'final_score': 0,

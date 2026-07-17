@@ -73,8 +73,8 @@ older than `STALE_DAYS = 3`. Verified today:
 "current season" data to refresh until the next one starts (~October). Don't treat
 this warning as a bug in the offseason.
 
-NHL API data (rosters, per-player stats) self-populates through 24h file caches on
-first `pickups`/`api_export.py` run — no manual step. Yahoo is optional: see
+NHL API data (roster identity only — `players_cache.csv`) self-populates through a
+24h file cache on first `pickups`/`api_export.py` run — no manual step. Yahoo is optional: see
 `YAHOO_SETUP.md` for the OAuth flow. `oauth2.json` and `.env` are both untracked and
 gitignored (verified `git ls-files .env oauth2.json` → empty) — **never print or
 commit their contents**. The league id is hardcoded at `src/yahooAPI.py:12`
@@ -89,7 +89,7 @@ All commands are repo-root relative, run from the venv interpreter.
 | Command | Does | Prerequisites | Writes | Status |
 |---|---|---|---|---|
 | `.\.venv\Scripts\python.exe main.py train-pickups` | Trains pickup (XGBClassifier + `RandomizedSearchCV`, 20 iter, `PredefinedSplit` train≤2022/val 2023) then cooling model (`src/main.py:trainPickups`) | Both MoneyPuck CSVs present | `models/pickups/model.pkl`, `models/cooling/model.pkl`, `reports/pickup_{roc_curve,feature_importance}.png`, `reports/cooling_{roc_curve,feature_importance}.png` | **UNVERIFIED** — not run during authoring (writes model binaries, minutes-long RandomizedSearchCV). Expected output magnitudes: pickup val AUC ≈0.73, cooling ≈0.64 — canonical record of the exact numbers: `fht-quality-gates` golden inventory |
-| `.\.venv\Scripts\python.exe main.py pickups` | Heuristic + ML blend ranking of free agents (`main.py:runPickups`, `final_score = 0.3*heuristic + 0.7*ml_score`) | Trained `models/pickups/model.pkl` and `models/cooling/model.pkl` (**currently absent — see below**), both MoneyPuck CSVs, network for NHL API (~900 players ×2 endpoints, first run ~5-10 min); Yahoo optional | `data/raw/players_cache.csv`, `stats_current.csv`, `stats_last5.csv`, `data/processed/current_players_features.csv` | **UNVERIFIED** — models missing, needs network |
+| `.\.venv\Scripts\python.exe main.py pickups` | Heuristic + ML blend ranking of free agents (`main.py:runPickups`, `final_score = 0.3*heuristic + 0.7*ml_score`) | Trained `models/pickups/model.pkl` and `models/cooling/model.pkl` (**currently absent — see below**), both MoneyPuck CSVs, network for the NHL API roster fetch only (~32 team requests via `getAllPlayersWithCache`, seconds not minutes — the old per-player stats fetch is deleted); Yahoo optional | `data/raw/players_cache.csv`, `data/processed/current_players_features.csv` | **UNVERIFIED** — models missing, needs network |
 | `.\.venv\Scripts\python.exe main.py spot-check [--date YYYYMMDD] [--top N]` | Offline backtest of the pickup model at fixed dates (default `--top 15`, dates `20251101 20251201 20260101 20260201 20260301` from `src/backtest.py:DEFAULT_DATES`) | `models/pickups/model.pkl` + MoneyPuck cache only, no network | Nothing persisted (prints tables) | **UNVERIFIED** — `models/pickups/model.pkl` absent. Verified `--help` output matches this signature |
 | `.\.venv\Scripts\python.exe main.py train-draft` / `draft` / `keeper` | **No longer stubs** (shipped Phase B4/keeper): `train-draft` trains `src/models/draft.py`; `draft` writes the VORP board `data/processed/draft_rankings.csv` (goalie-inclusive since 2026-07-16); `keeper` ranks the Yahoo roster's keepers | `train-draft`: `player_seasons.csv`. `draft`: `player_seasons.csv` + trained draft/goalie models (goalies optional — board degrades to skaters-only). `keeper`: Yahoo OAuth (`oauth2.json`) | `models/draft/model.pkl` (train), `data/processed/draft_rankings.csv` (draft) | Implemented (`main.py` `trainDraft`/`runDraft`/`runKeeper`); no `NotImplementedError` remains |
 | `.\.venv\Scripts\python.exe main.py train-goalies` | Trains the goalie draft ranker `src/models/goalieDraft.py` (baselines A/B → Ridge → XGBoost, ships whichever passes GATE G3; as of 2026-07-16 it ships **Baseline B `fp_w3`** — `{'kind': 'baseline_b'}`) | `data/processed/goalie_seasons.csv` present (build it first) | `models/goalieDraft/model.pkl` | **VERIFIED** 2026-07-16: GATE G3 failed → Baseline B shipped; test-2024 untouched |
@@ -116,7 +116,7 @@ config file layer. Force-refresh always means "delete the cache file."
 
 | Cache file | TTL / invalidation | Force refresh |
 |---|---|---|
-| `data/raw/players_cache.csv`, `stats_current.csv`, `stats_last5.csv` | 24h wall-clock, checked by `getWithCache` (`src/dataProcessing.py:56`) via `os.path.getmtime` | Delete the file |
+| `data/raw/players_cache.csv` — the pickup path's only NHL API cache (identity/roster only; the old per-player `stats_current.csv`/`stats_last5.csv` fetches are deleted) | 24h wall-clock, checked by `getWithCache` (`src/dataProcessing.py:56`) via `os.path.getmtime` | Delete the file |
 | `data/processed/current_players_features.csv` | 24h, checked independently in **two places** with duplicated logic: `main.py:latestGameState` and `api_export.py:latestGameState` | Delete the file |
 | `data/processed/moneypuck_games_2020.csv` (pickup pipeline) / `moneypuck_games_2008.csv` (draft pipeline) | Reused whenever its mtime is newer than `moneypuck_current.csv`'s mtime (`src/moneypuck.py:80-83`, `loadGameLogs`) — i.e. it survives until you replace the current-season download with a newer one. The `_2008` variant is a superset of `_2020`; the filename number is `min_season`, a floor, not a single year | Delete the file, or just replace `moneypuck_current.csv` with a fresher download (rebuild re-reads the 2.6 GB history file — minutes) |
 | `data/processed/player_seasons.csv` (draft) | No auto-expiry — `buildPlayerSeasons` does not self-cache; the `.to_csv` lives in `scripts/build_player_seasons.py`, run on demand | Delete + re-run the script (re-reads the 2.6 GB history) |
@@ -132,7 +132,7 @@ Constants catalog (all read from source today):
 | `CURRENT_SEASON` | 2025 (MoneyPuck season convention — see `fht-domain-reference` §2) | `main.py:16`, `api_export.py:19` (duplicated) |
 | `SEASON`, `DEFAULT_DATES` | 2025; `[20251101, 20251201, 20260101, 20260201, 20260301]` | `src/backtest.py:24-25` |
 | Roster/draft proxy cutoffs | `ROSTER_PROXY_CUTOFF=150`, `DRAFT_PROXY_CUTOFF=150`, `PRIOR_MIN_GAMES=40`, `HOT_PERCENTILE=0.75` | `src/backtest.py:31-34` |
-| Hardcoded `20252026` season id | Known debt (Phase E) | `src/dataProcessing.py:71` (`extractCurrentStats`), `api_export.py:25` (headshot URL) |
+| Hardcoded `20252026` season id | Known debt (Phase E) | `api_export.py:25` (headshot URL) |
 | `STALE_DAYS` | 3 | `src/moneypuck.py:22` |
 | Fuzzy-match `score_cutoff` | 85 | `src/yahooAPI.py:31`, `src/keepers.py:53` |
 | Pickup blend weights | `0.3 * heuristic + 0.7 * ml_score` | `main.py:112` (`runPickups`), `api_export.py:110` |
@@ -142,7 +142,6 @@ Constants catalog (all read from source today):
 **Annual rollover checklist** (nothing automated does this — a human/agent must
 edit source each new season): bump `CURRENT_SEASON` in *both* `main.py:16` and
 `api_export.py:19`; bump `SEASON`/`DEFAULT_DATES` in `src/backtest.py`; update the
-hardcoded `20252026` in `src/dataProcessing.py::extractCurrentStats` and the
 headshot-URL season string in `api_export.py`; create a fresh
 `data/raw/keepers.csv` (doesn't exist yet — see below); download a fresh
 `moneypuck_current.csv` for the new season.
@@ -169,10 +168,13 @@ auto-expires, so the new season's NHL API records won't be fetched until you del
   `data/processed/*.json`, `reports/`) — don't try to `git add` outputs from
   training or data downloads; they won't diff usefully and aren't meant to be
   versioned.
-- **First-run NHL fetch is slow and rate-limited.** `src/nhlAPI.py` retries on 429
-  with a sleep (5s for roster calls, 15s for player calls); a cold `pickups` run
-  against ~900 players is a multi-minute operation the first time, then near-
-  instant for 24h via the caches in section 4.
+- **First-run NHL fetch is slow and rate-limited (draft/goalie builds only).**
+  `src/nhlAPI.py` retries on 429 with a sleep (5s for roster calls, 15s for player
+  calls); `scripts/build_birthdates.py` and `scripts/build_goalie_seasons.py` still
+  fetch per-player, so a cold run of either is a multi-minute operation. `pickups`
+  no longer does per-player fetches — its only NHL API traffic is the ~32-request
+  roster cache (`players_cache.csv`), which is near-instant even cold, then
+  near-instant for 24h via the caches in section 4.
 - **`data/raw/keepers.csv` does not exist yet** (verified via glob) — `main.py
   draft` is a stub anyway, but `src/keepers.py::loadKeepers` will raise if this
   file is missing or empty ("an empty keeper list silently drafts everyone").

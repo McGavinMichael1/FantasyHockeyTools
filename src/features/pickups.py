@@ -21,16 +21,21 @@ def build_pickup_features(df: pd.DataFrame) -> pd.DataFrame:
     # TODO: implement pickup feature engineering
     raise NotImplementedError
 
-def rankFreeAgents(stats_current_df, stats_last5_df, players_df, rostered_nhle_ids):
-    df = pd.merge(stats_current_df, stats_last5_df, on='player_id', suffixes=('_season', '_last5'))
-    df = pd.merge(df, players_df, left_on='player_id', right_on='id')
+def rankFreeAgents(pickup_stats_df, players_df, rostered_nhle_ids):
+    """Heuristic free-agent ranking over MoneyPuck-derived pickup stats
+    (moneypuck.buildPickupStats output). players_df is the NHL roster
+    identity frame; players missing from it (e.g. recently moved) fall back
+    to MoneyPuck's name/position instead of being dropped.
+    """
+    df = pd.merge(pickup_stats_df, players_df,
+                  left_on='playerId', right_on='id', how='left')
+    df['full_name'] = df['full_name'].fillna(df['name'])
+    df['positionCode'] = df['positionCode'].fillna(df['position'])
 
-    df['season_ppg'] = df['fantasyPoints_season'] / df['gamesPlayed'].replace(0, 1)
-
-    df['weighted_score'] = 0.6 * df['season_ppg'] + 0.4 * df['fantasyPoints_last5']
+    df['weighted_score'] = 0.6 * df['season_ppg'] + 0.4 * df['last5_fantasyPoints']
 
     df = df[df['positionCode'] != 'G']  # remove goalies
-    df = df[~df['player_id'].isin(rostered_nhle_ids)]  # remove rostered players
+    df = df[~df['playerId'].isin(rostered_nhle_ids)]  # remove rostered players
     df = df[df['gamesPlayed'] >= 5]  # remove small sample size players
 
     return df.sort_values('weighted_score', ascending=False)
