@@ -153,8 +153,6 @@ export class AnthropicKeeperAdvisorProvider implements KeeperAdvisorProvider {
       output_config: {
         format: {
           type: 'json_schema',
-          name: 'keeper_advisor_output',
-          strict: true,
           schema,
         },
       },

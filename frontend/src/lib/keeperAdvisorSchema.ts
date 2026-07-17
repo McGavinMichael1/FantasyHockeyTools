@@ -93,12 +93,12 @@ export const PROVIDER_ANSWER_SCHEMA = {
   type: 'object',
   properties: {
     ...RESPONSE_PROPERTIES,
+    // Anthropic structured outputs rejects array length/uniqueness constraints,
+    // so the "exactly four unique IDs" rule is enforced by isProviderAnswerDraft
+    // and the scenario lookup in keeperAdvisorService, not by the JSON schema.
     recommended_player_ids: {
       type: 'array',
       items: { type: 'integer' },
-      minItems: 4,
-      maxItems: 4,
-      uniqueItems: true,
     },
   },
   required: [...Object.keys(RESPONSE_PROPERTIES), 'recommended_player_ids'],

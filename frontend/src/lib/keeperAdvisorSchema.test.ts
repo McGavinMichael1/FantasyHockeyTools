@@ -86,9 +86,21 @@ test('classification and provider draft require exact ids and memory', () => {
 });
 
 
-test('provider answer schema constrains recommended player IDs to one unique set of four', () => {
+test('provider answer schema keeps recommended player IDs an unconstrained integer array', () => {
+  // Anthropic structured outputs rejects minItems/maxItems/uniqueItems; the
+  // exactly-four-unique rule lives in isProviderAnswerDraft instead.
   const recommendedPlayerIds = PROVIDER_ANSWER_SCHEMA.properties.recommended_player_ids;
-  assert.equal(recommendedPlayerIds.minItems, 4);
-  assert.equal(recommendedPlayerIds.maxItems, 4);
-  assert.equal(recommendedPlayerIds.uniqueItems, true);
+  assert.equal(recommendedPlayerIds.type, 'array');
+  assert.equal(recommendedPlayerIds.items.type, 'integer');
+  assert.equal('minItems' in recommendedPlayerIds, false);
+  assert.equal('maxItems' in recommendedPlayerIds, false);
+  assert.equal('uniqueItems' in recommendedPlayerIds, false);
+  assert.equal(isProviderAnswerDraft({
+    ...response,
+    recommended_player_ids: [1, 2, 3, 5],
+  }), true);
+  assert.equal(isProviderAnswerDraft({
+    ...response,
+    recommended_player_ids: [1, 2, 3],
+  }), false);
 });
