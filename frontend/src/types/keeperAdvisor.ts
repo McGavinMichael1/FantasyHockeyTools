@@ -117,3 +117,21 @@ export interface AdvisorContext {
   roster: AdvisorContextPlayer[];
   scenario_data: { sets: ScenarioSet[] };
 }
+
+export interface StoredAdvisorTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  reply?: KeeperAdvisorResponse;
+  created_at: string;
+  failed?: boolean;
+}
+
+export interface StoredAdvisorConversation {
+  schema_version: 1;
+  context_id: string;
+  season: string;
+  updated_at: string;
+  conversation_summary: string | null;
+  turns: StoredAdvisorTurn[];
+}
