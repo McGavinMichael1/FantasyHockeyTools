@@ -10,10 +10,34 @@ import pandas as pd
 from rapidfuzz import process
 
 
+TEAM_COUNT = 10
 KEEPER_COUNT = 4
 KEEPER_ROUNDS = (18, 17, 16, 15)
+KEEPER_TENURE = "unknown"
+ROSTER_SLOTS = {
+    "C": 2,
+    "L": 2,
+    "R": 2,
+    "D": 4,
+    "UTIL": 2,
+    "G": 2,
+    "BN": 5,
+    "IR+": 2,
+}
 REPLACEMENT_RANKS = {"C": 24, "L": 24, "R": 24, "D": 48, "G": 20}
 ELIGIBLE_POSITIONS = frozenset(REPLACEMENT_RANKS)
+
+
+def league_rules() -> dict:
+    """League assumptions used by deterministic keeper math and its advisor."""
+    return {
+        "team_count": TEAM_COUNT,
+        "keeper_count": KEEPER_COUNT,
+        "keeper_rounds": list(KEEPER_ROUNDS),
+        "keeper_tenure": KEEPER_TENURE,
+        "roster_slots": dict(ROSTER_SLOTS),
+        "replacement_ranks": dict(REPLACEMENT_RANKS),
+    }
 
 
 def target_season_label(feature_season: int) -> str:
@@ -51,10 +75,11 @@ def round_pick_costs(projections: pd.DataFrame) -> dict[int, float]:
     board = projections.sort_values("projected_total", ascending=False).reset_index(drop=True)
     costs = {}
     for round_number in KEEPER_ROUNDS:
-        start = (round_number - 1) * 10
-        picks = board.iloc[start : start + 10]
-        if len(picks) < 10:
-            raise ValueError("Need at least 180 projected skaters to price keeper rounds")
+        start = (round_number - 1) * TEAM_COUNT
+        picks = board.iloc[start : start + TEAM_COUNT]
+        if len(picks) < TEAM_COUNT:
+            required = max(KEEPER_ROUNDS) * TEAM_COUNT
+            raise ValueError(f"Need at least {required} projected players to price keeper rounds")
         costs[round_number] = float(picks["projected_total"].mean())
     return costs
 
