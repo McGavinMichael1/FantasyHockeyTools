@@ -79,6 +79,10 @@ test('classification and provider draft require exact ids and memory', () => {
     ...response,
     recommended_player_ids: [1, 2, 3],
   }), false);
+  assert.equal(isProviderAnswerDraft({
+    ...response,
+    recommended_player_ids: [1, 2, 2, 3],
+  }), false);
 });
 
 
