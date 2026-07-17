@@ -7,7 +7,6 @@ import pandas as pd
 from src import backtest
 from src import dataProcessing
 from src import draft_explain
-from src import fantasyPoints
 from src import keeper
 from src import keepers
 from src import moneypuck
@@ -79,13 +78,14 @@ def latestGameState():
 def runPickups():
     moneypuck.checkCurrentFreshness()
 
-    # Heuristic ranker on NHL API data
+    # Identity/roster only -- the sole remaining NHL API use in this path
     allPlayerData = dataProcessing.getAllPlayersWithCache()
     allPlayerData = dataProcessing.flattenPlayerNames(allPlayerData)
-    stats_df = dataProcessing.getAllStatsWithCache(allPlayerData['id'])
-    stats_df['fantasyPoints'] = stats_df.apply(lambda row: fantasyPoints.calculateSkaterPoints(row), axis=1)
-    last5_df = dataProcessing.getAllLast5WithCache(allPlayerData['id'])
-    last5_df['fantasyPoints'] = last5_df.apply(lambda row: fantasyPoints.calculateSkaterPoints(row), axis=1)
+
+    # Heuristic stats from MoneyPuck: full league scoring incl. hits/blocks
+    # (no plusMinus/GWG -- the same accepted approximation as the ML label)
+    game_df = moneypuck.loadGameLogs(min_season=2020)
+    pickup_stats = moneypuck.buildPickupStats(game_df, CURRENT_SEASON)
 
     # Try to get rostered players from Yahoo (optional)
     rostered_nhle_ids = set()
@@ -101,7 +101,7 @@ def runPickups():
     except Exception as e:
         print(f"⚠️  Yahoo API error (continuing without roster filter): {e}")
 
-    results = pickups.rankFreeAgents(stats_df, last5_df, allPlayerData, rostered_nhle_ids)
+    results = pickups.rankFreeAgents(pickup_stats, allPlayerData, rostered_nhle_ids)
 
     # ML score from the saved model (train with: python main.py train-pickups)
     # Models regress next-5-game FP/g; convert to 0-1 percentile ranks so the
@@ -122,7 +122,7 @@ def runPickups():
 
     results['weighted_score_normalized'] = (results['weighted_score'] - results['weighted_score'].min()) / (results['weighted_score'].max() - results['weighted_score'].min())
     combined = results.merge(current_players[['playerId', 'ml_score', 'pred_next5_fp']],
-                             left_on='player_id', right_on='playerId', how='left')
+                             on='playerId', how='left')
     combined = combined.dropna(subset=['ml_score'])
     combined['final_score'] = 0.3 * combined['weighted_score_normalized'] + 0.7 * combined['ml_score']
 

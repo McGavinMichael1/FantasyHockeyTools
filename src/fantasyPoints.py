@@ -1,6 +1,7 @@
 # League scoring weights for skaters — the single source of truth.
-# GWG and plusMinus are only available from the NHL API path; the MoneyPuck
-# path (moneypuckGamePoints) omits them, a documented ~5% approximation.
+# plusMinus and GWG stay listed for completeness but MoneyPuck data doesn't
+# carry them, so moneypuckGamePoints (the only skater scoring path) omits
+# them — a documented ~5% approximation.
 SKATER_WEIGHTS = {
     'goals': 3,
     'assists': 2,
@@ -12,18 +13,6 @@ SKATER_WEIGHTS = {
     'hits': 0.15,
     'blocks': 0.35,
 }
-
-
-def calculateSkaterPoints(stats):
-    points = 0
-    points += stats.get('goals', 0) * SKATER_WEIGHTS['goals']
-    points += stats.get('assists', 0) * SKATER_WEIGHTS['assists']
-    points += stats.get('plusMinus', 0) * SKATER_WEIGHTS['plusMinus']
-    points += stats.get('gameWinningGoals', 0) * SKATER_WEIGHTS['gameWinningGoals']
-    points += stats.get('powerPlayPoints', 0) * SKATER_WEIGHTS['powerPlayPoints']
-    points += stats.get('shorthandedPoints', 0) * SKATER_WEIGHTS['shorthandedPoints']
-    points += stats.get('shots', 0) * SKATER_WEIGHTS['shotsOnGoal']
-    return points
 
 
 # League scoring weights for goalies — the single source of truth, same

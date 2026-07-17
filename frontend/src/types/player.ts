@@ -12,7 +12,6 @@ export interface Player {
   goals: number;
   assists: number;
   points: number;
-  plusMinus: number;
   powerPlayPoints: number;
   shorthandedPoints: number;
   shots: number;
