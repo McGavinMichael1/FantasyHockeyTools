@@ -1,22 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { KeeperRecommendation, KeeperSection } from '@/types/player';
 import { Headshot, PositionChip, ScoreMeter } from '@/components/rink/bits';
+import { KeeperAdvisor } from '@/components/keeper/KeeperAdvisor';
 import styles from './page.module.css';
 
 interface ApiResponse {
   keeper?: KeeperSection | null;
   error?: string;
-}
-
-function formatDate(value: string | null): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? null
-    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function KeeperCard({ player }: { player: KeeperRecommendation }) {
@@ -99,7 +92,13 @@ export default function KeeperPage() {
     loadKeeperBoard();
   }, []);
 
-  const summaryDate = formatDate(keeper?.summary_generated_at ?? null);
+  const playerNames = useMemo(() => {
+    const names: Record<number, string> = {};
+    for (const player of keeper?.advisor_roster ?? []) {
+      if (player.player_id !== null) names[player.player_id] = player.name;
+    }
+    return names;
+  }, [keeper?.advisor_roster]);
 
   return (
     <div className={styles.page}>
@@ -133,7 +132,6 @@ export default function KeeperPage() {
             <p className={styles.stateTitle}>No keeper board yet</p>
             <p>Build your roster analysis, then export its cached result for this page.</p>
             <code className={styles.code}>{'.\\.venv\\Scripts\\python.exe main.py keeper'}</code>
-            <code className={styles.code}>{'.\\.venv\\Scripts\\python.exe scripts\\build_keeper_summary.py'}</code>
             <code className={styles.code}>{'.\\.venv\\Scripts\\python.exe api_export.py --keeper-only'}</code>
           </div>
         ) : (
@@ -175,32 +173,19 @@ export default function KeeperPage() {
               </div>
             </section>
 
-            <section className={styles.summary} aria-label="Cached keeper explanation">
-              <div className={styles.summaryMark}>K</div>
-              <div>
-                <div className={styles.summaryHeading}>
-                  <span>Cached manager note</span>
-                  {summaryDate && <small>Generated {summaryDate}</small>}
-                </div>
-                {keeper.summary ? (
-                  <p>{keeper.summary}</p>
-                ) : (
-                  <>
-                    <p className={styles.summaryEmpty}>
-                      The rankings are ready. Generate the one-time explanation when you&apos;re
-                      ready; it will be reused for the rest of this season.
-                    </p>
-                    <code className={styles.code}>{'.\\.venv\\Scripts\\python.exe scripts\\build_keeper_summary.py'}</code>
-                  </>
-                )}
-              </div>
-            </section>
-
             <section className={styles.cards} aria-label="Recommended keeper cards">
               {keeper.recommendations.map((player) => (
                 <KeeperCard key={player.id ?? player.full_name} player={player} />
               ))}
             </section>
+
+            <KeeperAdvisor
+              ready={keeper.advisor_ready}
+              contextId={keeper.advisor_context_id}
+              generatedAt={keeper.advisor_generated_at}
+              season={keeper.season}
+              playerNames={playerNames}
+            />
           </>
         )}
       </main>

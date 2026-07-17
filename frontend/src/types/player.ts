@@ -1,3 +1,5 @@
+import type { KeeperAdvisorRosterPlayer } from './keeperAdvisor';
+
 export type Position = 'C' | 'L' | 'R' | 'D' | 'G';
 
 export interface Player {
@@ -85,8 +87,10 @@ export interface KeeperRecommendation {
 
 export interface KeeperSection {
   season: string;
-  summary: string | null;
-  summary_generated_at: string | null;
+  advisor_ready: boolean;
+  advisor_context_id: string | null;
+  advisor_generated_at: string | null;
+  advisor_roster: KeeperAdvisorRosterPlayer[];
   recommendations: KeeperRecommendation[];
 }
 
