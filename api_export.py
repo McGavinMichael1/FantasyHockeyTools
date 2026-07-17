@@ -21,7 +21,8 @@ OUTPUT_PATH = os.path.join('data', 'processed', 'frontend_data.json')
 DRAFT_RANKINGS_PATH = os.path.join('data', 'processed', 'draft_rankings.csv')
 DRAFT_SUMMARIES_PATH = os.path.join('data', 'processed', 'draft_summaries.json')
 KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
-KEEPER_SUMMARY_PATH = os.path.join('data', 'processed', 'keeper_summary.json')
+KEEPER_ADVISOR_CONTEXT_PATH = os.path.join(
+    'data', 'processed', 'keeper_advisor_context.json')
 FACTOR_COLS = [f'factor_{i}' for i in range(1, 7)]
 
 
@@ -138,15 +139,24 @@ def build_draft_list():
     return draft_list
 
 
-def _load_keeper_summary() -> dict:
-    if not os.path.exists(KEEPER_SUMMARY_PATH):
+def _load_keeper_advisor_metadata() -> dict:
+    if not os.path.exists(KEEPER_ADVISOR_CONTEXT_PATH):
         return {}
     try:
-        with open(KEEPER_SUMMARY_PATH, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (ValueError, OSError) as e:
-        print(f"Could not read {KEEPER_SUMMARY_PATH} ({e}); exporting keeper rankings without a summary")
+        with open(KEEPER_ADVISOR_CONTEXT_PATH, 'r', encoding='utf-8') as file:
+            context = json.load(file)
+    except (OSError, ValueError) as error:
+        print(f"Could not read {KEEPER_ADVISOR_CONTEXT_PATH} ({error}); "
+              "exporting keeper rankings without advisor chat")
         return {}
+    if context.get('schema_version') != 1 or not isinstance(context.get('context_id'), str):
+        return {}
+    return {
+        'schema_version': context['schema_version'],
+        'context_id': context['context_id'],
+        'generated_at': context.get('generated_at'),
+        'season': str(context.get('season', '')),
+    }
 
 
 def _optional_number(row, column, digits=None):
@@ -163,7 +173,7 @@ def _optional_int(row, column):
 
 
 def build_keeper_section():
-    """Shape cached keeper rankings and their one-time LLM summary for the UI."""
+    """Shape cached keeper rankings and advisor-chat readiness for the UI."""
     if not os.path.exists(KEEPER_RANKINGS_PATH):
         print(f"{KEEPER_RANKINGS_PATH} not found -- run 'python main.py keeper' first")
         return None
@@ -178,8 +188,6 @@ def build_keeper_section():
         return None
 
     season = str(recommendations.iloc[0].get('target_season', ''))
-    summary_cache = _load_keeper_summary()
-    summary = summary_cache.get('summary') if summary_cache.get('season') == season else None
     keeper_list = []
     for _, row in recommendations.iterrows():
         player_id = _optional_int(row, 'playerId')
@@ -200,10 +208,28 @@ def build_keeper_section():
             'confidence': _optional_int(row, 'confidence'),
         })
 
+    advisor_roster = []
+    for _, row in rankings.iterrows():
+        name = next(
+            (str(row[column]) for column in ("full_name", "yahoo_name")
+             if column in rankings.columns and pd.notna(row.get(column))
+             and str(row.get(column)).strip()),
+            "Unknown roster player",
+        )
+        advisor_roster.append({
+            'player_id': _optional_int(row, 'playerId'),
+            'name': name,
+        })
+
+    advisor = _load_keeper_advisor_metadata()
+    advisor_ready = advisor.get('season') == season
+
     return {
         'season': season,
-        'summary': summary,
-        'summary_generated_at': summary_cache.get('generated_at') if summary else None,
+        'advisor_ready': advisor_ready,
+        'advisor_context_id': advisor.get('context_id') if advisor_ready else None,
+        'advisor_generated_at': advisor.get('generated_at') if advisor_ready else None,
+        'advisor_roster': advisor_roster,
         'recommendations': keeper_list,
     }
 

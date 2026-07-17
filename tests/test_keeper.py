@@ -4,6 +4,32 @@ import pytest
 from src import keeper
 
 
+def test_league_rules_are_the_canonical_keeper_assumptions():
+    assert keeper.league_rules() == {
+        "team_count": 10,
+        "keeper_count": 4,
+        "keeper_rounds": [18, 17, 16, 15],
+        "keeper_tenure": "unknown",
+        "roster_slots": {
+            "C": 2, "L": 2, "R": 2, "D": 4,
+            "UTIL": 2, "G": 2, "BN": 5, "IR+": 2,
+        },
+        "replacement_ranks": {"C": 24, "L": 24, "R": 24, "D": 48, "G": 20},
+    }
+
+
+def test_round_pick_costs_reads_team_count_instead_of_a_local_ten(monkeypatch):
+    monkeypatch.setattr(keeper, "TEAM_COUNT", 2)
+    board = pd.DataFrame({
+        "projected_total": [float(value) for value in range(36, 0, -1)],
+    })
+
+    costs = keeper.round_pick_costs(board)
+
+    # Round 18 starts at pick 35 in a two-team league: values 2 and 1.
+    assert costs[18] == pytest.approx(1.5)
+
+
 def _projection_board():
     rows = []
     for position, count, top_total in [

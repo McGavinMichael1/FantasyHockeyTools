@@ -85,7 +85,6 @@
 
 .kicker,
 .pickStripLabel span,
-.summaryHeading span,
 .stats dt,
 .confidence > span {
   font-family: var(--font-cond), 'Arial Narrow', sans-serif;
@@ -202,54 +201,6 @@
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.summary {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 16px;
-  padding: 22px;
-  margin: 0 0 28px;
-  border: 1px solid #ead2d7;
-  background: linear-gradient(110deg, #fff8f9 0%, var(--boards) 58%);
-}
-
-.summaryMark {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--hot);
-  color: #fff;
-  font-family: var(--font-display), 'Arial Black', sans-serif;
-  font-size: 21px;
-}
-
-.summaryHeading {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.summaryHeading span {
-  color: var(--hot-deep);
-}
-
-.summaryHeading small {
-  font-size: 12px;
-  color: var(--ink-3);
-}
-
-.summary p {
-  max-width: 930px;
-  font-size: 15px;
-  line-height: 1.58;
-}
-
-.summaryEmpty {
-  color: var(--ink-2);
 }
 
 .cards {
