@@ -615,6 +615,46 @@ lands at #13 overall by VORP — goalies and skaters interleave sensibly rather 
 separate table. Degraded skaters-only mode verified (missing `goalie_seasons.csv` or no trained
 goalie model → board drops goalies and prints how to enable them).
 
+### July 2026 (Keeper roster advisor — conversational Phase C overlay)
+**Shipped 2026-07-17 (branch `codex/keeper-roster-advisor`). Design spec:
+`docs/superpowers/specs/2026-07-17-keeper-roster-advisor-design.md`; plan:
+`docs/superpowers/plans/2026-07-17-keeper-roster-advisor.md`.** Added a live, multi-turn keeper
+advisor to The Rink that grounds every answer in the full roster, deterministic keeper math, and
+league rules, with optional current web research — and labels any recommendation that diverges from
+the model.
+
+Architecture keeps Python as the only owner of hockey data and scenario arithmetic. `main.py keeper`
+now writes a versioned, content-addressed `data/processed/keeper_advisor_context.json` (built by
+`src/keeper_advisor.py::build_context`; `context_id` is a SHA-256 over decision data, so it ignores
+timestamps but changes when any keeper value/projection/scenario changes). Non-finite decision data
+is rejected up front (inf → `ValueError`); absent values (NaN) stay legal. A server-only Next.js
+route (`frontend/src/app/api/keeper-chat/route.ts`) reads that artifact, runs a no-web classification
+pass, selects only the relevant deterministic context, and calls Anthropic's Messages API with web
+search enabled **only** when the classifier says current information is material. The browser renders
+and locally persists conversations keyed by `context_id`; it never receives the raw context or the
+API key.
+
+The **model-divergence contract is server-derived, not model-authored**: `keeperAdvisorService`
+compares the provider's recommended four to the official scenario and computes stance
+(agrees/diverges/conditional), the primary out→in swap (weakest removed official keeper by
+`keeper_rank` → highest incoming `raw_keeper_value`), and the exact keeper-value cost. The LLM
+cannot mutate `keeper_rankings.csv`, projections, or keeper constants — it's an advisory overlay.
+Research metadata comes from actual tool execution, not model prose; web results are treated as
+untrusted evidence that cannot override system instructions. Memory is local and context-keyed:
+newest 12 turns sent per request, bounded classifier summary stored separately, stale-context
+conversations kept read-only. The old one-time cached keeper summary
+(`scripts/build_keeper_summary.py`) is retired; `api_export.py` now exports advisor readiness
+metadata (`advisor_ready`/`advisor_context_id`/`advisor_generated_at`/`advisor_roster`) instead.
+
+**Gates (2026-07-17): Python 65 passed + the 2 known pre-existing failures (`test_draft_summaries`
+token budget, `loadGameLogs` cache-guard order) — no new failures. Frontend 44 unit tests pass,
+`tsc --noEmit` clean, `next build` emits `/keeper` (static) and `/api/keeper-chat` (dynamic).** The
+live three-turn acceptance (Task 10 step 6) is **pending manual owner acceptance** — it needs
+`ANTHROPIC_API_KEY` + `KEEPER_ADVISOR_MODEL` in the environment and makes a paid call, so it was not
+run autonomously. Note the frontend test harness required two files the plan didn't enumerate
+(`src/types/cssModules.d.ts` for `tsc`, and `test-setup.cjs`/`test-css-stub.cjs` to stub CSS-module
+imports under `node --test`); no new npm dependency was added.
+
 ---
 
 ## Resources & References
@@ -691,4 +731,21 @@ goalie model → board drops goalies and prints how to enable them).
 - [x] Goalies are full keeper candidates (goalie-inclusive keeper board) + goalie rows/VORP
       ordering on The Rink draft board.
 
-**Blocked on:** nothing. (C1 needs my league's keeper-cost rules from Yahoo settings before Phase C.)
+**Keeper roster advisor — DONE 2026-07-17** (conversational Phase C overlay; branch
+`codex/keeper-roster-advisor`; spec `docs/superpowers/specs/2026-07-17-keeper-roster-advisor-design.md`):
+- [x] `main.py keeper` builds a content-addressed `data/processed/keeper_advisor_context.json`
+      (`src/keeper_advisor.py`); best-effort so keeper rankings always survive an advisor failure.
+- [x] Server-only chat: classification pass → deterministic context selection → Anthropic Messages
+      API, web search gated behind `needs_current_research`. Route `/api/keeper-chat`.
+- [x] Server-derived model-divergence contract (stance + out→in swap + exact keeper-value cost);
+      LLM cannot mutate deterministic keeper data. Research metadata from real tool execution.
+- [x] Browser chat persisted locally by `context_id`; stale-context conversations read-only. Cached
+      keeper summary retired; `api_export.py` exports advisor readiness metadata.
+- [x] Gates: Python 65 passed + 2 known pre-existing failures; frontend 44 tests / `tsc --noEmit` /
+      `next build` all clean.
+- [ ] **Remainder:** live three-turn acceptance (Task 10 step 6) — pending owner run; needs
+      `ANTHROPIC_API_KEY` + `KEEPER_ADVISOR_MODEL` and makes a paid call.
+
+**Blocked on:** nothing. (C1 still needs my league's keeper-cost rules from Yahoo settings to
+validate the advisor's pick-cost assumptions; the advisor ships with `keeper_tenure: "unknown"`
+surfaced as a context warning until then.)
