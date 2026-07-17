@@ -51,7 +51,7 @@
 - [x] **LSTM save bug** — *fixed (1-line) but model stays PARKED*
 - [x] `cooling.py` plot collisions — *plots now `reports/{model}_*.png` with correct titles*
 - [x] `main.py` retrains every run — *now `python main.py train-pickups | pickups`*
-- [ ] `extractCurrentStats` hardcodes season `20252026` (Phase E)
+- [ ] MoneyPuck-only pickup pipeline hardcodes season `20252026` in `api_export.py` headshot URL (Phase E)
 - [x] Empty V2 stub files — *deleted*
 - [ ] Goalies: no scoring path, no model, filtered out of ranker (Phase D)
 

@@ -170,9 +170,9 @@ met.
   milestone-blocking Phase D work due BEFORE the October draft, owned by
   `fht-draft-campaign` — treat that as active, not parked. Precondition for the ML version:
   the non-ML scoring path exists and a draft season of its output has been eyeballed.
-  (Verified 2026-07-05: `src/fantasyPoints.py` defines `calculateSkaterPoints` only — no
-  `calculateGoaliePoints` yet; the goalie weights (GS, W, L, GA, SV, SHO) live in
-  PROJECT-PLAN's League Scoring Rules table with no implementing function.)
+  (Verified 2026-07-17: `src/fantasyPoints.py` defines `SKATER_WEIGHTS`, `GOALIE_WEIGHTS`,
+  `calculateGoaliePoints`, and `moneypuckGamePoints`; `calculateSkaterPoints` was deleted
+  July 2026 when the pickup pipeline went MoneyPuck-only.)
 - **Schedule context, prospect/callup tracker, PP-unit data, rookie draft projections:** each is
   blocked on a data source that does not exist in this repo (transaction feeds, schedule
   difficulty, PP-unit assignments, junior/AHL stats) — per PROJECT-PLAN's Parked Ideas list.

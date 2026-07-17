@@ -119,19 +119,18 @@ days old. Verified today: it printed "moneypuck_current.csv is 93 days
 old…" (data/raw file dated Apr 3, run July 5 — offseason staleness is
 expected).
 
-## 3. Scoring approximation ledger — two paths, not reconcilable line-for-line
+## 3. Scoring approximation ledger — one path
 
-| | `calculateSkaterPoints` (NHL-API path, `src/fantasyPoints.py:17-26`) | `moneypuckGamePoints` (MoneyPuck path, `src/fantasyPoints.py:29-57`) |
-|---|---|---|
-| Includes +/- and GWG | Yes | **No** — MoneyPuck game logs don't carry them directly; excluded, documented ~5% approximation (`src/fantasyPoints.py:1-3`, PROJECT-PLAN.md:66-67, 318-319) |
-| Includes hits and blocks | **No** — the NHL landing endpoint used to source these stats lacks hits/blocks fields | Yes |
-| Used for | heuristic ranker input historically, ad hoc NHL-API scoring | canonical ML label and player-season aggregation (all of `mlFeatures.py`, `buildPlayerSeasons`) |
+`moneypuckGamePoints` (`src/fantasyPoints.py:29-57`) is the single skater
+scoring function, reading `SKATER_WEIGHTS`. It omits `plusMinus` and
+`gameWinningGoals` — MoneyPuck game logs don't carry them directly — a
+documented ~5% approximation, accepted (`src/fantasyPoints.py:1-3`,
+PROJECT-PLAN.md:66-67, 318-319). It is used for both the canonical ML label
+and player-season aggregation (all of `mlFeatures.py`, `buildPlayerSeasons`)
+and the heuristic ranker input.
 
-These two functions will not produce identical point totals for the same
-player-game by design — they draw from different source APIs with different
-field coverage. They are only ever blended after normalization (e.g.
-`main.runPickups`'s `0.3·heuristic + 0.7·ml_score`), never compared as raw
-point totals.
+The old NHL-API scoring path, `calculateSkaterPoints`, was deleted July 2026
+when the pickup pipeline went MoneyPuck-only — it is no longer live code.
 
 ## 4. NHL API (`api-web.nhle.com/v1`, no auth)
 

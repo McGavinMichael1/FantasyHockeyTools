@@ -59,7 +59,7 @@ Archaeology row 6, not a conclusion (see Traps, item 1). Route any actual fix th
 | `FileNotFoundError` on `models/pickups/model.pkl` (or `models/draft/model.pkl`) | Model binaries are gitignored (`.gitignore:39` `models/**/*.pkl`, "retrain locally"); only `.gitkeep` ships (verified, no `.pkl` on disk) | `find models -type f` shows only `.gitkeep` | `.\.venv\Scripts\python.exe main.py train-pickups` (writes `model.pkl` + `reports/pickup_*.png`, several minutes, RandomizedSearchCV) |
 | `FileNotFoundError` on a MoneyPuck CSV (`2008_to_2024.csv` / `moneypuck_current.csv`) | No auto-downloader by design (`src/moneypuck.py:1-6`, license notice); files are gitignored, hand-download only | Error message lists both required paths and the moneypuck.com/data.htm URL (`src/moneypuck.py:69-74`) | Manual download runbook lives in `fht-operations`, not here |
 | `checkCurrentFreshness()` prints "moneypuck_current.csv is N days old" | `STALE_DAYS = 3` (`src/moneypuck.py:22,42`) vs. file mtime | Verified today: prints "...is 93 days old..." returns `False` | Expected in the current offseason (season over; next DL ~October). Once in-season, the same message is a real "you're missing pickups" signal |
-| Pickup/draft output looks stale after a data or feature-code change | 24h caches: `players_cache.csv`, `stats_current.csv`, `stats_last5.csv` (`src/dataProcessing.py:56-63` `getWithCache`) and `current_players_features.csv` (`main.py:34-45` `latestGameState`, same rule) | Compare mtimes (below); a cache under 24h wins regardless of what changed | Delete the specific CSV to force a refetch/rebuild; no `--no-cache` flag exists |
+| Pickup/draft output looks stale after a data or feature-code change | 24h caches: `players_cache.csv` (`src/dataProcessing.py:56-63` `getWithCache` — the only remaining 24h NHL cache in the pickup path) and `current_players_features.csv` (`main.py:34-45` `latestGameState`, same rule) | Compare mtimes (below); a cache under 24h wins regardless of what changed | Delete the specific CSV to force a refetch/rebuild; no `--no-cache` flag exists |
 | Changed feature code but numbers didn't move | `current_players_features.csv` or `moneypuck_games_{min_season}.csv` is still "fresh" by mtime and gets read instead of recomputed | Cache reused whenever `os.path.getmtime(cache_file) > os.path.getmtime(current_file)` (`src/moneypuck.py:80-83`) — code changes never invalidate it | Delete the cache after any change to `mlFeatures.py`/`fantasyPoints.py`/`moneypuck.py` aggregation logic |
 | Rebuilding `moneypuck_games_2020.csv` takes minutes, reads the full 2.6 GB file | Expected — `pd.read_csv(history_file, usecols=GAME_COLUMNS)` over `2008_to_2024.csv` (2,620,103,561 bytes, verified) | Watch for "Loading MoneyPuck data from..." / "Cached to..." prints (`src/moneypuck.py:85,92`) | Not a bug; don't kill it early |
 | "No good match found for `<player>`" (or a silent pool miss) | `rapidfuzz.process.extractOne(..., score_cutoff=85)` (`src/yahooAPI.py:31`, `src/keepers.py`) misses accents, nicknames, Jr./Sr. | Diff the Yahoo/keepers name string against MoneyPuck's `name` column | Worst case is silent — no error, player just stays in/out of the pool. Check variants by hand; no fallback matcher |
@@ -140,9 +140,9 @@ file-only task); reproduce by filtering `buildPlayerSeasons` output to McDavid/M
   situation* (`all`, `5on4`, `4on5`...); the `'all'` row already totals the rest. Always go
   through `fantasyPoints.moneypuckGamePoints` first.
 - **"Results are identical, so my change is a no-op."** Check cache mtimes first —
-  `moneypuck_games_2020.csv`, `current_players_features.csv`, `stats_current.csv`, and
-  `stats_last5.csv` can all silently serve pre-change data for up to 24h (or indefinitely,
-  until a newer `current_file` download).
+  `moneypuck_games_2020.csv`, `current_players_features.csv`, and `players_cache.csv` can
+  all silently serve pre-change data for up to 24h (or indefinitely, until a newer
+  `current_file` download).
 - **"AUC went up, ship it."** The gate is baselines plus the backtest (`src/backtest.py`), not
   raw AUC. A higher number on the same season split is more often a bug than a win.
 - **"Let me add an auto-downloader for MoneyPuck."** Never — a deliberate, documented license

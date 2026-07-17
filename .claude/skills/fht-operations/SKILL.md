@@ -132,7 +132,7 @@ Constants catalog (all read from source today):
 | `CURRENT_SEASON` | 2025 (MoneyPuck season convention — see `fht-domain-reference` §2) | `main.py:16`, `api_export.py:19` (duplicated) |
 | `SEASON`, `DEFAULT_DATES` | 2025; `[20251101, 20251201, 20260101, 20260201, 20260301]` | `src/backtest.py:24-25` |
 | Roster/draft proxy cutoffs | `ROSTER_PROXY_CUTOFF=150`, `DRAFT_PROXY_CUTOFF=150`, `PRIOR_MIN_GAMES=40`, `HOT_PERCENTILE=0.75` | `src/backtest.py:31-34` |
-| Hardcoded `20252026` season id | Known debt (Phase E) | `src/dataProcessing.py:71` (`extractCurrentStats`), `api_export.py:25` (headshot URL) |
+| Hardcoded `20252026` season id | Known debt (Phase E) | `api_export.py:25` (headshot URL) |
 | `STALE_DAYS` | 3 | `src/moneypuck.py:22` |
 | Fuzzy-match `score_cutoff` | 85 | `src/yahooAPI.py:31`, `src/keepers.py:53` |
 | Pickup blend weights | `0.3 * heuristic + 0.7 * ml_score` | `main.py:112` (`runPickups`), `api_export.py:110` |
@@ -142,7 +142,6 @@ Constants catalog (all read from source today):
 **Annual rollover checklist** (nothing automated does this — a human/agent must
 edit source each new season): bump `CURRENT_SEASON` in *both* `main.py:16` and
 `api_export.py:19`; bump `SEASON`/`DEFAULT_DATES` in `src/backtest.py`; update the
-hardcoded `20252026` in `src/dataProcessing.py::extractCurrentStats` and the
 headshot-URL season string in `api_export.py`; create a fresh
 `data/raw/keepers.csv` (doesn't exist yet — see below); download a fresh
 `moneypuck_current.csv` for the new season.

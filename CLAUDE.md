@@ -85,7 +85,7 @@ Full rationale and file:line citations: `fht-architecture-contract`.
 - Test suite currently has 2 known pre-existing failures: `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` (guard-ordering bug in `src/moneypuck.py::loadGameLogs`) and `tests/test_draft_summaries.py::test_all_summary_calls_allow_the_larger_token_budget` (token-budget assertion; discovered 2026-07-16 during the goalie campaign — it predates the branch and is unrelated to goalie work). See `fht-debugging-playbook`.
 - No CI configured.
 - `train-draft` / `draft` / `keeper` / `train-goalies` CLI commands are implemented (draft board shipped Phase B4; goalie ranker shipped 2026-07-16). Remaining Phase B/C/D work is tracked in `fht-draft-campaign` and PROJECT-PLAN's Current Phase.
-- Season constants (`CURRENT_SEASON`, `20252026` literals) are duplicated across `main.py`, `api_export.py`, `src/backtest.py`, `src/dataProcessing.py` — must be bumped in every location each season rollover.
+- Season constants (`CURRENT_SEASON`, `20252026` literals) are duplicated across `main.py`, `api_export.py`, `src/backtest.py` — must be bumped in every location each season rollover.
 
 ## Testing
 

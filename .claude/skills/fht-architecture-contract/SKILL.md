@@ -42,7 +42,7 @@ permanently in `data/raw/goalie_nhl_seasons.csv` by `src/dataProcessing.py`) int
 
 Working product: `src/moneypuck.py`, `src/fantasyPoints.py`, `src/features/mlFeatures.py`,
 `src/models/pickups.py`, `src/models/cooling.py`, `src/backtest.py`, `main.py:runPickups`,
-`src/features/pickups.py::rankFreeAgents` (`src/features/pickups.py:24-36`), `ui/app.py` (title
+`src/features/pickups.py::rankFreeAgents` (`src/features/pickups.py:24-41`), `ui/app.py` (title
 page only).
 
 Stubs — raise `NotImplementedError` or are TODO-only, verified by reading each file (2026-07-16):
