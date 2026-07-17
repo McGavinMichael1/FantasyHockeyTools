@@ -82,11 +82,10 @@ hits/blocks), then aggregate to one row per `playerId`:
 - **`main.py::runPickups` and `api_export.py::export_data`** — drop the
   `getAllStatsWithCache`/`getAllLast5WithCache` calls and the
   `calculateSkaterPoints` applies; feed `buildPickupStats` output through the
-  ranker and export. When `latestGameState` computes fresh features (cold
-  cache) it already holds the game-log frame — pass that frame to
-  `buildPickupStats` instead of re-reading; when `latestGameState` serves its
-  derived CSV cache, `buildPickupStats` loads via `loadGameLogs`' own on-disk
-  cache (a local file read, no network).
+  ranker and export. Callers load the game logs via `loadGameLogs(min_season=2020)`,
+  which serves its own on-disk cache — a local file read, never network. (No
+  frame-sharing plumbing with `latestGameState`: at worst the cached CSV is
+  read twice per run, which is seconds and matches pre-existing behavior.)
 - **Frontend export fields** — same field names where possible so the frontend
   contract changes stay minimal: `goals`, `assists`, `points`, `shots`,
   `powerPlayPoints`, `shorthandedPoints`, `avgToi` ("MM:SS" from
@@ -99,8 +98,9 @@ hits/blocks), then aggregate to one row per `playerId`:
 
 From `src/dataProcessing.py`: `getAllStatsWithCache`, `getAllLast5WithCache`,
 `extractCurrentStats`, `extractLast5Stats`, `makeAllStatsDataFrame`,
-`makeAllLast5DataFrame`, `parseToi`, `fetchAllPlayers` (the birthdate and
-goalie season builders have their own worker loops — verified). Cache files
+`makeAllLast5DataFrame`, `parseToi`. **`fetchAllPlayers` stays** — grep shows
+`makeAllBirthDatesDataFrame` (the birthdate cache builder) still uses it; only
+the goalie season builder has its own worker loop. Cache files
 `data/raw/stats_current.csv` / `stats_last5.csv` are no longer written (delete
 locally; they were never committed).
 
