@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  PROVIDER_ANSWER_SCHEMA,
   isAdvisorResponse,
   isProviderAnswerDraft,
   isTurnClassification,
@@ -78,4 +79,12 @@ test('classification and provider draft require exact ids and memory', () => {
     ...response,
     recommended_player_ids: [1, 2, 3],
   }), false);
+});
+
+
+test('provider answer schema constrains recommended player IDs to one unique set of four', () => {
+  const recommendedPlayerIds = PROVIDER_ANSWER_SCHEMA.properties.recommended_player_ids;
+  assert.equal(recommendedPlayerIds.minItems, 4);
+  assert.equal(recommendedPlayerIds.maxItems, 4);
+  assert.equal(recommendedPlayerIds.uniqueItems, true);
 });

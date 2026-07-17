@@ -93,7 +93,13 @@ export const PROVIDER_ANSWER_SCHEMA = {
   type: 'object',
   properties: {
     ...RESPONSE_PROPERTIES,
-    recommended_player_ids: { type: 'array', items: { type: 'integer' } },
+    recommended_player_ids: {
+      type: 'array',
+      items: { type: 'integer' },
+      minItems: 4,
+      maxItems: 4,
+      uniqueItems: true,
+    },
   },
   required: [...Object.keys(RESPONSE_PROPERTIES), 'recommended_player_ids'],
   additionalProperties: false,
