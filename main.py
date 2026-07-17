@@ -7,7 +7,6 @@ import pandas as pd
 from src import backtest
 from src import dataProcessing
 from src import draft_explain
-from src import fantasyPoints
 from src import keeper
 from src import keepers
 from src import moneypuck

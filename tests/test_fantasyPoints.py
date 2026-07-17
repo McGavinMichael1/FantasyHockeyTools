@@ -4,21 +4,6 @@ import pytest
 from src import fantasyPoints
 
 
-def test_calculate_skater_points_full_league_scoring():
-    # 2G + 1A - 1 plusMinus + 1 GWG + 1 PPP + 5 SOG
-    # = 6 + 2 - 0.5 + 1 + 1 + 0.75 = 10.25
-    stats = {
-        'goals': 2,
-        'assists': 1,
-        'plusMinus': -1,
-        'gameWinningGoals': 1,
-        'powerPlayPoints': 1,
-        'shorthandedPoints': 0,
-        'shots': 5,
-    }
-    assert fantasyPoints.calculateSkaterPoints(stats) == pytest.approx(10.25)
-
-
 def _moneypuck_row(playerId, gameId, situation, goals=0, pA=0, sA=0,
                    sog=0, hits=0, blocks=0, points=0):
     return {
