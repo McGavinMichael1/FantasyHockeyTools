@@ -8,6 +8,7 @@ from src import backtest
 from src import dataProcessing
 from src import draft_explain
 from src import keeper
+from src import keeper_advisor
 from src import keepers
 from src import moneypuck
 from src import yahooAPI
@@ -23,6 +24,7 @@ from src.models import pickups as pickupModel
 CURRENT_SEASON = 2025  # MoneyPuck convention: 2025 = the 2025-26 season
 KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
 GOALIE_SEASONS_PATH = os.path.join('data', 'processed', 'goalie_seasons.csv')
+PLAYER_SEASONS_PATH = os.path.join('data', 'processed', 'player_seasons.csv')
 
 
 def loadLabeledHistory():
@@ -318,19 +320,42 @@ def runDraft():
 
 
 def runKeeper():
-    """Rank the authenticated Yahoo roster's best four keepers."""
+    """Rank the authenticated Yahoo roster and build advisor context."""
     projections = buildFullProjections()
-    roster = yahooAPI.getMyRoster()
+    league = yahooAPI.getLeague()
+    roster = yahooAPI.getMyRoster(league)
     rankings = keeper.analyze_keepers(roster, projections)
     rankings['target_season'] = keeper.target_season_label(CURRENT_SEASON)
 
     os.makedirs(os.path.dirname(KEEPER_RANKINGS_PATH), exist_ok=True)
     rankings.to_csv(KEEPER_RANKINGS_PATH, index=False)
+    print(f"\nWrote {len(rankings)} roster rows to {KEEPER_RANKINGS_PATH}")
+
+    try:
+        skater_history = (
+            pd.read_csv(PLAYER_SEASONS_PATH)
+            if os.path.exists(PLAYER_SEASONS_PATH) else None
+        )
+        goalie_history = (
+            pd.read_csv(GOALIE_SEASONS_PATH)
+            if os.path.exists(GOALIE_SEASONS_PATH) else None
+        )
+        context = keeper_advisor.build_context(
+            rankings,
+            projections,
+            skater_history=skater_history,
+            goalie_history=goalie_history,
+            yahoo_settings=league.settings(),
+        )
+        keeper_advisor.write_context(context)
+        print(f"Wrote keeper advisor context {context['context_id'][:12]} to "
+              f"{keeper_advisor.CONTEXT_PATH}")
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        print(f"WARNING: keeper rankings are ready, but advisor context failed: {error}")
 
     recommended = rankings[rankings['is_recommended']].sort_values('keeper_rank')
-    print(f"\nWrote {len(rankings)} roster rows to {KEEPER_RANKINGS_PATH}")
     if recommended.empty:
-        print("No skater keeper recommendations were matched to the projection board.")
+        print("No keeper recommendations were matched to the projection board.")
         return
 
     print("\n=== Recommended keepers ===")

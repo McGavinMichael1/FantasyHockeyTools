@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": ".test-build",
+    "rootDir": ".",
+    "target": "ES2022"
+  },
+  "include": [
+    "src/types/**/*.ts",
+    "src/lib/**/*.ts",
+    "src/components/keeper/**/*.tsx",
+    "src/app/api/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".test-build"]
+}
