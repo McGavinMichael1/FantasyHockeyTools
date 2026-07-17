@@ -13,6 +13,17 @@ import {
 } from './keeperAdvisorContext';
 
 
+function scenarioPlayers(playerIds: number[]) {
+  return playerIds.map((player_id, index) => ({
+    player_id,
+    assigned_round: index + 1,
+    pick_cost: 10 - index,
+    raw_keeper_value: 100 - index * 10,
+    net_keeper_value: 90 - index * 10,
+  }));
+}
+
+
 const context: AdvisorContext = {
   schema_version: 1,
   context_id: 'ctx-1',
@@ -39,13 +50,13 @@ const context: AdvisorContext = {
     sets: [
       {
         player_ids: [1, 2, 3, 4],
-        players: [],
+        players: scenarioPlayers([1, 2, 3, 4]),
         total_model_value: 300,
         total_net_keeper_value: 100,
       },
       {
         player_ids: [1, 2, 3, 5],
-        players: [],
+        players: scenarioPlayers([1, 2, 3, 5]),
         total_model_value: 288,
         total_net_keeper_value: 88,
       },
@@ -117,6 +128,29 @@ test('loadAdvisorContext rejects a malformed scenario set', () => {
   invalidTotal.scenario_data.sets[0].total_model_value = null;
 
   for (const artifact of [invalidPlayerIds, invalidScenarioPlayer, invalidTotal]) {
+    assert.throws(
+      () => loadAdvisorContext(writeArtifact(artifact)),
+      { message: 'keeper advisor context has an unsupported or malformed schema' },
+    );
+  }
+});
+
+
+test('loadAdvisorContext rejects invalid four-player scenario invariants', () => {
+  const wrongCardinality = structuredClone(context) as unknown as {
+    scenario_data: { sets: Array<{ player_ids: unknown }> };
+  };
+  wrongCardinality.scenario_data.sets[0].player_ids = [1, 2, 3];
+  const duplicateIds = structuredClone(context) as unknown as {
+    scenario_data: { sets: Array<{ player_ids: unknown }> };
+  };
+  duplicateIds.scenario_data.sets[0].player_ids = [1, 2, 3, 3];
+  const mismatchedPlayers = structuredClone(context) as unknown as {
+    scenario_data: { sets: Array<{ players: Array<{ player_id: number }> }> };
+  };
+  mismatchedPlayers.scenario_data.sets[1].players[3].player_id = 4;
+
+  for (const artifact of [wrongCardinality, duplicateIds, mismatchedPlayers]) {
     assert.throws(
       () => loadAdvisorContext(writeArtifact(artifact)),
       { message: 'keeper advisor context has an unsupported or malformed schema' },

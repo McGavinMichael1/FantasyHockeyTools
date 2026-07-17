@@ -57,6 +57,11 @@ function isNullableInteger(value: unknown): value is number | null {
 
 
 function isTopFour(value: unknown): value is number[] {
+  return isFourDistinctIntegerIds(value);
+}
+
+
+function isFourDistinctIntegerIds(value: unknown): value is number[] {
   return Array.isArray(value) && value.length === 4 && value.every(isInteger) &&
     new Set(value).size === 4;
 }
@@ -79,7 +84,7 @@ function isAdvisorContextPlayer(value: unknown): value is AdvisorContextPlayer {
 }
 
 
-function isScenarioPlayer(value: unknown): boolean {
+function isScenarioPlayer(value: unknown): value is ScenarioSet['players'][number] {
   return isRecord(value) && isInteger(value.player_id) &&
     isInteger(value.assigned_round) && isFiniteNumber(value.pick_cost) &&
     isFiniteNumber(value.raw_keeper_value) && isFiniteNumber(value.net_keeper_value);
@@ -87,10 +92,17 @@ function isScenarioPlayer(value: unknown): boolean {
 
 
 function isScenarioSet(value: unknown): value is ScenarioSet {
-  return isRecord(value) && Array.isArray(value.player_ids) &&
-    value.player_ids.every(isInteger) && Array.isArray(value.players) &&
-    value.players.every(isScenarioPlayer) && isFiniteNumber(value.total_model_value) &&
-    isFiniteNumber(value.total_net_keeper_value);
+  if (!isRecord(value) || !isFourDistinctIntegerIds(value.player_ids) ||
+    !Array.isArray(value.players) || value.players.length !== 4 ||
+    !value.players.every(isScenarioPlayer) || !isFiniteNumber(value.total_model_value) ||
+    !isFiniteNumber(value.total_net_keeper_value)) {
+    return false;
+  }
+  const playerIds = [...value.player_ids].sort((left, right) => left - right);
+  const scenarioPlayerIds = value.players
+    .map((player) => player.player_id)
+    .sort((left, right) => left - right);
+  return playerIds.every((playerId, index) => playerId === scenarioPlayerIds[index]);
 }
 
 
