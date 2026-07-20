@@ -1,7 +1,31 @@
 # Handoff — draft validation + live board (2026-07-20)
 
-Branch `feat/draft-validation-and-live-board`, 16 commits, pushed. Suite: **141 pytest,
-58 frontend, typecheck clean.** Everything below was verified on that branch today.
+> **PARTIALLY SUPERSEDED later the same day** by `feat/mock-draft-multi-team` (PR #14). Read this
+> alongside PROJECT-PLAN's Current Phase, which is now the authoritative statement. What changed:
+>
+> - **The 10-team sweep found the real problem, and it was not a modelling one.** Replaying all ten
+>   managers instead of only the owner showed the board drafted **0 centers in 140 picks** (60 D,
+>   40 L, 20 G, 20 R) and produced rosters that could not be legally fielded. `MAX_BY_POSITION`
+>   capped positions but set no floors, and `grade()` summed all 14 picks with no lineup-legality
+>   check. Fixed with positional floors, keeper-aware floors and caps, demand-aware replacement
+>   ranks, and `lineup_fp` grading. 2025 sweep went −6.48% → −2.84% (all-picks), 10 of 10 rosters
+>   now fieldable, up from 0 of 10 — **directional only**, see below.
+> - **"Fix keeper cost" (item #1 under Next up) is half done.** A *different* bug was found and
+>   fixed first: `net_keeper_value` subtracted an absolute season total from a
+>   value-over-replacement, so the board recommended keeping nobody. The `KEEPER_ROUNDS` bug this
+>   doc describes is still open — but is now quantified in VORP (rounds 15–18 price at 0; the real
+>   final four of 2025 were worth +16.8/+16.1/+11.2/+2.2).
+> - **Suite counts below are stale:** now **174 pytest, 59 frontend**, typecheck clean. CI exists.
+> - **Still true and still the headline:** the board does not beat hand-drafting, n is tiny, and
+>   the held-out look is spent. The −1.75% single-team figure was measured on the pre-fix board and
+>   on the all-picks sum; it has not been, and cannot honestly be, re-earned.
+>
+> Everything else below — the landmines, the Yahoo scoping trap, the partial-keeper-list rule, the
+> `projected_gp` weakness, the "ideas the data does NOT support" list — is unchanged and still worth
+> reading.
+
+Branch `feat/draft-validation-and-live-board`, 16 commits, pushed. Suite at the time: **141 pytest,
+58 frontend, typecheck clean.** Everything below was verified on that branch that day.
 
 **Read first:** `CLAUDE.md`, then the skill matching your task (`.claude/skills/fht-*`), then
 PROJECT-PLAN's Current Phase. This covers only what those don't.
