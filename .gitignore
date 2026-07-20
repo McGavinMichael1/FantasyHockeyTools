@@ -27,6 +27,14 @@ uv.lock
 # Data files
 data/**/*.csv
 data/processed/*.json
+# Interrupted-fetch scratch files (src/dataProcessing.py checkpointing)
+data/**/*.partial
+
+# Exception: birthDates are immutable NHL API identity data, 68 KB, and
+# rebuilding them costs ~2900 API calls that once hung a laptop build for 12
+# hours. Committing it means a fresh clone runs the draft tools with zero API
+# calls. Refresh it with scripts/build_birthdates.py when rookies are missing.
+!data/raw/player_birthdates.csv
 # Timestamped backups of the above -- the *.json rule misses them (they end
 # in .bak-<stamp>), so without this they show up as untracked commit bait.
 data/processed/*.json.bak-*
