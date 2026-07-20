@@ -253,12 +253,11 @@ worthless as a keeper if the draft is full of 60-FP players at his position.
       > analyzer Learning Log entry / Current Phase items below. `GOALIE_WEIGHTS` +
       > `calculateGoaliePoints` shipped in `src/fantasyPoints.py`; the ranker is
       > `src/models/goalieDraft.py`.
-- [ ] Run a **mock draft against last year's results** as the end-to-end test: would this board
-      have beaten my actual 2025 draft? Harness built (`main.py mock-draft --year YYYY`), but the
-      2026-07-20 run is **VOID — keepers were not excluded from the pool** (see the Learning Log
-      and `docs/superpowers/plans/2026-07-20-mock-draft-preregistration.md`). **Blocker:** identify
-      the 40 kept players for a given season. Yahoo has no `is_keeper` flag, and rounds 15-18 mix
-      keepers with traded picks. The held-out look is NOT spent.
+- [x] Run a **mock draft against last year's results** as the end-to-end test: would this board
+      have beaten my actual 2025 draft? **No — INCONCLUSIVE, −47.3 FP (−1.75%), 2026-07-20.**
+      The board is a wash with hand-drafting: a reference, not an authority. `main.py mock-draft
+      --year YYYY`; see the Learning Log and
+      `docs/superpowers/plans/2026-07-20-mock-draft-preregistration.md`. Held-out look spent.
 
 ---
 
@@ -662,9 +661,21 @@ run autonomously. Note the frontend test harness required two files the plan did
 (`src/types/cssModules.d.ts` for `tsc`, and `test-setup.cjs`/`test-css-stub.cjs` to stub CSS-module
 imports under `node --test`); no new npm dependency was added.
 
-### July 2026 (Phase D FINAL GATE — mock draft, run VOID, held-out look NOT spent)
+### July 2026 (Phase D FINAL GATE — mock draft: INCONCLUSIVE, the board is a wash)
 
-> ⛔ **The +29.3% result below is VOID — keepers were never excluded from the draft pool.**
+**Corrected result: the board LOSES to the owner's real 2025 draft by 47.3 FP — 2,662.5 vs
+2,709.8, or −1.75%.** Pre-registered bands put anything between −5% and +5% at *inconclusive*:
+the board is roughly a wash with the owner's own judgement, usable as a reference, not as an
+authority. It won 7 of 14 picks. A coin flip on both measures. All validity gates pass, zero
+kept players on the board roster, `leakage_warning: None`. The held-out look is now spent.
+
+**Do not claim the tool drafts better than the owner.** It does not, on the one honest test
+available. What it does offer is consistency — it does not get tired in round 12 — and the live
+draft mode recomputes VORP against the remaining pool, which no human tracks unaided.
+
+Getting here took three attempts, and the first two were both wrong in the same direction:
+
+> ⛔ **The earlier +29.3% result was VOID — keepers were never excluded from the draft pool.**
 > Yahoo records kept players as picks in their keeper round (Makar 172, Draisaitl 174,
 > McDavid 175, MacKinnon 176, Kucherov 177 — rounds 15-18), so the board drafted eight
 > players who were already kept by other teams and were never available. The real round 1
@@ -677,8 +688,26 @@ imports under `node --test`); no new npm dependency was added.
 > Lesson: the eyeball gate was looking for absurd *players*. A roster of McDavid, MacKinnon
 > and Kucherov looks perfectly plausible — the absurdity was in their *availability*. Check
 > that the pool is right, not just that the names are.
+>
+> **Superseded (VOID): +1,071.2 FP (+29.3%), 4,727.8 vs 3,656.6.**
 
-**Superseded (VOID): board beats the owner's real 2025 draft by +1,071.2 FP (+29.3%): 4,727.8 vs 3,656.6.**
+**Keeper identification, settled 2026-07-20 (owner):** *"The final 4 picks of every team are
+always the kept players."* Per team, by **pick number** — never by round. Rounds cannot work
+here: picks are traded wholesale, so in 2025 team t.9 held only rounds 1-9 while t.10 held only
+10-18. Six of ten teams happened to show a clean one-per-round-15-to-18 pattern, which is
+exactly the misleading regularity that made a round-based rule look correct. `derive_keepers()`
+implements the real rule and reproduces the owner's stated keepers exactly (Swayman p70, Michkov
+p71, Johnston p78, Stützle p90), plus all eight kept stars including Matthews at round 10.
+
+Note this sits uneasily with `keeper.KEEPER_ROUNDS = (18, 17, 16, 15)`, which the keeper
+*analyzer* uses to price keepers — see `.claude/skills/OPEN-QUESTIONS.md` #1b. Unresolved.
+
+Lessons:
+- **My predictions were wrong twice, in the same direction.** Predicted +15%, first run said
+  +29.3%, truth is −1.75%. The pre-registration's worth was not in being right; it was in
+  making both errors impossible to quietly walk back.
+- **The owner caught what every automated gate missed**, by reading player names. Concrete
+  domain output beats summary metrics for validation — surface the roster, not just the margin.
 Pre-registered beforehand in `docs/superpowers/plans/2026-07-20-mock-draft-preregistration.md`
 (bar was ≥+5%); run at commit `6298898`; full report in `reports/mock_draft_2025.json`.
 `leakage_warning: None` — the shipped model's newest label is season 2024, and this grades
@@ -762,10 +791,11 @@ infra debt cleared during the offseason so draft prep lands on solid ground.
       knee cleared, Draisaitl's 65 GP was a March lower-body injury not decline, Kucherov is the
       reigning Hart winner the model marks down hardest on age) — all added real context rather
       than restating stats. New dependency `anthropic==0.116.0`, pinned in pyproject + requirements.
-- [ ] **B4 remainder:** the ONE-time test-2024 confirm — **it is the same thing as the mock
-      draft**, not a separate item: a board for the Oct 2025 draft uses season-2024 features
-      graded on season-2025 outcomes, which is exactly `season.DRAFT_TEST_SEASON`. The
-      2026-07-20 attempt was void (keepers not excluded), so the look is still unspent.
+- [x] **B4 remainder:** the ONE-time test-2024 confirm — **DONE 2026-07-20, and it is the same
+      thing as the mock draft**, not a separate item: a board for the Oct 2025 draft uses
+      season-2024 features graded on season-2025 outcomes, which is exactly
+      `season.DRAFT_TEST_SEASON`. Spent against a written pre-registration. Verdict:
+      inconclusive — the model does not beat the owner's own drafting.
 - [ ] Fill `data/raw/keepers.csv` on draft day (B0) — the filter machinery already exists
       (`src/keepers.py`, wired at `main.py:253`); it only needs the announced list.
 - [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an

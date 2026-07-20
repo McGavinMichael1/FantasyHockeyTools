@@ -380,14 +380,27 @@ def runMockDraft(year, refresh=False):
     print(f"Loaded {len(draft_df)} picks from the {year} draft; owner is {my_team_key}")
 
     # Kept players were never in the pool. Yahoo records them as ordinary picks
-    # in whatever round the keeper cost, so they have to be excluded explicitly
-    # -- leaving them in is what voided the first 2025 run, where the board
-    # drafted eight of other teams' keepers and "won" on the strength of it.
-    keeper_names = mockDraft.load_season_keepers(year)
+    # in the late slot the keeper cost, so they have to be excluded -- leaving
+    # them in is what voided the first 2025 run, where the board drafted eight
+    # of other teams' keepers and "won" on the strength of it.
+    #
+    # Derived from each team's last picks (owner's rule). An explicit
+    # data/raw/keepers_{year}.csv overrides, for a season the rule does not fit.
+    try:
+        keeper_names = mockDraft.load_season_keepers(year)
+        print(f"Keepers: using the explicit list ({len(keeper_names)} players)")
+    except FileNotFoundError:
+        kept = mockDraft.derive_keepers(draft_df)
+        keeper_names = kept['player_name'].dropna().tolist()
+        print(f"Keepers: derived {len(keeper_names)} from each team's last "
+              f"{keeper.KEEPER_COUNT} picks")
+        mine = kept[kept['team_key'] == my_team_key]
+        print(f"   yours: " + ', '.join(
+            f"{r.player_name} (p{r.pick})" for r in mine.itertuples()))
+
     before = len(draft_df)
     draft_df = draft_df[~draft_df['player_name'].isin(keeper_names)].copy()
-    print(f"Keepers: dropped {before - len(draft_df)} of {len(keeper_names)} "
-          f"keeper rows from the draft record")
+    print(f"   removed {before - len(draft_df)} keeper rows from the draft record")
 
     # Features from the season before the draft; outcomes from the season after.
     # Same display floors as the live board -- otherwise the backtest drafts

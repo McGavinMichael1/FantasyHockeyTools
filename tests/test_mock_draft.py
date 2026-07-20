@@ -261,6 +261,55 @@ def test_a_pick_the_board_never_had_is_graded_on_real_production():
     assert mockDraft.grade(replayed['my_actual'], outcomes)['total_fp'] == 250.0
 
 
+# --- deriving who was kept ------------------------------------------------
+
+def _team_draft(team_picks):
+    """team_picks: {team_key: [(pick, name), ...]}"""
+    rows = []
+    for team, picks in team_picks.items():
+        for pick, name in picks:
+            rows.append({'pick': pick, 'round': 1 + (pick - 1) // 2,
+                         'team_key': team, 'player_name': name,
+                         'yahoo_player_id': pick, 'is_mine': team == MINE})
+    return pd.DataFrame(rows)
+
+
+def test_keepers_are_each_teams_last_picks_by_pick_number():
+    # Owner's rule (2026-07-20): "the final 4 picks of every team are always the
+    # kept players." Keeping costs a late pick, so Yahoo records it in that slot.
+    draft = _team_draft({
+        MINE: [(1, 'Early A'), (5, 'Early B'), (70, 'Kept A'), (90, 'Kept B')],
+        THEIRS: [(2, 'Their Early'), (60, 'Their Kept A'), (80, 'Their Kept B')],
+    })
+
+    kept = mockDraft.derive_keepers(draft, keeper_count=2)
+
+    assert set(kept[kept['team_key'] == MINE]['player_name']) == {'Kept A', 'Kept B'}
+    assert set(kept[kept['team_key'] == THEIRS]['player_name']) == {
+        'Their Kept A', 'Their Kept B'}
+
+
+def test_keepers_are_derived_per_team_not_by_round():
+    # Rounds cannot work: picks are traded wholesale, so in 2025 one team held
+    # only rounds 1-9 and another only 10-18. A round-based rule would call the
+    # early-only team's keepers "real picks" and miss them entirely.
+    draft = _team_draft({
+        MINE: [(1, 'A'), (2, 'B'), (3, 'Kept Early')],          # all early picks
+        THEIRS: [(150, 'C'), (160, 'D'), (179, 'Kept Late')],   # all late picks
+    })
+
+    kept = mockDraft.derive_keepers(draft, keeper_count=1)
+
+    assert set(kept['player_name']) == {'Kept Early', 'Kept Late'}
+
+
+def test_deriving_keepers_raises_when_a_team_has_too_few_picks():
+    draft = _team_draft({MINE: [(1, 'Only Pick')], THEIRS: [(2, 'A'), (3, 'B')]})
+
+    with pytest.raises(ValueError, match='fewer than'):
+        mockDraft.derive_keepers(draft, keeper_count=2)
+
+
 # --- keepers were never in the pool ---------------------------------------
 
 def test_kept_players_are_removed_from_the_draftable_pool():

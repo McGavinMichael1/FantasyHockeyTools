@@ -87,7 +87,52 @@ one or two outliers and should be reported as fragile rather than as a clean win
 - Reporting the margin without the validity-gate values alongside it.
 - Treating a second 2025 run as independent evidence. There is one look.
 
-## ⛔ RESULT VOID — keepers were never excluded from the pool
+## ✅ RESULT — INCONCLUSIVE: the board is a wash with hand-drafting
+
+Corrected run, 2026-07-20, after keeper exclusion was fixed.
+
+| | Total actual FP (14 drafted picks each) |
+|---|---|
+| Owner's real 2025 draft | **2,709.8** |
+| Board (best-available by VORP) | **2,662.5** |
+| **Margin** | **−47.3 FP (−1.75%)** |
+
+Against the pre-registered bands, −1.75% is squarely **inconclusive** (−5% to
++5%): *"The board is roughly a wash with the owner's own judgement. Usable as a
+reference, not as an authority. Do not claim it beats hand-drafting."*
+
+The board won **7 of 14** individual picks. A coin flip, on both measures.
+
+### Validity gates — all pass
+
+| Gate | Threshold | Actual |
+|---|---|---|
+| Owner picks with no outcome row | ≤ 2 | **0 of 14** |
+| `unmatched_opponent_picks` | ≤ 10 | **5** |
+| Substitutions | < 40 | **21** |
+| Kept players on the board roster | 0 | **0** |
+| Leakage | none | `leakage_warning: None` |
+
+### Both prior numbers were wrong
+
+I predicted +15%. The first run said +29.3%. The truth is −1.75%. The
+pre-registration's value was not in being right — it was in making both errors
+impossible to quietly walk back.
+
+### What this actually means
+
+The draft model is **not** a step change over the owner's own judgement, and the
+board should not be presented as an authority that overrides him. It is a
+reference: a fast, consistent second opinion that lands in the same place he does.
+
+That still has real value on draft day — it does not get tired in round 12, and
+the live mode recomputes VORP against the remaining pool, which no human tracks
+in their head. But "the tool drafts better than you" is not supported by this
+test, and should not be claimed.
+
+---
+
+## ⛔ First run VOID — keepers were never excluded from the pool
 
 **Do not cite the +29.3% figure below. It is an artifact, not a finding.**
 

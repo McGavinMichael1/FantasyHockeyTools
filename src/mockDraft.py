@@ -349,6 +349,35 @@ def compare(replayed: dict, outcomes: pd.DataFrame) -> dict:
 SEASON_KEEPERS_PATH = os.path.join(BASE_DIR, '..', 'data', 'raw', 'keepers_{year}.csv')
 
 
+def derive_keepers(draft_df: pd.DataFrame, keeper_count: int = None) -> pd.DataFrame:
+    """The kept players in a past draft: each team's LAST picks, by pick number.
+
+    Owner-stated rule (2026-07-20): "the final 4 picks of every team are always
+    the kept players." Keeping a player costs a late pick, so Yahoo records the
+    keeper in that slot.
+
+    Crucially this is per-team by PICK NUMBER, not by round. Rounds do not work
+    here -- picks are traded wholesale, so in 2025 one team held only rounds 1-9
+    and another only 10-18. Six teams happened to show a clean
+    one-per-round-15-to-18 pattern, which is exactly the misleading regularity
+    that made a round-based rule look right.
+
+    Returns the keeper rows so callers can show their work rather than trusting
+    a bare name list.
+    """
+    keeper_count = keeper.KEEPER_COUNT if keeper_count is None else keeper_count
+    ranked = draft_df.sort_values('pick', ascending=False)
+    kept = ranked.groupby('team_key', sort=False).head(keeper_count)
+
+    thin = kept.groupby('team_key').size()
+    thin = thin[thin < keeper_count]
+    if not thin.empty:
+        raise ValueError(
+            f"These teams have fewer than {keeper_count} picks, so their keepers "
+            f"cannot be derived: {thin.to_dict()}")
+    return kept.sort_values('pick')
+
+
 def load_season_keepers(year: int, path: str = None) -> list[str]:
     """The players kept before a past season's draft, so never draftable.
 
