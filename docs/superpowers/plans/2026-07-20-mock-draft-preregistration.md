@@ -87,6 +87,66 @@ one or two outliers and should be reported as fragile rather than as a clean win
 - Reporting the margin without the validity-gate values alongside it.
 - Treating a second 2025 run as independent evidence. There is one look.
 
-## Result
+## Result — run 2026-07-20, code at commit `6298898`
 
-*(to be filled in once, immediately after the run, in a separate commit)*
+**The board wins by +1,071.2 FP (+29.3%).** Above the pre-registered +5% bar by
+a wide margin.
+
+| | Total actual FP |
+|---|---|
+| Owner's real 2025 draft | 3,656.6 |
+| Board (best-available by VORP) | 4,727.8 |
+| **Margin** | **+1,071.2 (+29.3%)** |
+
+`leakage_warning: None` — this is the clean year, as designed.
+
+### Validity gates — all four pass, checked before the verdict was read
+
+| Gate | Threshold | Actual |
+|---|---|---|
+| Owner picks with no outcome row | ≤ 2 | **0 of 18** |
+| `unmatched_opponent_picks` | ≤ 10 | **5** |
+| Substitutions | < 40 | **24** |
+| Eyeball | no absurdities | Board roster is McDavid, MacKinnon, Kucherov, Makar, Draisaitl, Pastrnak, Kaprizov, Vasilevskiy… all plausible |
+
+### Fragility check
+
+The board won **12 of 18** individual picks. The margin is broad-based, not one
+or two outliers — so it is not the fragile kind of win.
+
+### My point prediction was wrong
+
+I predicted ~+15% (+400 to +600 FP). The actual margin is roughly double that.
+Recording this because a pre-registration that only ever confirms the author is
+worthless.
+
+### Disclosed artifact — the margin is overstated by ~4 points
+
+I pre-registered that a margin above +30% should make me suspect a harness
+artifact rather than celebrate. At +29.3% that trigger effectively fired, so I
+went looking, and found one.
+
+**Players the owner really drafted are never removed from the pool** (`replay()`
+adds the board's choice to `taken` but not the owner's actual pick). In the
+counterfactual those picks never happen, so the player is genuinely free — but
+no opponent takes him either, because opponents replay their actual picks. He
+therefore floats down to the board for free. The board re-drafted **Adam Fox**
+at pick 78, whom the owner had really taken at pick 3.
+
+Scope: exactly one of 18 board picks, worth 155.7 FP.
+
+**Corrected margin: +915.5 FP (+25.0%).** Still far above the +5% bar, so the
+verdict is unchanged. Every correction here moves against the board, which is
+why the conclusion survives.
+
+**Per this document, 2025 is not re-run.** The four gates passed, so the run is
+not void; re-running to collect a cleaner number would be a second look at a
+season that gets exactly one. The artifact is fixed for future seasons in a
+follow-up commit, and the result above stands as produced by `6298898`.
+
+### Verdict
+
+The draft board beats hand-drafting by a wide, broad-based margin on the one
+honest test available. **Trust the board on draft day.** The live draft-day mode
+is worth having, and the remaining pre-draft work (summaries, keeper filtering)
+is worth doing on top of a ranking that has now earned it.

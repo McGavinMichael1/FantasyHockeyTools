@@ -253,8 +253,10 @@ worthless as a keeper if the draft is full of 60-FP players at his position.
       > analyzer Learning Log entry / Current Phase items below. `GOALIE_WEIGHTS` +
       > `calculateGoaliePoints` shipped in `src/fantasyPoints.py`; the ranker is
       > `src/models/goalieDraft.py`.
-- [ ] Run a **mock draft against last year's results** as the end-to-end test: would this board
-      have beaten my actual 2025 draft?
+- [x] Run a **mock draft against last year's results** as the end-to-end test: would this board
+      have beaten my actual 2025 draft? **YES — +1,071.2 FP (+29.3%), 2026-07-20.** See the
+      Learning Log entry and `docs/superpowers/plans/2026-07-20-mock-draft-preregistration.md`.
+      `main.py mock-draft --year YYYY`. The held-out look is spent; do not re-run 2025.
 
 ---
 
@@ -658,6 +660,37 @@ run autonomously. Note the frontend test harness required two files the plan did
 (`src/types/cssModules.d.ts` for `tsc`, and `test-setup.cjs`/`test-css-stub.cjs` to stub CSS-module
 imports under `node --test`); no new npm dependency was added.
 
+### July 2026 (Phase D FINAL GATE — mock draft, the held-out look, SPENT)
+
+**The board beats the owner's real 2025 draft by +1,071.2 FP (+29.3%): 4,727.8 vs 3,656.6.**
+Pre-registered beforehand in `docs/superpowers/plans/2026-07-20-mock-draft-preregistration.md`
+(bar was ≥+5%); run at commit `6298898`; full report in `reports/mock_draft_2025.json`.
+`leakage_warning: None` — the shipped model's newest label is season 2024, and this grades
+season 2025, so the model could not have seen it. **The held-out look is now spent.**
+
+Validity gates all passed *before* the verdict was read: 0 of 18 owner picks unresolved, 5
+unmatched opponent picks, 24 substitutions, no eyeball absurdities. The board won 12 of 18
+individual picks, so the margin is broad-based rather than outlier-driven.
+
+Disclosed artifact: the owner's real picks are never removed from the pool, so the board
+re-drafted Adam Fox (owner's pick 3) at pick 78 for a free 155.7 FP. Corrected margin
+**+915.5 (+25.0%)** — verdict unchanged, and every correction moves against the board.
+2025 is deliberately not re-run; it gets one look.
+
+Lessons:
+- **The rehearsal earned its keep three times over.** Running 2024 first (a contaminated year
+  that costs nothing) caught three scoring bugs — goalies graded zero because
+  `player_seasons.csv` is skaters-only, off-board rookies graded zero despite producing, and
+  the mock board skipping the GP floors the live board applies. All three inflated the board's
+  margin. Firing straight at 2025 would have burned the only clean look on a broken harness.
+- **A warning is only as good as someone reading it.** The 2025 fetch initially returned a
+  fantasy *baseball* draft: `yfa.Game(oauth, 'nhl')` does not scope `league_ids()`, and the
+  code took `[0]` of five leagues across several sports. It printed an ambiguity warning, which
+  is the only reason it was caught. That warning is now an exception, plus a league
+  name/team-count assertion at fetch time.
+- **Predictions belong in writing.** I predicted ~+15% and was off by roughly double. Recorded
+  because a pre-registration that only ever confirms its author is worthless.
+
 ---
 
 ## Resources & References
@@ -713,8 +746,12 @@ infra debt cleared during the offseason so draft prep lands on solid ground.
       knee cleared, Draisaitl's 65 GP was a March lower-body injury not decline, Kucherov is the
       reigning Hart winner the model marks down hardest on age) — all added real context rather
       than restating stats. New dependency `anthropic==0.116.0`, pinned in pyproject + requirements.
-- [ ] **B4 remainder:** the ONE-time test-2024 confirm (do it deliberately — it burns the only
-      held-out look), then fill `data/raw/keepers.csv` on draft day (B0).
+- [x] **B4 remainder:** the ONE-time test-2024 confirm — **DONE 2026-07-20, and it was the same
+      thing as the mock draft**, not a separate item: a board for the Oct 2025 draft uses
+      season-2024 features graded on season-2025 outcomes, which is exactly
+      `season.DRAFT_TEST_SEASON`. Spent once, deliberately, against a written pre-registration.
+- [ ] Fill `data/raw/keepers.csv` on draft day (B0) — the filter machinery already exists
+      (`src/keepers.py`, wired at `main.py:253`); it only needs the announced list.
 - [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an
       API key the owner doesn't have — plan on a Claude Code session in chunks), then re-run
       `api_export.py`. 50 of 774 players have summaries as of 2026-07-20. Generate these
