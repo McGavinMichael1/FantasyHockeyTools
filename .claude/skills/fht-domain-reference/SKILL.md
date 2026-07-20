@@ -59,16 +59,38 @@ Fantasy-mechanics glossary (a non-hockey engineer needs these):
   among the available pool.
 - **Replacement value / VORP** — a player's fantasy worth isn't their raw
   total, it's the surplus over what a freely available replacement at the
-  same position would produce. Planned formula (PROJECT-PLAN.md:212-228,
-  not yet implemented — `src/keeper.py` doesn't exist yet, Phase C):
-  `keeperValue = projected_total − replacementLevel[position]`, where
+  same position would produce. **Shipped** in `src/keeper.py` (the Phase C
+  module now exists):
+  `vorp = projected_total − replacementLevel[position]`, where
   `replacementLevel[pos]` is the projected total of the Nth-ranked player at
-  that position, N derived from 10 teams × starting slots (e.g. ~25th-ranked
-  C, ~45th-ranked D, given 2C/2LW/2RW/4D + Util share). Whether keepers also
-  cost a draft pick is `ASSUMED — needs confirmation` (an open
-  PROJECT-PLAN.md Phase C1 TODO, lines 215-219 — league keeper-cost rules
-  are blocked on the owner checking Yahoo settings; this item is not
-  tracked in OPEN-QUESTIONS.md).
+  that position and N comes from `keeper.replacement_ranks()`.
+
+  Two properties of N that are settled and cost real accuracy when forgotten
+  (both fixed 2026-07-20, see PROJECT-PLAN's Learning Log):
+  - **The pool is post-keeper.** A kept player is not an alternative to a draft
+    pick, so he cannot set the price of one. An older comment in `main.py`
+    argued replacement level is "about league-wide talent depth, not about who
+    happens to still be draftable" — that is wrong in a keeper league, and it
+    is gone.
+  - **N shrinks by the keepers at that position** (`10 × slots − kept`, so
+    C 24 → 9 for 2026). The league does not draft the slots its keepers already
+    fill. Removing keepers from the pool while holding N fixed double-counts the
+    removal and under-prices that position by ~26 FP at C.
+
+  **VORP is not the whole answer to a draft.** It ranks correctly and still
+  produced an unfieldable roster — 0 centers in 140 picks — because nothing
+  forced the board to fill its required slots. Roster legality is a separate
+  constraint (`mockDraft._best_available`'s floors), not something a better
+  replacement level delivers.
+
+  **Keeper cost is also a VORP**, not a season total: `net_keeper_value =
+  keeper's VORP − the VORP of the pick it costs`, floored at 0 because
+  forfeiting a pick cannot be a gain. Mixing the two units made the board
+  recommend keeping nobody. The league rule is settled (owner, 2026-07-20):
+  keeping a player costs **your final 4 picks, whichever picks those happen to
+  be** — which `KEEPER_ROUNDS = (18,17,16,15)` still approximates as an untraded
+  draft. Keeper *tenure* (how many years you may keep the same player) remains
+  unknown.
 
 ## 2. MoneyPuck data model
 

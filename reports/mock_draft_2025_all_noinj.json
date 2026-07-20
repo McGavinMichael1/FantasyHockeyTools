@@ -1,0 +1,6540 @@
+{
+  "per_team": {
+    "465.l.33072.t.1": {
+      "verdict": {
+        "actual_total_fp": 2725.4,
+        "board_total_fp": 2466.4,
+        "actual_lineup_fp": 2244.6,
+        "board_lineup_fp": 2466.4,
+        "board_minus_actual": 221.8,
+        "board_minus_actual_total": -259.0,
+        "board_wins": true
+      },
+      "actual_roster": {
+        "total_fp": 2725.4,
+        "lineup_fp": 2244.6,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 12,
+            "playerId": 8480018,
+            "name": "Nick Suzuki",
+            "position": "C",
+            "actual_fp": 307.9
+          },
+          {
+            "pick": 89,
+            "playerId": 8474564,
+            "name": "Steven Stamkos",
+            "position": "C",
+            "actual_fp": 221.7
+          },
+          {
+            "pick": 32,
+            "playerId": 8482078,
+            "name": "Lucas Raymond",
+            "position": "L",
+            "actual_fp": 233.0
+          },
+          {
+            "pick": 112,
+            "playerId": 8477955,
+            "name": "Jared McCann",
+            "position": "L",
+            "actual_fp": 129.5
+          },
+          {
+            "pick": 52,
+            "playerId": 8480208,
+            "name": "Drake Batherson",
+            "position": "R",
+            "actual_fp": 229.7
+          },
+          {
+            "pick": 72,
+            "playerId": 8484984,
+            "name": "Ivan Ivan",
+            "position": "R",
+            "actual_fp": 177.2
+          },
+          {
+            "pick": 73,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 49,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 69,
+            "playerId": 8476999,
+            "name": "Linus Ullmark",
+            "position": "G",
+            "actual_fp": 198.3
+          },
+          {
+            "pick": 109,
+            "playerId": 8476454,
+            "name": "Ryan Nugent-Hopkins",
+            "position": "C",
+            "actual_fp": 182.6
+          },
+          {
+            "pick": 92,
+            "playerId": 8475168,
+            "name": "Matt Duchene",
+            "position": "C",
+            "actual_fp": 130.2
+          }
+        ],
+        "picks": [
+          {
+            "pick": 12,
+            "playerId": 8480018,
+            "name": "Nick Suzuki",
+            "position": "C",
+            "actual_fp": 307.9
+          },
+          {
+            "pick": 32,
+            "playerId": 8482078,
+            "name": "Lucas Raymond",
+            "position": "L",
+            "actual_fp": 233.0
+          },
+          {
+            "pick": 49,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 52,
+            "playerId": 8480208,
+            "name": "Drake Batherson",
+            "position": "R",
+            "actual_fp": 229.7
+          },
+          {
+            "pick": 69,
+            "playerId": 8476999,
+            "name": "Linus Ullmark",
+            "position": "G",
+            "actual_fp": 198.3
+          },
+          {
+            "pick": 72,
+            "playerId": 8484984,
+            "name": "Ivan Ivan",
+            "position": "R",
+            "actual_fp": 177.2
+          },
+          {
+            "pick": 73,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 80,
+            "playerId": 8479973,
+            "name": "Stuart Skinner",
+            "position": "G",
+            "actual_fp": 181.8
+          },
+          {
+            "pick": 89,
+            "playerId": 8474564,
+            "name": "Steven Stamkos",
+            "position": "C",
+            "actual_fp": 221.7
+          },
+          {
+            "pick": 92,
+            "playerId": 8475168,
+            "name": "Matt Duchene",
+            "position": "C",
+            "actual_fp": 130.2
+          },
+          {
+            "pick": 109,
+            "playerId": 8476454,
+            "name": "Ryan Nugent-Hopkins",
+            "position": "C",
+            "actual_fp": 182.6
+          },
+          {
+            "pick": 112,
+            "playerId": 8477955,
+            "name": "Jared McCann",
+            "position": "L",
+            "actual_fp": 129.5
+          },
+          {
+            "pick": 129,
+            "playerId": 8483431,
+            "name": "Logan Cooley",
+            "position": "C",
+            "actual_fp": 121.1
+          },
+          {
+            "pick": 132,
+            "playerId": 8478916,
+            "name": "Joey Daccord",
+            "position": "G",
+            "actual_fp": 178.2
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2466.4,
+        "lineup_fp": 2466.4,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 132,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          },
+          {
+            "pick": 129,
+            "playerId": 8483431,
+            "name": "Logan Cooley",
+            "position": "C",
+            "vorp": -32.977935791015625,
+            "actual_fp": 121.1
+          },
+          {
+            "pick": 32,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 80,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 92,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 89,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 52,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 73,
+            "playerId": 8476906,
+            "name": "Shayne Gostisbehere",
+            "position": "D",
+            "vorp": 27.513931274414062,
+            "actual_fp": 160.3
+          },
+          {
+            "pick": 72,
+            "playerId": 8476875,
+            "name": "Mike Matheson",
+            "position": "D",
+            "vorp": 28.05755615234375,
+            "actual_fp": 157.3
+          },
+          {
+            "pick": 69,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 12,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 49,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 112,
+            "playerId": 8476483,
+            "name": "Rickard Rakell",
+            "position": "R",
+            "vorp": 6.532196044921875,
+            "actual_fp": 167.1
+          },
+          {
+            "pick": 109,
+            "playerId": 8482077,
+            "name": "Dylan Holloway",
+            "position": "L",
+            "vorp": 12.089859008789062,
+            "actual_fp": 147.5
+          }
+        ],
+        "picks": [
+          {
+            "pick": 12,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 32,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 49,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 52,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 69,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 72,
+            "playerId": 8476875,
+            "name": "Mike Matheson",
+            "position": "D",
+            "vorp": 28.05755615234375,
+            "actual_fp": 157.3
+          },
+          {
+            "pick": 73,
+            "playerId": 8476906,
+            "name": "Shayne Gostisbehere",
+            "position": "D",
+            "vorp": 27.513931274414062,
+            "actual_fp": 160.3
+          },
+          {
+            "pick": 80,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 89,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 92,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 109,
+            "playerId": 8482077,
+            "name": "Dylan Holloway",
+            "position": "L",
+            "vorp": 12.089859008789062,
+            "actual_fp": 147.5
+          },
+          {
+            "pick": 112,
+            "playerId": 8476483,
+            "name": "Rickard Rakell",
+            "position": "R",
+            "vorp": 6.532196044921875,
+            "actual_fp": 167.1
+          },
+          {
+            "pick": 129,
+            "playerId": 8483431,
+            "name": "Logan Cooley",
+            "position": "C",
+            "vorp": -32.977935791015625,
+            "actual_fp": 121.1
+          },
+          {
+            "pick": 132,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 12,
+          "actual": "Nick Suzuki",
+          "actual_fp": 307.9,
+          "board": "Ilya Sorokin",
+          "board_fp": 245.9,
+          "delta": -62.0
+        },
+        {
+          "pick": 32,
+          "actual": "Lucas Raymond",
+          "actual_fp": 233.0,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": -11.0
+        },
+        {
+          "pick": 49,
+          "actual": "Ilya Sorokin",
+          "actual_fp": 245.9,
+          "board": "Jordan Binnington",
+          "board_fp": 113.0,
+          "delta": -132.9
+        },
+        {
+          "pick": 52,
+          "actual": "Drake Batherson",
+          "actual_fp": 229.7,
+          "board": "Miro Heiskanen",
+          "board_fp": 228.6,
+          "delta": -1.1
+        },
+        {
+          "pick": 69,
+          "actual": "Linus Ullmark",
+          "actual_fp": 198.3,
+          "board": "Jake Walman",
+          "board_fp": 94.0,
+          "delta": -104.3
+        },
+        {
+          "pick": 72,
+          "actual": "Ivan Ivan",
+          "actual_fp": 177.2,
+          "board": "Mike Matheson",
+          "board_fp": 157.3,
+          "delta": -19.9
+        },
+        {
+          "pick": 73,
+          "actual": "John Carlson",
+          "actual_fp": 188.6,
+          "board": "Shayne Gostisbehere",
+          "board_fp": 160.3,
+          "delta": -28.3
+        },
+        {
+          "pick": 80,
+          "actual": "Stuart Skinner",
+          "actual_fp": 181.8,
+          "board": "William Eklund",
+          "board_fp": 157.9,
+          "delta": -23.9
+        },
+        {
+          "pick": 89,
+          "actual": "Steven Stamkos",
+          "actual_fp": 221.7,
+          "board": "Mark Stone",
+          "board_fp": 211.9,
+          "delta": -9.8
+        },
+        {
+          "pick": 92,
+          "actual": "Matt Duchene",
+          "actual_fp": 130.2,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": 100.5
+        },
+        {
+          "pick": 109,
+          "actual": "Ryan Nugent-Hopkins",
+          "actual_fp": 182.6,
+          "board": "Dylan Holloway",
+          "board_fp": 147.5,
+          "delta": -35.1
+        },
+        {
+          "pick": 112,
+          "actual": "Jared McCann",
+          "actual_fp": 129.5,
+          "board": "Rickard Rakell",
+          "board_fp": 167.1,
+          "delta": 37.6
+        },
+        {
+          "pick": 129,
+          "actual": "Logan Cooley",
+          "actual_fp": 121.1,
+          "board": "Logan Cooley",
+          "board_fp": 121.1,
+          "delta": 0.0
+        },
+        {
+          "pick": 132,
+          "actual": "Joey Daccord",
+          "actual_fp": 178.2,
+          "board": "Bo Horvat",
+          "board_fp": 209.1,
+          "delta": 30.9
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 36,
+          "wanted": "Alex Ovechkin",
+          "got": "Dougie Hamilton"
+        },
+        {
+          "pick": 54,
+          "wanted": "Miro Heiskanen",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 55,
+          "wanted": "Dougie Hamilton",
+          "got": "Zach Hyman"
+        },
+        {
+          "pick": 60,
+          "wanted": "Jordan Binnington",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 63,
+          "wanted": "Zach Hyman",
+          "got": "John Carlson"
+        },
+        {
+          "pick": 94,
+          "wanted": "Shayne Gostisbehere",
+          "got": "Colton Parayko"
+        },
+        {
+          "pick": 104,
+          "wanted": "Mark Stone",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Darnell Nurse"
+        },
+        {
+          "pick": 119,
+          "wanted": "Dylan Holloway",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 123,
+          "wanted": "Rickard Rakell",
+          "got": "Rasmus Andersson"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Ukko-Pekka Luukkonen"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Mattias Ekholm"
+        }
+      ],
+      "unmatched_opponent_picks": 6,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.1",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.10": {
+      "verdict": {
+        "actual_total_fp": 2080.9,
+        "board_total_fp": 1988.8,
+        "actual_lineup_fp": 1933.5,
+        "board_lineup_fp": 1765.6,
+        "board_minus_actual": -167.9,
+        "board_minus_actual_total": -92.1,
+        "board_wins": false
+      },
+      "actual_roster": {
+        "total_fp": 2080.9,
+        "lineup_fp": 1933.5,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 93,
+            "playerId": 8484153,
+            "name": "Leo Carlsson",
+            "position": "C",
+            "actual_fp": 204.8
+          },
+          {
+            "pick": 160,
+            "playerId": 8482745,
+            "name": "Mason McTavish",
+            "position": "C",
+            "actual_fp": 131.8
+          },
+          {
+            "pick": 153,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 101,
+            "playerId": 8482124,
+            "name": "Quinton Byfield",
+            "position": "R",
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 141,
+            "playerId": 8479425,
+            "name": "Filip Hronek",
+            "position": "D",
+            "actual_fp": 179.8
+          },
+          {
+            "pick": 128,
+            "playerId": 8478469,
+            "name": "Thomas Chabot",
+            "position": "D",
+            "actual_fp": 135.6
+          },
+          {
+            "pick": 108,
+            "playerId": 8482671,
+            "name": "Owen Power",
+            "position": "D",
+            "actual_fp": 113.6
+          },
+          {
+            "pick": 161,
+            "playerId": 8478055,
+            "name": "Gustav Forsling",
+            "position": "D",
+            "actual_fp": 106.8
+          },
+          {
+            "pick": 121,
+            "playerId": 8476434,
+            "name": "John Gibson",
+            "position": "G",
+            "actual_fp": 230.8
+          },
+          {
+            "pick": 148,
+            "playerId": 8482137,
+            "name": "Yaroslav Askarov",
+            "position": "G",
+            "actual_fp": 166.8
+          },
+          {
+            "pick": 113,
+            "playerId": 8482175,
+            "name": "JJ Peterka",
+            "position": "R",
+            "actual_fp": 142.5
+          },
+          {
+            "pick": 120,
+            "playerId": 8482702,
+            "name": "Logan Stankoven",
+            "position": "C",
+            "actual_fp": 131.5
+          }
+        ],
+        "picks": [
+          {
+            "pick": 93,
+            "playerId": 8484153,
+            "name": "Leo Carlsson",
+            "position": "C",
+            "actual_fp": 204.8
+          },
+          {
+            "pick": 101,
+            "playerId": 8482124,
+            "name": "Quinton Byfield",
+            "position": "R",
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 108,
+            "playerId": 8482671,
+            "name": "Owen Power",
+            "position": "D",
+            "actual_fp": 113.6
+          },
+          {
+            "pick": 113,
+            "playerId": 8482175,
+            "name": "JJ Peterka",
+            "position": "R",
+            "actual_fp": 142.5
+          },
+          {
+            "pick": 120,
+            "playerId": 8482702,
+            "name": "Logan Stankoven",
+            "position": "C",
+            "actual_fp": 131.5
+          },
+          {
+            "pick": 121,
+            "playerId": 8476434,
+            "name": "John Gibson",
+            "position": "G",
+            "actual_fp": 230.8
+          },
+          {
+            "pick": 128,
+            "playerId": 8478469,
+            "name": "Thomas Chabot",
+            "position": "D",
+            "actual_fp": 135.6
+          },
+          {
+            "pick": 133,
+            "playerId": 8482149,
+            "name": "Cole Perfetti",
+            "position": "C",
+            "actual_fp": 116.7
+          },
+          {
+            "pick": 140,
+            "playerId": 8484768,
+            "name": "Zayne Parekh",
+            "position": "D",
+            "actual_fp": 30.6
+          },
+          {
+            "pick": 141,
+            "playerId": 8479425,
+            "name": "Filip Hronek",
+            "position": "D",
+            "actual_fp": 179.8
+          },
+          {
+            "pick": 148,
+            "playerId": 8482137,
+            "name": "Yaroslav Askarov",
+            "position": "G",
+            "actual_fp": 166.8
+          },
+          {
+            "pick": 153,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 160,
+            "playerId": 8482745,
+            "name": "Mason McTavish",
+            "position": "C",
+            "actual_fp": 131.8
+          },
+          {
+            "pick": 161,
+            "playerId": 8478055,
+            "name": "Gustav Forsling",
+            "position": "D",
+            "actual_fp": 106.8
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 1988.8,
+        "lineup_fp": 1765.6,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 141,
+            "playerId": 8473419,
+            "name": "Brad Marchand",
+            "position": "L",
+            "vorp": 7.7416839599609375,
+            "actual_fp": 186.7
+          },
+          {
+            "pick": 121,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 133,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 161,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          },
+          {
+            "pick": 128,
+            "playerId": 8479425,
+            "name": "Filip Hronek",
+            "position": "D",
+            "vorp": 17.54180908203125,
+            "actual_fp": 179.8
+          },
+          {
+            "pick": 93,
+            "playerId": 8478407,
+            "name": "Vince Dunn",
+            "position": "D",
+            "vorp": 33.98455810546875,
+            "actual_fp": 159.5
+          },
+          {
+            "pick": 120,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 113,
+            "playerId": 8478469,
+            "name": "Thomas Chabot",
+            "position": "D",
+            "vorp": 27.004959106445312,
+            "actual_fp": 135.6
+          },
+          {
+            "pick": 140,
+            "playerId": 8480045,
+            "name": "Ukko-Pekka Luukkonen",
+            "position": "G",
+            "vorp": 10.70557205029013,
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 108,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "vorp": 27.140975952148438,
+            "actual_fp": 112.3
+          },
+          {
+            "pick": 101,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          }
+        ],
+        "picks": [
+          {
+            "pick": 93,
+            "playerId": 8478407,
+            "name": "Vince Dunn",
+            "position": "D",
+            "vorp": 33.98455810546875,
+            "actual_fp": 159.5
+          },
+          {
+            "pick": 101,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 108,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "vorp": 27.140975952148438,
+            "actual_fp": 112.3
+          },
+          {
+            "pick": 113,
+            "playerId": 8478469,
+            "name": "Thomas Chabot",
+            "position": "D",
+            "vorp": 27.004959106445312,
+            "actual_fp": 135.6
+          },
+          {
+            "pick": 120,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 121,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 128,
+            "playerId": 8479425,
+            "name": "Filip Hronek",
+            "position": "D",
+            "vorp": 17.54180908203125,
+            "actual_fp": 179.8
+          },
+          {
+            "pick": 133,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 140,
+            "playerId": 8480045,
+            "name": "Ukko-Pekka Luukkonen",
+            "position": "G",
+            "vorp": 10.70557205029013,
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 141,
+            "playerId": 8473419,
+            "name": "Brad Marchand",
+            "position": "L",
+            "vorp": 7.7416839599609375,
+            "actual_fp": 186.7
+          },
+          {
+            "pick": 148,
+            "playerId": 8476456,
+            "name": "Jonathan Huberdeau",
+            "position": "L",
+            "vorp": 0.0,
+            "actual_fp": 92.5
+          },
+          {
+            "pick": 153,
+            "playerId": 8477494,
+            "name": "Jonathan Drouin",
+            "position": "L",
+            "vorp": -6.1699066162109375,
+            "actual_fp": 77.4
+          },
+          {
+            "pick": 160,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 161,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 93,
+          "actual": "Leo Carlsson",
+          "actual_fp": 204.8,
+          "board": "Vince Dunn",
+          "board_fp": 159.5,
+          "delta": -45.3
+        },
+        {
+          "pick": 101,
+          "actual": "Quinton Byfield",
+          "actual_fp": 158.8,
+          "board": "Jake Walman",
+          "board_fp": 94.0,
+          "delta": -64.8
+        },
+        {
+          "pick": 108,
+          "actual": "Owen Power",
+          "actual_fp": 113.6,
+          "board": "Colton Parayko",
+          "board_fp": 112.3,
+          "delta": -1.3
+        },
+        {
+          "pick": 113,
+          "actual": "JJ Peterka",
+          "actual_fp": 142.5,
+          "board": "Thomas Chabot",
+          "board_fp": 135.6,
+          "delta": -6.9
+        },
+        {
+          "pick": 120,
+          "actual": "Logan Stankoven",
+          "actual_fp": 131.5,
+          "board": "Darnell Nurse",
+          "board_fp": 145.9,
+          "delta": 14.4
+        },
+        {
+          "pick": 121,
+          "actual": "John Gibson",
+          "actual_fp": 230.8,
+          "board": "William Eklund",
+          "board_fp": 157.9,
+          "delta": -72.9
+        },
+        {
+          "pick": 128,
+          "actual": "Thomas Chabot",
+          "actual_fp": 135.6,
+          "board": "Filip Hronek",
+          "board_fp": 179.8,
+          "delta": 44.2
+        },
+        {
+          "pick": 133,
+          "actual": "Cole Perfetti",
+          "actual_fp": 116.7,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": 114.0
+        },
+        {
+          "pick": 140,
+          "actual": "Zayne Parekh",
+          "actual_fp": 30.6,
+          "board": "Ukko-Pekka Luukkonen",
+          "board_fp": 158.8,
+          "delta": 128.2
+        },
+        {
+          "pick": 141,
+          "actual": "Filip Hronek",
+          "actual_fp": 179.8,
+          "board": "Brad Marchand",
+          "board_fp": 186.7,
+          "delta": 6.9
+        },
+        {
+          "pick": 148,
+          "actual": "Yaroslav Askarov",
+          "actual_fp": 166.8,
+          "board": "Jonathan Huberdeau",
+          "board_fp": 92.5,
+          "delta": -74.3
+        },
+        {
+          "pick": 153,
+          "actual": "Bryan Rust",
+          "actual_fp": 230.7,
+          "board": "Jonathan Drouin",
+          "board_fp": 77.4,
+          "delta": -153.3
+        },
+        {
+          "pick": 160,
+          "actual": "Mason McTavish",
+          "actual_fp": 131.8,
+          "board": "Frank Vatrano",
+          "board_fp": 53.2,
+          "delta": -78.6
+        },
+        {
+          "pick": 161,
+          "actual": "Gustav Forsling",
+          "actual_fp": 106.8,
+          "board": "Owen Tippett",
+          "board_fp": 204.4,
+          "delta": 97.6
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Mike Matheson"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Rasmus Andersson"
+        }
+      ],
+      "unmatched_opponent_picks": 4,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.10",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.2": {
+      "verdict": {
+        "actual_total_fp": 2699.9,
+        "board_total_fp": 2385.8,
+        "actual_lineup_fp": 2517.4,
+        "board_lineup_fp": 2085.4,
+        "board_minus_actual": -432.0,
+        "board_minus_actual_total": -314.1,
+        "board_wins": false
+      },
+      "actual_roster": {
+        "total_fp": 2699.9,
+        "lineup_fp": 2517.4,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 64,
+            "playerId": 8478445,
+            "name": "Mathew Barzal",
+            "position": "C",
+            "actual_fp": 216.4
+          },
+          {
+            "pick": 57,
+            "playerId": 8477946,
+            "name": "Dylan Larkin",
+            "position": "C",
+            "actual_fp": 211.8
+          },
+          {
+            "pick": 137,
+            "playerId": 8478498,
+            "name": "Jake DeBrusk",
+            "position": "L",
+            "actual_fp": 161.1
+          },
+          {
+            "pick": 44,
+            "playerId": 8477942,
+            "name": "Kevin Fiala",
+            "position": "L",
+            "actual_fp": 147.3
+          },
+          {
+            "pick": 37,
+            "playerId": 8477949,
+            "name": "Alex Tuch",
+            "position": "R",
+            "actual_fp": 227.4
+          },
+          {
+            "pick": 117,
+            "playerId": 8481604,
+            "name": "Pavel Dorofeyev",
+            "position": "R",
+            "actual_fp": 225.2
+          },
+          {
+            "pick": 24,
+            "playerId": 8479410,
+            "name": "Mikhail Sergachev",
+            "position": "D",
+            "actual_fp": 206.6
+          },
+          {
+            "pick": 84,
+            "playerId": 8474578,
+            "name": "Erik Karlsson",
+            "position": "D",
+            "actual_fp": 199.8
+          },
+          {
+            "pick": 4,
+            "playerId": 8477504,
+            "name": "Josh Morrissey",
+            "position": "D",
+            "actual_fp": 193.3
+          },
+          {
+            "pick": 124,
+            "playerId": 8480145,
+            "name": "Neal Pionk",
+            "position": "D",
+            "actual_fp": 78.7
+          },
+          {
+            "pick": 97,
+            "playerId": 8480843,
+            "name": "Lukas Dostal",
+            "position": "G",
+            "actual_fp": 213.3
+          },
+          {
+            "pick": 17,
+            "playerId": 8478439,
+            "name": "Travis Konecny",
+            "position": "R",
+            "actual_fp": 224.6
+          },
+          {
+            "pick": 104,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "actual_fp": 211.9
+          }
+        ],
+        "picks": [
+          {
+            "pick": 4,
+            "playerId": 8477504,
+            "name": "Josh Morrissey",
+            "position": "D",
+            "actual_fp": 193.3
+          },
+          {
+            "pick": 17,
+            "playerId": 8478439,
+            "name": "Travis Konecny",
+            "position": "R",
+            "actual_fp": 224.6
+          },
+          {
+            "pick": 24,
+            "playerId": 8479410,
+            "name": "Mikhail Sergachev",
+            "position": "D",
+            "actual_fp": 206.6
+          },
+          {
+            "pick": 37,
+            "playerId": 8477949,
+            "name": "Alex Tuch",
+            "position": "R",
+            "actual_fp": 227.4
+          },
+          {
+            "pick": 44,
+            "playerId": 8477942,
+            "name": "Kevin Fiala",
+            "position": "L",
+            "actual_fp": 147.3
+          },
+          {
+            "pick": 57,
+            "playerId": 8477946,
+            "name": "Dylan Larkin",
+            "position": "C",
+            "actual_fp": 211.8
+          },
+          {
+            "pick": 64,
+            "playerId": 8478445,
+            "name": "Mathew Barzal",
+            "position": "C",
+            "actual_fp": 216.4
+          },
+          {
+            "pick": 77,
+            "playerId": 8477409,
+            "name": "Carter Verhaeghe",
+            "position": "C",
+            "actual_fp": 182.5
+          },
+          {
+            "pick": 84,
+            "playerId": 8474578,
+            "name": "Erik Karlsson",
+            "position": "D",
+            "actual_fp": 199.8
+          },
+          {
+            "pick": 97,
+            "playerId": 8480843,
+            "name": "Lukas Dostal",
+            "position": "G",
+            "actual_fp": 213.3
+          },
+          {
+            "pick": 104,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 117,
+            "playerId": 8481604,
+            "name": "Pavel Dorofeyev",
+            "position": "R",
+            "actual_fp": 225.2
+          },
+          {
+            "pick": 124,
+            "playerId": 8480145,
+            "name": "Neal Pionk",
+            "position": "D",
+            "actual_fp": 78.7
+          },
+          {
+            "pick": 137,
+            "playerId": 8478498,
+            "name": "Jake DeBrusk",
+            "position": "L",
+            "actual_fp": 161.1
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2385.8,
+        "lineup_fp": 2085.4,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 4,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 17,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 117,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 137,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          },
+          {
+            "pick": 77,
+            "playerId": 8474578,
+            "name": "Erik Karlsson",
+            "position": "D",
+            "vorp": 22.299850463867188,
+            "actual_fp": 199.8
+          },
+          {
+            "pick": 104,
+            "playerId": 8478397,
+            "name": "Rasmus Andersson",
+            "position": "D",
+            "vorp": 17.26434326171875,
+            "actual_fp": 181.7
+          },
+          {
+            "pick": 97,
+            "playerId": 8479425,
+            "name": "Filip Hronek",
+            "position": "D",
+            "vorp": 17.54180908203125,
+            "actual_fp": 179.8
+          },
+          {
+            "pick": 64,
+            "playerId": 8476906,
+            "name": "Shayne Gostisbehere",
+            "position": "D",
+            "vorp": 27.513931274414062,
+            "actual_fp": 160.3
+          },
+          {
+            "pick": 37,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 44,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 84,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          }
+        ],
+        "picks": [
+          {
+            "pick": 4,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 17,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 24,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "vorp": 59.280548095703125,
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 37,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 44,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 57,
+            "playerId": 8477495,
+            "name": "Seth Jones",
+            "position": "D",
+            "vorp": 30.519927978515625,
+            "actual_fp": 117.5
+          },
+          {
+            "pick": 64,
+            "playerId": 8476906,
+            "name": "Shayne Gostisbehere",
+            "position": "D",
+            "vorp": 27.513931274414062,
+            "actual_fp": 160.3
+          },
+          {
+            "pick": 77,
+            "playerId": 8474578,
+            "name": "Erik Karlsson",
+            "position": "D",
+            "vorp": 22.299850463867188,
+            "actual_fp": 199.8
+          },
+          {
+            "pick": 84,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 97,
+            "playerId": 8479425,
+            "name": "Filip Hronek",
+            "position": "D",
+            "vorp": 17.54180908203125,
+            "actual_fp": 179.8
+          },
+          {
+            "pick": 104,
+            "playerId": 8478397,
+            "name": "Rasmus Andersson",
+            "position": "D",
+            "vorp": 17.26434326171875,
+            "actual_fp": 181.7
+          },
+          {
+            "pick": 117,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 124,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 137,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 4,
+          "actual": "Josh Morrissey",
+          "actual_fp": 193.3,
+          "board": "Filip Forsberg",
+          "board_fp": 252.1,
+          "delta": 58.8
+        },
+        {
+          "pick": 17,
+          "actual": "Travis Konecny",
+          "actual_fp": 224.6,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": -2.6
+        },
+        {
+          "pick": 24,
+          "actual": "Mikhail Sergachev",
+          "actual_fp": 206.6,
+          "board": "Shea Theodore",
+          "board_fp": 129.6,
+          "delta": -77.0
+        },
+        {
+          "pick": 37,
+          "actual": "Alex Tuch",
+          "actual_fp": 227.4,
+          "board": "Jordan Binnington",
+          "board_fp": 113.0,
+          "delta": -114.4
+        },
+        {
+          "pick": 44,
+          "actual": "Kevin Fiala",
+          "actual_fp": 147.3,
+          "board": "Zach Hyman",
+          "board_fp": 183.7,
+          "delta": 36.4
+        },
+        {
+          "pick": 57,
+          "actual": "Dylan Larkin",
+          "actual_fp": 211.8,
+          "board": "Seth Jones",
+          "board_fp": 117.5,
+          "delta": -94.3
+        },
+        {
+          "pick": 64,
+          "actual": "Mathew Barzal",
+          "actual_fp": 216.4,
+          "board": "Shayne Gostisbehere",
+          "board_fp": 160.3,
+          "delta": -56.1
+        },
+        {
+          "pick": 77,
+          "actual": "Carter Verhaeghe",
+          "actual_fp": 182.5,
+          "board": "Erik Karlsson",
+          "board_fp": 199.8,
+          "delta": 17.3
+        },
+        {
+          "pick": 84,
+          "actual": "Erik Karlsson",
+          "actual_fp": 199.8,
+          "board": "William Eklund",
+          "board_fp": 157.9,
+          "delta": -41.9
+        },
+        {
+          "pick": 97,
+          "actual": "Lukas Dostal",
+          "actual_fp": 213.3,
+          "board": "Filip Hronek",
+          "board_fp": 179.8,
+          "delta": -33.5
+        },
+        {
+          "pick": 104,
+          "actual": "Mark Stone",
+          "actual_fp": 211.9,
+          "board": "Rasmus Andersson",
+          "board_fp": 181.7,
+          "delta": -30.2
+        },
+        {
+          "pick": 117,
+          "actual": "Pavel Dorofeyev",
+          "actual_fp": 225.2,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": 5.5
+        },
+        {
+          "pick": 124,
+          "actual": "Neal Pionk",
+          "actual_fp": 78.7,
+          "board": "Frank Vatrano",
+          "board_fp": 53.2,
+          "delta": -25.5
+        },
+        {
+          "pick": 137,
+          "actual": "Jake DeBrusk",
+          "actual_fp": 161.1,
+          "board": "Owen Tippett",
+          "board_fp": 204.4,
+          "delta": 43.3
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 6,
+          "wanted": "Filip Forsberg",
+          "got": "Igor Shesterkin"
+        },
+        {
+          "pick": 10,
+          "wanted": "Igor Shesterkin",
+          "got": "Ilya Sorokin"
+        },
+        {
+          "pick": 27,
+          "wanted": "Shea Theodore",
+          "got": "Lucas Raymond"
+        },
+        {
+          "pick": 32,
+          "wanted": "Lucas Raymond",
+          "got": "Dougie Hamilton"
+        },
+        {
+          "pick": 36,
+          "wanted": "Alex Ovechkin",
+          "got": "Noah Dobson"
+        },
+        {
+          "pick": 42,
+          "wanted": "Noah Dobson",
+          "got": "Miro Heiskanen"
+        },
+        {
+          "pick": 49,
+          "wanted": "Ilya Sorokin",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 54,
+          "wanted": "Miro Heiskanen",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 55,
+          "wanted": "Dougie Hamilton",
+          "got": "John Carlson"
+        },
+        {
+          "pick": 58,
+          "wanted": "Seth Jones",
+          "got": "Linus Ullmark"
+        },
+        {
+          "pick": 60,
+          "wanted": "Jordan Binnington",
+          "got": "Jake Walman"
+        },
+        {
+          "pick": 63,
+          "wanted": "Zach Hyman",
+          "got": "Mike Matheson"
+        },
+        {
+          "pick": 69,
+          "wanted": "Linus Ullmark",
+          "got": "Colton Parayko"
+        },
+        {
+          "pick": 73,
+          "wanted": "John Carlson",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 80,
+          "wanted": "Stuart Skinner",
+          "got": "Darnell Nurse"
+        },
+        {
+          "pick": 94,
+          "wanted": "Shayne Gostisbehere",
+          "got": "Mark Stone"
+        },
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Neal Pionk"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Ukko-Pekka Luukkonen"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Mattias Ekholm"
+        }
+      ],
+      "unmatched_opponent_picks": 6,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.2",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.3": {
+      "verdict": {
+        "actual_total_fp": 2210.0,
+        "board_total_fp": 2439.4,
+        "actual_lineup_fp": 2059.9,
+        "board_lineup_fp": 2292.2,
+        "board_minus_actual": 232.3,
+        "board_minus_actual_total": 229.4,
+        "board_wins": true
+      },
+      "actual_roster": {
+        "total_fp": 2210.0,
+        "lineup_fp": 2059.9,
+        "players": 14,
+        "no_outcome_rows": 1,
+        "starters": [
+          {
+            "pick": 75,
+            "playerId": 8476459,
+            "name": "Mika Zibanejad",
+            "position": "C",
+            "actual_fp": 264.6
+          },
+          {
+            "pick": 95,
+            "playerId": 8476389,
+            "name": "Vincent Trocheck",
+            "position": "C",
+            "actual_fp": 188.5
+          },
+          {
+            "pick": 6,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 126,
+            "playerId": 8477402,
+            "name": "Pavel Buchnevich",
+            "position": "L",
+            "actual_fp": 154.2
+          },
+          {
+            "pick": 46,
+            "playerId": 8479385,
+            "name": "Jordan Kyrou",
+            "position": "R",
+            "actual_fp": 141.9
+          },
+          {
+            "pick": 106,
+            "playerId": 8478407,
+            "name": "Vince Dunn",
+            "position": "D",
+            "actual_fp": 159.5
+          },
+          {
+            "pick": 55,
+            "playerId": 8476462,
+            "name": "Dougie Hamilton",
+            "position": "D",
+            "actual_fp": 159.4
+          },
+          {
+            "pick": 66,
+            "playerId": 8477986,
+            "name": "Brandon Montour",
+            "position": "D",
+            "actual_fp": 134.4
+          },
+          {
+            "pick": 26,
+            "playerId": 8478406,
+            "name": "Mackenzie Blackwood",
+            "position": "G",
+            "actual_fp": 164.9
+          },
+          {
+            "pick": 61,
+            "playerId": 8476932,
+            "name": "Anthony Stolarz",
+            "position": "G",
+            "actual_fp": 90.5
+          },
+          {
+            "pick": 86,
+            "playerId": 8475172,
+            "name": "Nazem Kadri",
+            "position": "C",
+            "actual_fp": 179.2
+          },
+          {
+            "pick": 15,
+            "playerId": 8476468,
+            "name": "J.T. Miller",
+            "position": "C",
+            "actual_fp": 170.7
+          }
+        ],
+        "picks": [
+          {
+            "pick": 6,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 15,
+            "playerId": 8476468,
+            "name": "J.T. Miller",
+            "position": "C",
+            "actual_fp": 170.7
+          },
+          {
+            "pick": 26,
+            "playerId": 8478406,
+            "name": "Mackenzie Blackwood",
+            "position": "G",
+            "actual_fp": 164.9
+          },
+          {
+            "pick": 46,
+            "playerId": 8479385,
+            "name": "Jordan Kyrou",
+            "position": "R",
+            "actual_fp": 141.9
+          },
+          {
+            "pick": 55,
+            "playerId": 8476462,
+            "name": "Dougie Hamilton",
+            "position": "D",
+            "actual_fp": 159.4
+          },
+          {
+            "pick": 61,
+            "playerId": 8476932,
+            "name": "Anthony Stolarz",
+            "position": "G",
+            "actual_fp": 90.5
+          },
+          {
+            "pick": 66,
+            "playerId": 8477986,
+            "name": "Brandon Montour",
+            "position": "D",
+            "actual_fp": 134.4
+          },
+          {
+            "pick": 75,
+            "playerId": 8476459,
+            "name": "Mika Zibanejad",
+            "position": "C",
+            "actual_fp": 264.6
+          },
+          {
+            "pick": 86,
+            "playerId": 8475172,
+            "name": "Nazem Kadri",
+            "position": "C",
+            "actual_fp": 179.2
+          },
+          {
+            "pick": 95,
+            "playerId": 8476389,
+            "name": "Vincent Trocheck",
+            "position": "C",
+            "actual_fp": 188.5
+          },
+          {
+            "pick": 106,
+            "playerId": 8478407,
+            "name": "Vince Dunn",
+            "position": "D",
+            "actual_fp": 159.5
+          },
+          {
+            "pick": 115,
+            "playerId": null,
+            "name": "Aleksander Barkov",
+            "position": null,
+            "actual_fp": 0.0
+          },
+          {
+            "pick": 126,
+            "playerId": 8477402,
+            "name": "Pavel Buchnevich",
+            "position": "L",
+            "actual_fp": 154.2
+          },
+          {
+            "pick": 135,
+            "playerId": 8477476,
+            "name": "Artturi Lehkonen",
+            "position": "L",
+            "actual_fp": 150.1
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2439.4,
+        "lineup_fp": 2292.2,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 6,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 26,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 115,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 95,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 61,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 106,
+            "playerId": 8478397,
+            "name": "Rasmus Andersson",
+            "position": "D",
+            "vorp": 17.26434326171875,
+            "actual_fp": 181.7
+          },
+          {
+            "pick": 86,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 75,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "vorp": 27.140975952148438,
+            "actual_fp": 112.3
+          },
+          {
+            "pick": 15,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 46,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 135,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          },
+          {
+            "pick": 55,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          }
+        ],
+        "picks": [
+          {
+            "pick": 6,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 15,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 26,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 46,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 55,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 61,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 66,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 75,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "vorp": 27.140975952148438,
+            "actual_fp": 112.3
+          },
+          {
+            "pick": 86,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 95,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 106,
+            "playerId": 8478397,
+            "name": "Rasmus Andersson",
+            "position": "D",
+            "vorp": 17.26434326171875,
+            "actual_fp": 181.7
+          },
+          {
+            "pick": 115,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 126,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 135,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 6,
+          "actual": "Filip Forsberg",
+          "actual_fp": 252.1,
+          "board": "Filip Forsberg",
+          "board_fp": 252.1,
+          "delta": 0.0
+        },
+        {
+          "pick": 15,
+          "actual": "J.T. Miller",
+          "actual_fp": 170.7,
+          "board": "Ilya Sorokin",
+          "board_fp": 245.9,
+          "delta": 75.2
+        },
+        {
+          "pick": 26,
+          "actual": "Mackenzie Blackwood",
+          "actual_fp": 164.9,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": 57.1
+        },
+        {
+          "pick": 46,
+          "actual": "Jordan Kyrou",
+          "actual_fp": 141.9,
+          "board": "Jordan Binnington",
+          "board_fp": 113.0,
+          "delta": -28.9
+        },
+        {
+          "pick": 55,
+          "actual": "Dougie Hamilton",
+          "actual_fp": 159.4,
+          "board": "Zach Hyman",
+          "board_fp": 183.7,
+          "delta": 24.3
+        },
+        {
+          "pick": 61,
+          "actual": "Anthony Stolarz",
+          "actual_fp": 90.5,
+          "board": "John Carlson",
+          "board_fp": 188.6,
+          "delta": 98.1
+        },
+        {
+          "pick": 66,
+          "actual": "Brandon Montour",
+          "actual_fp": 134.4,
+          "board": "Jake Walman",
+          "board_fp": 94.0,
+          "delta": -40.4
+        },
+        {
+          "pick": 75,
+          "actual": "Mika Zibanejad",
+          "actual_fp": 264.6,
+          "board": "Colton Parayko",
+          "board_fp": 112.3,
+          "delta": -152.3
+        },
+        {
+          "pick": 86,
+          "actual": "Nazem Kadri",
+          "actual_fp": 179.2,
+          "board": "Darnell Nurse",
+          "board_fp": 145.9,
+          "delta": -33.3
+        },
+        {
+          "pick": 95,
+          "actual": "Vincent Trocheck",
+          "actual_fp": 188.5,
+          "board": "Mark Stone",
+          "board_fp": 211.9,
+          "delta": 23.4
+        },
+        {
+          "pick": 106,
+          "actual": "Vince Dunn",
+          "actual_fp": 159.5,
+          "board": "Rasmus Andersson",
+          "board_fp": 181.7,
+          "delta": 22.2
+        },
+        {
+          "pick": 115,
+          "actual": "Aleksander Barkov",
+          "actual_fp": 0.0,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": 230.7
+        },
+        {
+          "pick": 126,
+          "actual": "Pavel Buchnevich",
+          "actual_fp": 154.2,
+          "board": "Frank Vatrano",
+          "board_fp": 53.2,
+          "delta": -101.0
+        },
+        {
+          "pick": 135,
+          "actual": "Artturi Lehkonen",
+          "actual_fp": 150.1,
+          "board": "Owen Tippett",
+          "board_fp": 204.4,
+          "delta": 54.3
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 36,
+          "wanted": "Alex Ovechkin",
+          "got": "Dougie Hamilton"
+        },
+        {
+          "pick": 49,
+          "wanted": "Ilya Sorokin",
+          "got": "Miro Heiskanen"
+        },
+        {
+          "pick": 54,
+          "wanted": "Miro Heiskanen",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 60,
+          "wanted": "Jordan Binnington",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 63,
+          "wanted": "Zach Hyman",
+          "got": "Linus Ullmark"
+        },
+        {
+          "pick": 69,
+          "wanted": "Linus Ullmark",
+          "got": "Mike Matheson"
+        },
+        {
+          "pick": 73,
+          "wanted": "John Carlson",
+          "got": "Shayne Gostisbehere"
+        },
+        {
+          "pick": 80,
+          "wanted": "Stuart Skinner",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 94,
+          "wanted": "Shayne Gostisbehere",
+          "got": "William Eklund"
+        },
+        {
+          "pick": 104,
+          "wanted": "Mark Stone",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Ukko-Pekka Luukkonen"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Mattias Ekholm"
+        }
+      ],
+      "unmatched_opponent_picks": 5,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.3",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 1,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.4": {
+      "verdict": {
+        "actual_total_fp": 2340.0,
+        "board_total_fp": 2553.4,
+        "actual_lineup_fp": 2219.9,
+        "board_lineup_fp": 2370.7,
+        "board_minus_actual": 150.8,
+        "board_minus_actual_total": 213.4,
+        "board_wins": true
+      },
+      "actual_roster": {
+        "total_fp": 2340.0,
+        "lineup_fp": 2219.9,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 56,
+            "playerId": 8475166,
+            "name": "John Tavares",
+            "position": "C",
+            "actual_fp": 211.6
+          },
+          {
+            "pick": 65,
+            "playerId": 8480014,
+            "name": "Gabriel Vilardi",
+            "position": "C",
+            "actual_fp": 206.8
+          },
+          {
+            "pick": 5,
+            "playerId": 8481557,
+            "name": "Matt Boldy",
+            "position": "L",
+            "actual_fp": 285.3
+          },
+          {
+            "pick": 36,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 16,
+            "playerId": 8477960,
+            "name": "Adrian Kempe",
+            "position": "R",
+            "actual_fp": 224.5
+          },
+          {
+            "pick": 125,
+            "playerId": 8478444,
+            "name": "Brock Boeser",
+            "position": "R",
+            "actual_fp": 160.9
+          },
+          {
+            "pick": 105,
+            "playerId": 8482122,
+            "name": "Brock Faber",
+            "position": "D",
+            "actual_fp": 206.8
+          },
+          {
+            "pick": 45,
+            "playerId": 8482684,
+            "name": "Luke Hughes",
+            "position": "D",
+            "actual_fp": 130.3
+          },
+          {
+            "pick": 96,
+            "playerId": 8474563,
+            "name": "Drew Doughty",
+            "position": "D",
+            "actual_fp": 94.4
+          },
+          {
+            "pick": 25,
+            "playerId": 8478499,
+            "name": "Adin Hill",
+            "position": "G",
+            "actual_fp": 77.9
+          },
+          {
+            "pick": 85,
+            "playerId": 8477967,
+            "name": "Thatcher Demko",
+            "position": "G",
+            "actual_fp": 70.0
+          },
+          {
+            "pick": 136,
+            "playerId": 8481533,
+            "name": "Trevor Zegras",
+            "position": "C",
+            "actual_fp": 199.2
+          },
+          {
+            "pick": 76,
+            "playerId": 8471685,
+            "name": "Anze Kopitar",
+            "position": "C",
+            "actual_fp": 130.2
+          }
+        ],
+        "picks": [
+          {
+            "pick": 5,
+            "playerId": 8481557,
+            "name": "Matt Boldy",
+            "position": "L",
+            "actual_fp": 285.3
+          },
+          {
+            "pick": 16,
+            "playerId": 8477960,
+            "name": "Adrian Kempe",
+            "position": "R",
+            "actual_fp": 224.5
+          },
+          {
+            "pick": 25,
+            "playerId": 8478499,
+            "name": "Adin Hill",
+            "position": "G",
+            "actual_fp": 77.9
+          },
+          {
+            "pick": 36,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 45,
+            "playerId": 8482684,
+            "name": "Luke Hughes",
+            "position": "D",
+            "actual_fp": 130.3
+          },
+          {
+            "pick": 56,
+            "playerId": 8475166,
+            "name": "John Tavares",
+            "position": "C",
+            "actual_fp": 211.6
+          },
+          {
+            "pick": 65,
+            "playerId": 8480014,
+            "name": "Gabriel Vilardi",
+            "position": "C",
+            "actual_fp": 206.8
+          },
+          {
+            "pick": 76,
+            "playerId": 8471685,
+            "name": "Anze Kopitar",
+            "position": "C",
+            "actual_fp": 130.2
+          },
+          {
+            "pick": 85,
+            "playerId": 8477967,
+            "name": "Thatcher Demko",
+            "position": "G",
+            "actual_fp": 70.0
+          },
+          {
+            "pick": 96,
+            "playerId": 8474563,
+            "name": "Drew Doughty",
+            "position": "D",
+            "actual_fp": 94.4
+          },
+          {
+            "pick": 105,
+            "playerId": 8482122,
+            "name": "Brock Faber",
+            "position": "D",
+            "actual_fp": 206.8
+          },
+          {
+            "pick": 116,
+            "playerId": 8476455,
+            "name": "Gabriel Landeskog",
+            "position": "L",
+            "actual_fp": 120.0
+          },
+          {
+            "pick": 125,
+            "playerId": 8478444,
+            "name": "Brock Boeser",
+            "position": "R",
+            "actual_fp": 160.9
+          },
+          {
+            "pick": 136,
+            "playerId": 8481533,
+            "name": "Trevor Zegras",
+            "position": "C",
+            "actual_fp": 199.2
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2553.4,
+        "lineup_fp": 2370.7,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 5,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 16,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 105,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 85,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 45,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 36,
+            "playerId": 8480865,
+            "name": "Noah Dobson",
+            "position": "D",
+            "vorp": 54.042938232421875,
+            "actual_fp": 202.2
+          },
+          {
+            "pick": 56,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 65,
+            "playerId": 8476875,
+            "name": "Mike Matheson",
+            "position": "D",
+            "vorp": 28.05755615234375,
+            "actual_fp": 157.3
+          },
+          {
+            "pick": 116,
+            "playerId": 8480045,
+            "name": "Ukko-Pekka Luukkonen",
+            "position": "G",
+            "vorp": 10.70557205029013,
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 96,
+            "playerId": 8474593,
+            "name": "Jacob Markstrom",
+            "position": "G",
+            "vorp": 15.471697014477144,
+            "actual_fp": 156.2
+          },
+          {
+            "pick": 136,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          },
+          {
+            "pick": 76,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          }
+        ],
+        "picks": [
+          {
+            "pick": 5,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 16,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 25,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "vorp": 59.280548095703125,
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 36,
+            "playerId": 8480865,
+            "name": "Noah Dobson",
+            "position": "D",
+            "vorp": 54.042938232421875,
+            "actual_fp": 202.2
+          },
+          {
+            "pick": 45,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 56,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 65,
+            "playerId": 8476875,
+            "name": "Mike Matheson",
+            "position": "D",
+            "vorp": 28.05755615234375,
+            "actual_fp": 157.3
+          },
+          {
+            "pick": 76,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 85,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 96,
+            "playerId": 8474593,
+            "name": "Jacob Markstrom",
+            "position": "G",
+            "vorp": 15.471697014477144,
+            "actual_fp": 156.2
+          },
+          {
+            "pick": 105,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 116,
+            "playerId": 8480045,
+            "name": "Ukko-Pekka Luukkonen",
+            "position": "G",
+            "vorp": 10.70557205029013,
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 125,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 136,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 5,
+          "actual": "Matt Boldy",
+          "actual_fp": 285.3,
+          "board": "Filip Forsberg",
+          "board_fp": 252.1,
+          "delta": -33.2
+        },
+        {
+          "pick": 16,
+          "actual": "Adrian Kempe",
+          "actual_fp": 224.5,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": -2.5
+        },
+        {
+          "pick": 25,
+          "actual": "Adin Hill",
+          "actual_fp": 77.9,
+          "board": "Shea Theodore",
+          "board_fp": 129.6,
+          "delta": 51.7
+        },
+        {
+          "pick": 36,
+          "actual": "Alex Ovechkin",
+          "actual_fp": 222.0,
+          "board": "Noah Dobson",
+          "board_fp": 202.2,
+          "delta": -19.8
+        },
+        {
+          "pick": 45,
+          "actual": "Luke Hughes",
+          "actual_fp": 130.3,
+          "board": "Miro Heiskanen",
+          "board_fp": 228.6,
+          "delta": 98.3
+        },
+        {
+          "pick": 56,
+          "actual": "John Tavares",
+          "actual_fp": 211.6,
+          "board": "John Carlson",
+          "board_fp": 188.6,
+          "delta": -23.0
+        },
+        {
+          "pick": 65,
+          "actual": "Gabriel Vilardi",
+          "actual_fp": 206.8,
+          "board": "Mike Matheson",
+          "board_fp": 157.3,
+          "delta": -49.5
+        },
+        {
+          "pick": 76,
+          "actual": "Anze Kopitar",
+          "actual_fp": 130.2,
+          "board": "William Eklund",
+          "board_fp": 157.9,
+          "delta": 27.7
+        },
+        {
+          "pick": 85,
+          "actual": "Thatcher Demko",
+          "actual_fp": 70.0,
+          "board": "Mark Stone",
+          "board_fp": 211.9,
+          "delta": 141.9
+        },
+        {
+          "pick": 96,
+          "actual": "Drew Doughty",
+          "actual_fp": 94.4,
+          "board": "Jacob Markstrom",
+          "board_fp": 156.2,
+          "delta": 61.8
+        },
+        {
+          "pick": 105,
+          "actual": "Brock Faber",
+          "actual_fp": 206.8,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": 23.9
+        },
+        {
+          "pick": 116,
+          "actual": "Gabriel Landeskog",
+          "actual_fp": 120.0,
+          "board": "Ukko-Pekka Luukkonen",
+          "board_fp": 158.8,
+          "delta": 38.8
+        },
+        {
+          "pick": 125,
+          "actual": "Brock Boeser",
+          "actual_fp": 160.9,
+          "board": "Frank Vatrano",
+          "board_fp": 53.2,
+          "delta": -107.7
+        },
+        {
+          "pick": 136,
+          "actual": "Trevor Zegras",
+          "actual_fp": 199.2,
+          "board": "Owen Tippett",
+          "board_fp": 204.4,
+          "delta": 5.2
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 6,
+          "wanted": "Filip Forsberg",
+          "got": "Igor Shesterkin"
+        },
+        {
+          "pick": 10,
+          "wanted": "Igor Shesterkin",
+          "got": "Ilya Sorokin"
+        },
+        {
+          "pick": 27,
+          "wanted": "Shea Theodore",
+          "got": "Lucas Raymond"
+        },
+        {
+          "pick": 32,
+          "wanted": "Lucas Raymond",
+          "got": "Dougie Hamilton"
+        },
+        {
+          "pick": 42,
+          "wanted": "Noah Dobson",
+          "got": "Jordan Binnington"
+        },
+        {
+          "pick": 49,
+          "wanted": "Ilya Sorokin",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 54,
+          "wanted": "Miro Heiskanen",
+          "got": "Zach Hyman"
+        },
+        {
+          "pick": 55,
+          "wanted": "Dougie Hamilton",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 60,
+          "wanted": "Jordan Binnington",
+          "got": "Linus Ullmark"
+        },
+        {
+          "pick": 63,
+          "wanted": "Zach Hyman",
+          "got": "Jake Walman"
+        },
+        {
+          "pick": 69,
+          "wanted": "Linus Ullmark",
+          "got": "Shayne Gostisbehere"
+        },
+        {
+          "pick": 73,
+          "wanted": "John Carlson",
+          "got": "Colton Parayko"
+        },
+        {
+          "pick": 80,
+          "wanted": "Stuart Skinner",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 94,
+          "wanted": "Shayne Gostisbehere",
+          "got": "Darnell Nurse"
+        },
+        {
+          "pick": 103,
+          "wanted": "Jacob Markstrom",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 104,
+          "wanted": "Mark Stone",
+          "got": "Rasmus Andersson"
+        },
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Neal Pionk"
+        },
+        {
+          "pick": 124,
+          "wanted": "Neal Pionk",
+          "got": "Pierre-Luc Dubois"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 130,
+          "wanted": "Pierre-Luc Dubois",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Mattias Ekholm"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Karel Vejmelka"
+        },
+        {
+          "pick": 150,
+          "wanted": "Karel Vejmelka",
+          "got": "Alexander Romanov"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Cam Talbot"
+        }
+      ],
+      "unmatched_opponent_picks": 5,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.4",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.5": {
+      "verdict": {
+        "actual_total_fp": 2713.9,
+        "board_total_fp": 2595.8,
+        "actual_lineup_fp": 2637.3,
+        "board_lineup_fp": 2384.1,
+        "board_minus_actual": -253.2,
+        "board_minus_actual_total": -118.1,
+        "board_wins": false
+      },
+      "actual_roster": {
+        "total_fp": 2713.9,
+        "lineup_fp": 2637.3,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 13,
+            "playerId": 8479420,
+            "name": "Tage Thompson",
+            "position": "C",
+            "actual_fp": 283.4
+          },
+          {
+            "pick": 29,
+            "playerId": 8482093,
+            "name": "Seth Jarvis",
+            "position": "C",
+            "actual_fp": 230.9
+          },
+          {
+            "pick": 20,
+            "playerId": 8479542,
+            "name": "Brandon Hagel",
+            "position": "L",
+            "actual_fp": 241.3
+          },
+          {
+            "pick": 8,
+            "playerId": 8479407,
+            "name": "Jesper Bratt",
+            "position": "L",
+            "actual_fp": 214.8
+          },
+          {
+            "pick": 35,
+            "playerId": 8480893,
+            "name": "Kirill Marchenko",
+            "position": "R",
+            "actual_fp": 222.6
+          },
+          {
+            "pick": 9,
+            "playerId": 8481542,
+            "name": "Moritz Seider",
+            "position": "D",
+            "actual_fp": 239.8
+          },
+          {
+            "pick": 40,
+            "playerId": 8479325,
+            "name": "Charlie McAvoy",
+            "position": "D",
+            "actual_fp": 215.9
+          },
+          {
+            "pick": 21,
+            "playerId": 8482105,
+            "name": "Jake Sanderson",
+            "position": "D",
+            "actual_fp": 188.8
+          },
+          {
+            "pick": 1,
+            "playerId": 8475167,
+            "name": "Victor Hedman",
+            "position": "D",
+            "actual_fp": 66.8
+          },
+          {
+            "pick": 48,
+            "playerId": 8481692,
+            "name": "Dustin Wolf",
+            "position": "G",
+            "actual_fp": 206.8
+          },
+          {
+            "pick": 60,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 33,
+            "playerId": 8477940,
+            "name": "Nikolaj Ehlers",
+            "position": "L",
+            "actual_fp": 208.8
+          },
+          {
+            "pick": 41,
+            "playerId": 8482720,
+            "name": "Matthew Knies",
+            "position": "L",
+            "actual_fp": 204.4
+          }
+        ],
+        "picks": [
+          {
+            "pick": 1,
+            "playerId": 8475167,
+            "name": "Victor Hedman",
+            "position": "D",
+            "actual_fp": 66.8
+          },
+          {
+            "pick": 8,
+            "playerId": 8479407,
+            "name": "Jesper Bratt",
+            "position": "L",
+            "actual_fp": 214.8
+          },
+          {
+            "pick": 9,
+            "playerId": 8481542,
+            "name": "Moritz Seider",
+            "position": "D",
+            "actual_fp": 239.8
+          },
+          {
+            "pick": 13,
+            "playerId": 8479420,
+            "name": "Tage Thompson",
+            "position": "C",
+            "actual_fp": 283.4
+          },
+          {
+            "pick": 20,
+            "playerId": 8479542,
+            "name": "Brandon Hagel",
+            "position": "L",
+            "actual_fp": 241.3
+          },
+          {
+            "pick": 21,
+            "playerId": 8482105,
+            "name": "Jake Sanderson",
+            "position": "D",
+            "actual_fp": 188.8
+          },
+          {
+            "pick": 29,
+            "playerId": 8482093,
+            "name": "Seth Jarvis",
+            "position": "C",
+            "actual_fp": 230.9
+          },
+          {
+            "pick": 33,
+            "playerId": 8477940,
+            "name": "Nikolaj Ehlers",
+            "position": "L",
+            "actual_fp": 208.8
+          },
+          {
+            "pick": 35,
+            "playerId": 8480893,
+            "name": "Kirill Marchenko",
+            "position": "R",
+            "actual_fp": 222.6
+          },
+          {
+            "pick": 40,
+            "playerId": 8479325,
+            "name": "Charlie McAvoy",
+            "position": "D",
+            "actual_fp": 215.9
+          },
+          {
+            "pick": 41,
+            "playerId": 8482720,
+            "name": "Matthew Knies",
+            "position": "L",
+            "actual_fp": 204.4
+          },
+          {
+            "pick": 48,
+            "playerId": 8481692,
+            "name": "Dustin Wolf",
+            "position": "G",
+            "actual_fp": 206.8
+          },
+          {
+            "pick": 53,
+            "playerId": 8478470,
+            "name": "Sam Montembeault",
+            "position": "G",
+            "actual_fp": 76.8
+          },
+          {
+            "pick": 60,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "actual_fp": 113.0
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2595.8,
+        "lineup_fp": 2384.1,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 1,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 20,
+            "playerId": 8482078,
+            "name": "Lucas Raymond",
+            "position": "L",
+            "vorp": 56.84226989746094,
+            "actual_fp": 233.0
+          },
+          {
+            "pick": 53,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 60,
+            "playerId": 8478414,
+            "name": "Timo Meier",
+            "position": "R",
+            "vorp": 18.526077270507812,
+            "actual_fp": 182.8
+          },
+          {
+            "pick": 33,
+            "playerId": 8479345,
+            "name": "Jakob Chychrun",
+            "position": "D",
+            "vorp": 43.66789245605469,
+            "actual_fp": 231.5
+          },
+          {
+            "pick": 40,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 13,
+            "playerId": 8477346,
+            "name": "MacKenzie Weegar",
+            "position": "D",
+            "vorp": 60.94549560546875,
+            "actual_fp": 160.2
+          },
+          {
+            "pick": 21,
+            "playerId": 8476462,
+            "name": "Dougie Hamilton",
+            "position": "D",
+            "vorp": 56.691558837890625,
+            "actual_fp": 159.4
+          },
+          {
+            "pick": 8,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 29,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 9,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 35,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          }
+        ],
+        "picks": [
+          {
+            "pick": 1,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 8,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 9,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 13,
+            "playerId": 8477346,
+            "name": "MacKenzie Weegar",
+            "position": "D",
+            "vorp": 60.94549560546875,
+            "actual_fp": 160.2
+          },
+          {
+            "pick": 20,
+            "playerId": 8482078,
+            "name": "Lucas Raymond",
+            "position": "L",
+            "vorp": 56.84226989746094,
+            "actual_fp": 233.0
+          },
+          {
+            "pick": 21,
+            "playerId": 8476462,
+            "name": "Dougie Hamilton",
+            "position": "D",
+            "vorp": 56.691558837890625,
+            "actual_fp": 159.4
+          },
+          {
+            "pick": 29,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 33,
+            "playerId": 8479345,
+            "name": "Jakob Chychrun",
+            "position": "D",
+            "vorp": 43.66789245605469,
+            "actual_fp": 231.5
+          },
+          {
+            "pick": 35,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 40,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 41,
+            "playerId": 8477495,
+            "name": "Seth Jones",
+            "position": "D",
+            "vorp": 30.519927978515625,
+            "actual_fp": 117.5
+          },
+          {
+            "pick": 48,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 53,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 60,
+            "playerId": 8478414,
+            "name": "Timo Meier",
+            "position": "R",
+            "vorp": 18.526077270507812,
+            "actual_fp": 182.8
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 1,
+          "actual": "Victor Hedman",
+          "actual_fp": 66.8,
+          "board": "Filip Forsberg",
+          "board_fp": 252.1,
+          "delta": 185.3
+        },
+        {
+          "pick": 8,
+          "actual": "Jesper Bratt",
+          "actual_fp": 214.8,
+          "board": "Ilya Sorokin",
+          "board_fp": 245.9,
+          "delta": 31.1
+        },
+        {
+          "pick": 9,
+          "actual": "Moritz Seider",
+          "actual_fp": 239.8,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": -17.8
+        },
+        {
+          "pick": 13,
+          "actual": "Tage Thompson",
+          "actual_fp": 283.4,
+          "board": "MacKenzie Weegar",
+          "board_fp": 160.2,
+          "delta": -123.2
+        },
+        {
+          "pick": 20,
+          "actual": "Brandon Hagel",
+          "actual_fp": 241.3,
+          "board": "Lucas Raymond",
+          "board_fp": 233.0,
+          "delta": -8.3
+        },
+        {
+          "pick": 21,
+          "actual": "Jake Sanderson",
+          "actual_fp": 188.8,
+          "board": "Dougie Hamilton",
+          "board_fp": 159.4,
+          "delta": -29.4
+        },
+        {
+          "pick": 29,
+          "actual": "Seth Jarvis",
+          "actual_fp": 230.9,
+          "board": "Jordan Binnington",
+          "board_fp": 113.0,
+          "delta": -117.9
+        },
+        {
+          "pick": 33,
+          "actual": "Nikolaj Ehlers",
+          "actual_fp": 208.8,
+          "board": "Jakob Chychrun",
+          "board_fp": 231.5,
+          "delta": 22.7
+        },
+        {
+          "pick": 35,
+          "actual": "Kirill Marchenko",
+          "actual_fp": 222.6,
+          "board": "Zach Hyman",
+          "board_fp": 183.7,
+          "delta": -38.9
+        },
+        {
+          "pick": 40,
+          "actual": "Charlie McAvoy",
+          "actual_fp": 215.9,
+          "board": "John Carlson",
+          "board_fp": 188.6,
+          "delta": -27.3
+        },
+        {
+          "pick": 41,
+          "actual": "Matthew Knies",
+          "actual_fp": 204.4,
+          "board": "Seth Jones",
+          "board_fp": 117.5,
+          "delta": -86.9
+        },
+        {
+          "pick": 48,
+          "actual": "Dustin Wolf",
+          "actual_fp": 206.8,
+          "board": "Jake Walman",
+          "board_fp": 94.0,
+          "delta": -112.8
+        },
+        {
+          "pick": 53,
+          "actual": "Sam Montembeault",
+          "actual_fp": 76.8,
+          "board": "Mark Stone",
+          "board_fp": 211.9,
+          "delta": 135.1
+        },
+        {
+          "pick": 60,
+          "actual": "Jordan Binnington",
+          "actual_fp": 113.0,
+          "board": "Timo Meier",
+          "board_fp": 182.8,
+          "delta": 69.8
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 6,
+          "wanted": "Filip Forsberg",
+          "got": "Igor Shesterkin"
+        },
+        {
+          "pick": 10,
+          "wanted": "Igor Shesterkin",
+          "got": "Jake Sanderson"
+        },
+        {
+          "pick": 18,
+          "wanted": "MacKenzie Weegar",
+          "got": "Shea Theodore"
+        },
+        {
+          "pick": 27,
+          "wanted": "Shea Theodore",
+          "got": "Noah Dobson"
+        },
+        {
+          "pick": 32,
+          "wanted": "Lucas Raymond",
+          "got": "Miro Heiskanen"
+        },
+        {
+          "pick": 36,
+          "wanted": "Alex Ovechkin",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 38,
+          "wanted": "Jakob Chychrun",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 42,
+          "wanted": "Noah Dobson",
+          "got": "Linus Ullmark"
+        },
+        {
+          "pick": 49,
+          "wanted": "Ilya Sorokin",
+          "got": "Valeri Nichushkin"
+        },
+        {
+          "pick": 51,
+          "wanted": "Valeri Nichushkin",
+          "got": "Mike Matheson"
+        },
+        {
+          "pick": 54,
+          "wanted": "Miro Heiskanen",
+          "got": "Shayne Gostisbehere"
+        },
+        {
+          "pick": 55,
+          "wanted": "Dougie Hamilton",
+          "got": "Colton Parayko"
+        },
+        {
+          "pick": 58,
+          "wanted": "Seth Jones",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 63,
+          "wanted": "Zach Hyman",
+          "got": "Erik Karlsson"
+        },
+        {
+          "pick": 67,
+          "wanted": "Timo Meier",
+          "got": "Darnell Nurse"
+        },
+        {
+          "pick": 69,
+          "wanted": "Linus Ullmark",
+          "got": "William Eklund"
+        },
+        {
+          "pick": 73,
+          "wanted": "John Carlson",
+          "got": "Aaron Ekblad"
+        },
+        {
+          "pick": 79,
+          "wanted": "Aaron Ekblad",
+          "got": "Logan Thompson"
+        },
+        {
+          "pick": 80,
+          "wanted": "Stuart Skinner",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 84,
+          "wanted": "Erik Karlsson",
+          "got": "Rasmus Andersson"
+        },
+        {
+          "pick": 87,
+          "wanted": "Logan Thompson",
+          "got": "Neal Pionk"
+        },
+        {
+          "pick": 94,
+          "wanted": "Shayne Gostisbehere",
+          "got": "Jacob Markstrom"
+        },
+        {
+          "pick": 103,
+          "wanted": "Jacob Markstrom",
+          "got": "Bryan Rust"
+        },
+        {
+          "pick": 104,
+          "wanted": "Mark Stone",
+          "got": "Dylan Holloway"
+        },
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Jared McCann"
+        },
+        {
+          "pick": 112,
+          "wanted": "Jared McCann",
+          "got": "Ukko-Pekka Luukkonen"
+        },
+        {
+          "pick": 119,
+          "wanted": "Dylan Holloway",
+          "got": "Pierre-Luc Dubois"
+        },
+        {
+          "pick": 124,
+          "wanted": "Neal Pionk",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 130,
+          "wanted": "Pierre-Luc Dubois",
+          "got": "Mattias Ekholm"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Artturi Lehkonen"
+        },
+        {
+          "pick": 135,
+          "wanted": "Artturi Lehkonen",
+          "got": "Karel Vejmelka"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Alexander Romanov"
+        },
+        {
+          "pick": 150,
+          "wanted": "Karel Vejmelka",
+          "got": "Cam Talbot"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Jonathan Huberdeau"
+        }
+      ],
+      "unmatched_opponent_picks": 6,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.5",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.6": {
+      "verdict": {
+        "actual_total_fp": 2386.8,
+        "board_total_fp": 2290.4,
+        "actual_lineup_fp": 2058.6,
+        "board_lineup_fp": 2084.2,
+        "board_minus_actual": 25.6,
+        "board_minus_actual_total": -96.4,
+        "board_wins": true
+      },
+      "actual_roster": {
+        "total_fp": 2386.8,
+        "lineup_fp": 2058.6,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 34,
+            "playerId": 8478440,
+            "name": "Dylan Strome",
+            "position": "C",
+            "actual_fp": 182.4
+          },
+          {
+            "pick": 127,
+            "playerId": 8475726,
+            "name": "Tyler Toffoli",
+            "position": "C",
+            "actual_fp": 163.8
+          },
+          {
+            "pick": 107,
+            "playerId": 8483515,
+            "name": "Juraj Slafkovsk",
+            "position": "L",
+            "actual_fp": 252.2
+          },
+          {
+            "pick": 67,
+            "playerId": 8478414,
+            "name": "Timo Meier",
+            "position": "R",
+            "actual_fp": 182.8
+          },
+          {
+            "pick": 54,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 7,
+            "playerId": 8474600,
+            "name": "Roman Josi",
+            "position": "D",
+            "actual_fp": 186.2
+          },
+          {
+            "pick": 94,
+            "playerId": 8476906,
+            "name": "Shayne Gostisbehere",
+            "position": "D",
+            "actual_fp": 160.3
+          },
+          {
+            "pick": 27,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 87,
+            "playerId": 8480313,
+            "name": "Logan Thompson",
+            "position": "G",
+            "actual_fp": 259.0
+          },
+          {
+            "pick": 14,
+            "playerId": 8480023,
+            "name": "Robert Thomas",
+            "position": "C",
+            "actual_fp": 157.5
+          },
+          {
+            "pick": 47,
+            "playerId": 8478449,
+            "name": "Roope Hintz",
+            "position": "C",
+            "actual_fp": 156.2
+          }
+        ],
+        "picks": [
+          {
+            "pick": 7,
+            "playerId": 8474600,
+            "name": "Roman Josi",
+            "position": "D",
+            "actual_fp": 186.2
+          },
+          {
+            "pick": 14,
+            "playerId": 8480023,
+            "name": "Robert Thomas",
+            "position": "C",
+            "actual_fp": 157.5
+          },
+          {
+            "pick": 27,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 34,
+            "playerId": 8478440,
+            "name": "Dylan Strome",
+            "position": "C",
+            "actual_fp": 182.4
+          },
+          {
+            "pick": 47,
+            "playerId": 8478449,
+            "name": "Roope Hintz",
+            "position": "C",
+            "actual_fp": 156.2
+          },
+          {
+            "pick": 54,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 67,
+            "playerId": 8478414,
+            "name": "Timo Meier",
+            "position": "R",
+            "actual_fp": 182.8
+          },
+          {
+            "pick": 74,
+            "playerId": 8478038,
+            "name": "Devon Toews",
+            "position": "D",
+            "actual_fp": 87.8
+          },
+          {
+            "pick": 87,
+            "playerId": 8480313,
+            "name": "Logan Thompson",
+            "position": "G",
+            "actual_fp": 259.0
+          },
+          {
+            "pick": 94,
+            "playerId": 8476906,
+            "name": "Shayne Gostisbehere",
+            "position": "D",
+            "actual_fp": 160.3
+          },
+          {
+            "pick": 107,
+            "playerId": 8483515,
+            "name": "Juraj Slafkovsk",
+            "position": "L",
+            "actual_fp": 252.2
+          },
+          {
+            "pick": 114,
+            "playerId": 8477497,
+            "name": "Sean Monahan",
+            "position": "C",
+            "actual_fp": 128.2
+          },
+          {
+            "pick": 127,
+            "playerId": 8475726,
+            "name": "Tyler Toffoli",
+            "position": "C",
+            "actual_fp": 163.8
+          },
+          {
+            "pick": 134,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "actual_fp": 112.3
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2290.4,
+        "lineup_fp": 2084.2,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 134,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          },
+          {
+            "pick": 14,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 54,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 107,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 127,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 47,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 34,
+            "playerId": 8476462,
+            "name": "Dougie Hamilton",
+            "position": "D",
+            "vorp": 56.691558837890625,
+            "actual_fp": 159.4
+          },
+          {
+            "pick": 87,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 27,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "vorp": 59.280548095703125,
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 7,
+            "playerId": 8478048,
+            "name": "Igor Shesterkin",
+            "position": "G",
+            "vorp": 84.15885277015121,
+            "actual_fp": 216.6
+          },
+          {
+            "pick": 94,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 114,
+            "playerId": 8482077,
+            "name": "Dylan Holloway",
+            "position": "L",
+            "vorp": 12.089859008789062,
+            "actual_fp": 147.5
+          }
+        ],
+        "picks": [
+          {
+            "pick": 7,
+            "playerId": 8478048,
+            "name": "Igor Shesterkin",
+            "position": "G",
+            "vorp": 84.15885277015121,
+            "actual_fp": 216.6
+          },
+          {
+            "pick": 14,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 27,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "vorp": 59.280548095703125,
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 34,
+            "playerId": 8476462,
+            "name": "Dougie Hamilton",
+            "position": "D",
+            "vorp": 56.691558837890625,
+            "actual_fp": 159.4
+          },
+          {
+            "pick": 47,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 54,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 67,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 74,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "vorp": 27.140975952148438,
+            "actual_fp": 112.3
+          },
+          {
+            "pick": 87,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 94,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 107,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 114,
+            "playerId": 8482077,
+            "name": "Dylan Holloway",
+            "position": "L",
+            "vorp": 12.089859008789062,
+            "actual_fp": 147.5
+          },
+          {
+            "pick": 127,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 134,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 7,
+          "actual": "Roman Josi",
+          "actual_fp": 186.2,
+          "board": "Igor Shesterkin",
+          "board_fp": 216.6,
+          "delta": 30.4
+        },
+        {
+          "pick": 14,
+          "actual": "Robert Thomas",
+          "actual_fp": 157.5,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": 64.5
+        },
+        {
+          "pick": 27,
+          "actual": "Shea Theodore",
+          "actual_fp": 129.6,
+          "board": "Shea Theodore",
+          "board_fp": 129.6,
+          "delta": 0.0
+        },
+        {
+          "pick": 34,
+          "actual": "Dylan Strome",
+          "actual_fp": 182.4,
+          "board": "Dougie Hamilton",
+          "board_fp": 159.4,
+          "delta": -23.0
+        },
+        {
+          "pick": 47,
+          "actual": "Roope Hintz",
+          "actual_fp": 156.2,
+          "board": "Miro Heiskanen",
+          "board_fp": 228.6,
+          "delta": 72.4
+        },
+        {
+          "pick": 54,
+          "actual": "Miro Heiskanen",
+          "actual_fp": 228.6,
+          "board": "Zach Hyman",
+          "board_fp": 183.7,
+          "delta": -44.9
+        },
+        {
+          "pick": 67,
+          "actual": "Timo Meier",
+          "actual_fp": 182.8,
+          "board": "Jake Walman",
+          "board_fp": 94.0,
+          "delta": -88.8
+        },
+        {
+          "pick": 74,
+          "actual": "Devon Toews",
+          "actual_fp": 87.8,
+          "board": "Colton Parayko",
+          "board_fp": 112.3,
+          "delta": 24.5
+        },
+        {
+          "pick": 87,
+          "actual": "Logan Thompson",
+          "actual_fp": 259.0,
+          "board": "Darnell Nurse",
+          "board_fp": 145.9,
+          "delta": -113.1
+        },
+        {
+          "pick": 94,
+          "actual": "Shayne Gostisbehere",
+          "actual_fp": 160.3,
+          "board": "William Eklund",
+          "board_fp": 157.9,
+          "delta": -2.4
+        },
+        {
+          "pick": 107,
+          "actual": "Juraj Slafkovsk",
+          "actual_fp": 252.2,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": -21.5
+        },
+        {
+          "pick": 114,
+          "actual": "Sean Monahan",
+          "actual_fp": 128.2,
+          "board": "Dylan Holloway",
+          "board_fp": 147.5,
+          "delta": 19.3
+        },
+        {
+          "pick": 127,
+          "actual": "Tyler Toffoli",
+          "actual_fp": 163.8,
+          "board": "Frank Vatrano",
+          "board_fp": 53.2,
+          "delta": -110.6
+        },
+        {
+          "pick": 134,
+          "actual": "Colton Parayko",
+          "actual_fp": 112.3,
+          "board": "Bo Horvat",
+          "board_fp": 209.1,
+          "delta": 96.8
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 10,
+          "wanted": "Igor Shesterkin",
+          "got": "Ilya Sorokin"
+        },
+        {
+          "pick": 36,
+          "wanted": "Alex Ovechkin",
+          "got": "Noah Dobson"
+        },
+        {
+          "pick": 42,
+          "wanted": "Noah Dobson",
+          "got": "Jordan Binnington"
+        },
+        {
+          "pick": 49,
+          "wanted": "Ilya Sorokin",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 55,
+          "wanted": "Dougie Hamilton",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 60,
+          "wanted": "Jordan Binnington",
+          "got": "John Carlson"
+        },
+        {
+          "pick": 63,
+          "wanted": "Zach Hyman",
+          "got": "Linus Ullmark"
+        },
+        {
+          "pick": 69,
+          "wanted": "Linus Ullmark",
+          "got": "Mike Matheson"
+        },
+        {
+          "pick": 73,
+          "wanted": "John Carlson",
+          "got": "Shayne Gostisbehere"
+        },
+        {
+          "pick": 80,
+          "wanted": "Stuart Skinner",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 119,
+          "wanted": "Dylan Holloway",
+          "got": "Rasmus Andersson"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Ukko-Pekka Luukkonen"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Kris Letang"
+        }
+      ],
+      "unmatched_opponent_picks": 6,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.6",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.7": {
+      "verdict": {
+        "actual_total_fp": 2147.8,
+        "board_total_fp": 2065.5,
+        "actual_lineup_fp": 2055.9,
+        "board_lineup_fp": 2012.2,
+        "board_minus_actual": -43.7,
+        "board_minus_actual_total": -82.3,
+        "board_wins": false
+      },
+      "actual_roster": {
+        "total_fp": 2147.8,
+        "lineup_fp": 2055.9,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 131,
+            "playerId": 8479987,
+            "name": "Morgan Geekie",
+            "position": "C",
+            "actual_fp": 233.3
+          },
+          {
+            "pick": 98,
+            "playerId": 8477935,
+            "name": "Sam Bennett",
+            "position": "C",
+            "actual_fp": 208.6
+          },
+          {
+            "pick": 138,
+            "playerId": 8482157,
+            "name": "Will Cuylle",
+            "position": "L",
+            "actual_fp": 177.4
+          },
+          {
+            "pick": 110,
+            "playerId": 8481656,
+            "name": "Aliaksei Protas",
+            "position": "L",
+            "actual_fp": 160.2
+          },
+          {
+            "pick": 123,
+            "playerId": 8476483,
+            "name": "Rickard Rakell",
+            "position": "R",
+            "actual_fp": 167.1
+          },
+          {
+            "pick": 83,
+            "playerId": 8481605,
+            "name": "Jackson LaCombe",
+            "position": "D",
+            "actual_fp": 207.0
+          },
+          {
+            "pick": 111,
+            "playerId": 8482730,
+            "name": "Brandt Clarke",
+            "position": "D",
+            "actual_fp": 177.8
+          },
+          {
+            "pick": 118,
+            "playerId": 8478396,
+            "name": "Noah Hanifin",
+            "position": "D",
+            "actual_fp": 117.7
+          },
+          {
+            "pick": 150,
+            "playerId": 8478872,
+            "name": "Karel Vejmelka",
+            "position": "G",
+            "actual_fp": 262.3
+          },
+          {
+            "pick": 103,
+            "playerId": 8474593,
+            "name": "Jacob Markstrom",
+            "position": "G",
+            "actual_fp": 156.2
+          },
+          {
+            "pick": 151,
+            "playerId": 8481580,
+            "name": "Connor McMichael",
+            "position": "L",
+            "actual_fp": 132.9
+          },
+          {
+            "pick": 143,
+            "playerId": 8485402,
+            "name": "Michael Kesselring",
+            "position": "C",
+            "actual_fp": 55.4
+          }
+        ],
+        "picks": [
+          {
+            "pick": 83,
+            "playerId": 8481605,
+            "name": "Jackson LaCombe",
+            "position": "D",
+            "actual_fp": 207.0
+          },
+          {
+            "pick": 91,
+            "playerId": 8481611,
+            "name": "Pyotr Kochetkov",
+            "position": "G",
+            "actual_fp": 38.0
+          },
+          {
+            "pick": 98,
+            "playerId": 8477935,
+            "name": "Sam Bennett",
+            "position": "C",
+            "actual_fp": 208.6
+          },
+          {
+            "pick": 103,
+            "playerId": 8474593,
+            "name": "Jacob Markstrom",
+            "position": "G",
+            "actual_fp": 156.2
+          },
+          {
+            "pick": 110,
+            "playerId": 8481656,
+            "name": "Aliaksei Protas",
+            "position": "L",
+            "actual_fp": 160.2
+          },
+          {
+            "pick": 111,
+            "playerId": 8482730,
+            "name": "Brandt Clarke",
+            "position": "D",
+            "actual_fp": 177.8
+          },
+          {
+            "pick": 118,
+            "playerId": 8478396,
+            "name": "Noah Hanifin",
+            "position": "D",
+            "actual_fp": 117.7
+          },
+          {
+            "pick": 123,
+            "playerId": 8476483,
+            "name": "Rickard Rakell",
+            "position": "R",
+            "actual_fp": 167.1
+          },
+          {
+            "pick": 130,
+            "playerId": 8479400,
+            "name": "Pierre-Luc Dubois",
+            "position": "C",
+            "actual_fp": 53.9
+          },
+          {
+            "pick": 131,
+            "playerId": 8479987,
+            "name": "Morgan Geekie",
+            "position": "C",
+            "actual_fp": 233.3
+          },
+          {
+            "pick": 138,
+            "playerId": 8482157,
+            "name": "Will Cuylle",
+            "position": "L",
+            "actual_fp": 177.4
+          },
+          {
+            "pick": 143,
+            "playerId": 8485402,
+            "name": "Michael Kesselring",
+            "position": "C",
+            "actual_fp": 55.4
+          },
+          {
+            "pick": 150,
+            "playerId": 8478872,
+            "name": "Karel Vejmelka",
+            "position": "G",
+            "actual_fp": 262.3
+          },
+          {
+            "pick": 151,
+            "playerId": 8481580,
+            "name": "Connor McMichael",
+            "position": "L",
+            "actual_fp": 132.9
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2065.5,
+        "lineup_fp": 2012.2,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 151,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          },
+          {
+            "pick": 130,
+            "playerId": 8479400,
+            "name": "Pierre-Luc Dubois",
+            "position": "C",
+            "vorp": 8.216079711914062,
+            "actual_fp": 53.9
+          },
+          {
+            "pick": 131,
+            "playerId": 8473419,
+            "name": "Brad Marchand",
+            "position": "L",
+            "vorp": 7.7416839599609375,
+            "actual_fp": 186.7
+          },
+          {
+            "pick": 111,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 118,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 143,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          },
+          {
+            "pick": 83,
+            "playerId": 8478407,
+            "name": "Vince Dunn",
+            "position": "D",
+            "vorp": 33.98455810546875,
+            "actual_fp": 159.5
+          },
+          {
+            "pick": 98,
+            "playerId": 8476875,
+            "name": "Mike Matheson",
+            "position": "D",
+            "vorp": 28.05755615234375,
+            "actual_fp": 157.3
+          },
+          {
+            "pick": 110,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 103,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "vorp": 27.140975952148438,
+            "actual_fp": 112.3
+          },
+          {
+            "pick": 123,
+            "playerId": 8480045,
+            "name": "Ukko-Pekka Luukkonen",
+            "position": "G",
+            "vorp": 10.70557205029013,
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 150,
+            "playerId": 8482679,
+            "name": "Matt Coronato",
+            "position": "R",
+            "vorp": -28.261062622070312,
+            "actual_fp": 141.7
+          },
+          {
+            "pick": 91,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          }
+        ],
+        "picks": [
+          {
+            "pick": 83,
+            "playerId": 8478407,
+            "name": "Vince Dunn",
+            "position": "D",
+            "vorp": 33.98455810546875,
+            "actual_fp": 159.5
+          },
+          {
+            "pick": 91,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 98,
+            "playerId": 8476875,
+            "name": "Mike Matheson",
+            "position": "D",
+            "vorp": 28.05755615234375,
+            "actual_fp": 157.3
+          },
+          {
+            "pick": 103,
+            "playerId": 8476892,
+            "name": "Colton Parayko",
+            "position": "D",
+            "vorp": 27.140975952148438,
+            "actual_fp": 112.3
+          },
+          {
+            "pick": 110,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 111,
+            "playerId": 8482667,
+            "name": "William Eklund",
+            "position": "L",
+            "vorp": 20.933868408203125,
+            "actual_fp": 157.9
+          },
+          {
+            "pick": 118,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 123,
+            "playerId": 8480045,
+            "name": "Ukko-Pekka Luukkonen",
+            "position": "G",
+            "vorp": 10.70557205029013,
+            "actual_fp": 158.8
+          },
+          {
+            "pick": 130,
+            "playerId": 8479400,
+            "name": "Pierre-Luc Dubois",
+            "position": "C",
+            "vorp": 8.216079711914062,
+            "actual_fp": 53.9
+          },
+          {
+            "pick": 131,
+            "playerId": 8473419,
+            "name": "Brad Marchand",
+            "position": "L",
+            "vorp": 7.7416839599609375,
+            "actual_fp": 186.7
+          },
+          {
+            "pick": 138,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 143,
+            "playerId": 8480015,
+            "name": "Owen Tippett",
+            "position": "R",
+            "vorp": -21.674041748046875,
+            "actual_fp": 204.4
+          },
+          {
+            "pick": 150,
+            "playerId": 8482679,
+            "name": "Matt Coronato",
+            "position": "R",
+            "vorp": -28.261062622070312,
+            "actual_fp": 141.7
+          },
+          {
+            "pick": 151,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 83,
+          "actual": "Jackson LaCombe",
+          "actual_fp": 207.0,
+          "board": "Vince Dunn",
+          "board_fp": 159.5,
+          "delta": -47.5
+        },
+        {
+          "pick": 91,
+          "actual": "Pyotr Kochetkov",
+          "actual_fp": 38.0,
+          "board": "Jake Walman",
+          "board_fp": 94.0,
+          "delta": 56.0
+        },
+        {
+          "pick": 98,
+          "actual": "Sam Bennett",
+          "actual_fp": 208.6,
+          "board": "Mike Matheson",
+          "board_fp": 157.3,
+          "delta": -51.3
+        },
+        {
+          "pick": 103,
+          "actual": "Jacob Markstrom",
+          "actual_fp": 156.2,
+          "board": "Colton Parayko",
+          "board_fp": 112.3,
+          "delta": -43.9
+        },
+        {
+          "pick": 110,
+          "actual": "Aliaksei Protas",
+          "actual_fp": 160.2,
+          "board": "Darnell Nurse",
+          "board_fp": 145.9,
+          "delta": -14.3
+        },
+        {
+          "pick": 111,
+          "actual": "Brandt Clarke",
+          "actual_fp": 177.8,
+          "board": "William Eklund",
+          "board_fp": 157.9,
+          "delta": -19.9
+        },
+        {
+          "pick": 118,
+          "actual": "Noah Hanifin",
+          "actual_fp": 117.7,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": 113.0
+        },
+        {
+          "pick": 123,
+          "actual": "Rickard Rakell",
+          "actual_fp": 167.1,
+          "board": "Ukko-Pekka Luukkonen",
+          "board_fp": 158.8,
+          "delta": -8.3
+        },
+        {
+          "pick": 130,
+          "actual": "Pierre-Luc Dubois",
+          "actual_fp": 53.9,
+          "board": "Pierre-Luc Dubois",
+          "board_fp": 53.9,
+          "delta": 0.0
+        },
+        {
+          "pick": 131,
+          "actual": "Morgan Geekie",
+          "actual_fp": 233.3,
+          "board": "Brad Marchand",
+          "board_fp": 186.7,
+          "delta": -46.6
+        },
+        {
+          "pick": 138,
+          "actual": "Will Cuylle",
+          "actual_fp": 177.4,
+          "board": "Frank Vatrano",
+          "board_fp": 53.2,
+          "delta": -124.2
+        },
+        {
+          "pick": 143,
+          "actual": "Michael Kesselring",
+          "actual_fp": 55.4,
+          "board": "Owen Tippett",
+          "board_fp": 204.4,
+          "delta": 149.0
+        },
+        {
+          "pick": 150,
+          "actual": "Karel Vejmelka",
+          "actual_fp": 262.3,
+          "board": "Matt Coronato",
+          "board_fp": 141.7,
+          "delta": -120.6
+        },
+        {
+          "pick": 151,
+          "actual": "Connor McMichael",
+          "actual_fp": 132.9,
+          "board": "Bo Horvat",
+          "board_fp": 209.1,
+          "delta": 76.2
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Rasmus Andersson"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Mattias Ekholm"
+        }
+      ],
+      "unmatched_opponent_picks": 6,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.7",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.8": {
+      "verdict": {
+        "actual_total_fp": 2688.0,
+        "board_total_fp": 2290.5,
+        "actual_lineup_fp": 2563.7,
+        "board_lineup_fp": 2237.4,
+        "board_minus_actual": -326.3,
+        "board_minus_actual_total": -397.5,
+        "board_wins": false
+      },
+      "actual_roster": {
+        "total_fp": 2688.0,
+        "lineup_fp": 2563.7,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 39,
+            "playerId": 8480002,
+            "name": "Nico Hischier",
+            "position": "C",
+            "actual_fp": 228.7
+          },
+          {
+            "pick": 59,
+            "playerId": 8476881,
+            "name": "Tomas Hertl",
+            "position": "C",
+            "actual_fp": 211.7
+          },
+          {
+            "pick": 119,
+            "playerId": 8482077,
+            "name": "Dylan Holloway",
+            "position": "L",
+            "actual_fp": 147.5
+          },
+          {
+            "pick": 139,
+            "playerId": 8475169,
+            "name": "Evander Kane",
+            "position": "L",
+            "actual_fp": 132.8
+          },
+          {
+            "pick": 19,
+            "playerId": 8481540,
+            "name": "Cole Caufield",
+            "position": "R",
+            "actual_fp": 288.2
+          },
+          {
+            "pick": 62,
+            "playerId": 8476880,
+            "name": "Tom Wilson",
+            "position": "R",
+            "actual_fp": 214.1
+          },
+          {
+            "pick": 2,
+            "playerId": 8483457,
+            "name": "Lane Hutson",
+            "position": "D",
+            "actual_fp": 240.3
+          },
+          {
+            "pick": 42,
+            "playerId": 8480865,
+            "name": "Noah Dobson",
+            "position": "D",
+            "actual_fp": 202.2
+          },
+          {
+            "pick": 122,
+            "playerId": 8482100,
+            "name": "Alexander Nikishin",
+            "position": "D",
+            "actual_fp": 145.1
+          },
+          {
+            "pick": 82,
+            "playerId": 8476853,
+            "name": "Morgan Rielly",
+            "position": "D",
+            "actual_fp": 144.9
+          },
+          {
+            "pick": 22,
+            "playerId": 8479406,
+            "name": "Filip Gustavsson",
+            "position": "G",
+            "actual_fp": 223.8
+          },
+          {
+            "pick": 102,
+            "playerId": 8484166,
+            "name": "Adam Fantilli",
+            "position": "C",
+            "actual_fp": 206.5
+          },
+          {
+            "pick": 99,
+            "playerId": 8478493,
+            "name": "Joel Eriksson Ek",
+            "position": "C",
+            "actual_fp": 177.9
+          }
+        ],
+        "picks": [
+          {
+            "pick": 2,
+            "playerId": 8483457,
+            "name": "Lane Hutson",
+            "position": "D",
+            "actual_fp": 240.3
+          },
+          {
+            "pick": 19,
+            "playerId": 8481540,
+            "name": "Cole Caufield",
+            "position": "R",
+            "actual_fp": 288.2
+          },
+          {
+            "pick": 22,
+            "playerId": 8479406,
+            "name": "Filip Gustavsson",
+            "position": "G",
+            "actual_fp": 223.8
+          },
+          {
+            "pick": 39,
+            "playerId": 8480002,
+            "name": "Nico Hischier",
+            "position": "C",
+            "actual_fp": 228.7
+          },
+          {
+            "pick": 42,
+            "playerId": 8480865,
+            "name": "Noah Dobson",
+            "position": "D",
+            "actual_fp": 202.2
+          },
+          {
+            "pick": 59,
+            "playerId": 8476881,
+            "name": "Tomas Hertl",
+            "position": "C",
+            "actual_fp": 211.7
+          },
+          {
+            "pick": 62,
+            "playerId": 8476880,
+            "name": "Tom Wilson",
+            "position": "R",
+            "actual_fp": 214.1
+          },
+          {
+            "pick": 79,
+            "playerId": 8477932,
+            "name": "Aaron Ekblad",
+            "position": "D",
+            "actual_fp": 124.2
+          },
+          {
+            "pick": 82,
+            "playerId": 8476853,
+            "name": "Morgan Rielly",
+            "position": "D",
+            "actual_fp": 144.9
+          },
+          {
+            "pick": 99,
+            "playerId": 8478493,
+            "name": "Joel Eriksson Ek",
+            "position": "C",
+            "actual_fp": 177.9
+          },
+          {
+            "pick": 102,
+            "playerId": 8484166,
+            "name": "Adam Fantilli",
+            "position": "C",
+            "actual_fp": 206.5
+          },
+          {
+            "pick": 119,
+            "playerId": 8482077,
+            "name": "Dylan Holloway",
+            "position": "L",
+            "actual_fp": 147.5
+          },
+          {
+            "pick": 122,
+            "playerId": 8482100,
+            "name": "Alexander Nikishin",
+            "position": "D",
+            "actual_fp": 145.1
+          },
+          {
+            "pick": 139,
+            "playerId": 8475169,
+            "name": "Evander Kane",
+            "position": "L",
+            "actual_fp": 132.8
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2290.5,
+        "lineup_fp": 2237.4,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 139,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          },
+          {
+            "pick": 122,
+            "playerId": 8483431,
+            "name": "Logan Cooley",
+            "position": "C",
+            "vorp": -32.977935791015625,
+            "actual_fp": 121.1
+          },
+          {
+            "pick": 2,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 19,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 99,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 102,
+            "playerId": 8476483,
+            "name": "Rickard Rakell",
+            "position": "R",
+            "vorp": 6.532196044921875,
+            "actual_fp": 167.1
+          },
+          {
+            "pick": 42,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 59,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 82,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 79,
+            "playerId": 8478469,
+            "name": "Thomas Chabot",
+            "position": "D",
+            "vorp": 27.004959106445312,
+            "actual_fp": 135.6
+          },
+          {
+            "pick": 39,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 22,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "vorp": 59.280548095703125,
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 62,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          }
+        ],
+        "picks": [
+          {
+            "pick": 2,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 19,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 22,
+            "playerId": 8477447,
+            "name": "Shea Theodore",
+            "position": "D",
+            "vorp": 59.280548095703125,
+            "actual_fp": 129.6
+          },
+          {
+            "pick": 39,
+            "playerId": 8476412,
+            "name": "Jordan Binnington",
+            "position": "G",
+            "vorp": 51.680140315837235,
+            "actual_fp": 113.0
+          },
+          {
+            "pick": 42,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 59,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 62,
+            "playerId": 8478013,
+            "name": "Jake Walman",
+            "position": "D",
+            "vorp": 29.50006103515625,
+            "actual_fp": 94.0
+          },
+          {
+            "pick": 79,
+            "playerId": 8478469,
+            "name": "Thomas Chabot",
+            "position": "D",
+            "vorp": 27.004959106445312,
+            "actual_fp": 135.6
+          },
+          {
+            "pick": 82,
+            "playerId": 8477498,
+            "name": "Darnell Nurse",
+            "position": "D",
+            "vorp": 21.153854370117188,
+            "actual_fp": 145.9
+          },
+          {
+            "pick": 99,
+            "playerId": 8475810,
+            "name": "Bryan Rust",
+            "position": "R",
+            "vorp": 12.813735961914062,
+            "actual_fp": 230.7
+          },
+          {
+            "pick": 102,
+            "playerId": 8476483,
+            "name": "Rickard Rakell",
+            "position": "R",
+            "vorp": 6.532196044921875,
+            "actual_fp": 167.1
+          },
+          {
+            "pick": 119,
+            "playerId": 8478366,
+            "name": "Frank Vatrano",
+            "position": "R",
+            "vorp": -16.475418090820312,
+            "actual_fp": 53.2
+          },
+          {
+            "pick": 122,
+            "playerId": 8483431,
+            "name": "Logan Cooley",
+            "position": "C",
+            "vorp": -32.977935791015625,
+            "actual_fp": 121.1
+          },
+          {
+            "pick": 139,
+            "playerId": 8477500,
+            "name": "Bo Horvat",
+            "position": "C",
+            "vorp": -34.08811950683594,
+            "actual_fp": 209.1
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 2,
+          "actual": "Lane Hutson",
+          "actual_fp": 240.3,
+          "board": "Filip Forsberg",
+          "board_fp": 252.1,
+          "delta": 11.8
+        },
+        {
+          "pick": 19,
+          "actual": "Cole Caufield",
+          "actual_fp": 288.2,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": -66.2
+        },
+        {
+          "pick": 22,
+          "actual": "Filip Gustavsson",
+          "actual_fp": 223.8,
+          "board": "Shea Theodore",
+          "board_fp": 129.6,
+          "delta": -94.2
+        },
+        {
+          "pick": 39,
+          "actual": "Nico Hischier",
+          "actual_fp": 228.7,
+          "board": "Jordan Binnington",
+          "board_fp": 113.0,
+          "delta": -115.7
+        },
+        {
+          "pick": 42,
+          "actual": "Noah Dobson",
+          "actual_fp": 202.2,
+          "board": "Miro Heiskanen",
+          "board_fp": 228.6,
+          "delta": 26.4
+        },
+        {
+          "pick": 59,
+          "actual": "Tomas Hertl",
+          "actual_fp": 211.7,
+          "board": "John Carlson",
+          "board_fp": 188.6,
+          "delta": -23.1
+        },
+        {
+          "pick": 62,
+          "actual": "Tom Wilson",
+          "actual_fp": 214.1,
+          "board": "Jake Walman",
+          "board_fp": 94.0,
+          "delta": -120.1
+        },
+        {
+          "pick": 79,
+          "actual": "Aaron Ekblad",
+          "actual_fp": 124.2,
+          "board": "Thomas Chabot",
+          "board_fp": 135.6,
+          "delta": 11.4
+        },
+        {
+          "pick": 82,
+          "actual": "Morgan Rielly",
+          "actual_fp": 144.9,
+          "board": "Darnell Nurse",
+          "board_fp": 145.9,
+          "delta": 1.0
+        },
+        {
+          "pick": 99,
+          "actual": "Joel Eriksson Ek",
+          "actual_fp": 177.9,
+          "board": "Bryan Rust",
+          "board_fp": 230.7,
+          "delta": 52.8
+        },
+        {
+          "pick": 102,
+          "actual": "Adam Fantilli",
+          "actual_fp": 206.5,
+          "board": "Rickard Rakell",
+          "board_fp": 167.1,
+          "delta": -39.4
+        },
+        {
+          "pick": 119,
+          "actual": "Dylan Holloway",
+          "actual_fp": 147.5,
+          "board": "Frank Vatrano",
+          "board_fp": 53.2,
+          "delta": -94.3
+        },
+        {
+          "pick": 122,
+          "actual": "Alexander Nikishin",
+          "actual_fp": 145.1,
+          "board": "Logan Cooley",
+          "board_fp": 121.1,
+          "delta": -24.0
+        },
+        {
+          "pick": 139,
+          "actual": "Evander Kane",
+          "actual_fp": 132.8,
+          "board": "Bo Horvat",
+          "board_fp": 209.1,
+          "delta": 76.3
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 6,
+          "wanted": "Filip Forsberg",
+          "got": "Igor Shesterkin"
+        },
+        {
+          "pick": 10,
+          "wanted": "Igor Shesterkin",
+          "got": "Ilya Sorokin"
+        },
+        {
+          "pick": 27,
+          "wanted": "Shea Theodore",
+          "got": "Lucas Raymond"
+        },
+        {
+          "pick": 32,
+          "wanted": "Lucas Raymond",
+          "got": "Dougie Hamilton"
+        },
+        {
+          "pick": 36,
+          "wanted": "Alex Ovechkin",
+          "got": "Noah Dobson"
+        },
+        {
+          "pick": 49,
+          "wanted": "Ilya Sorokin",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 54,
+          "wanted": "Miro Heiskanen",
+          "got": "Zach Hyman"
+        },
+        {
+          "pick": 55,
+          "wanted": "Dougie Hamilton",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 60,
+          "wanted": "Jordan Binnington",
+          "got": "Linus Ullmark"
+        },
+        {
+          "pick": 63,
+          "wanted": "Zach Hyman",
+          "got": "Mike Matheson"
+        },
+        {
+          "pick": 69,
+          "wanted": "Linus Ullmark",
+          "got": "Shayne Gostisbehere"
+        },
+        {
+          "pick": 73,
+          "wanted": "John Carlson",
+          "got": "Colton Parayko"
+        },
+        {
+          "pick": 80,
+          "wanted": "Stuart Skinner",
+          "got": "Erik Karlsson"
+        },
+        {
+          "pick": 84,
+          "wanted": "Erik Karlsson",
+          "got": "William Eklund"
+        },
+        {
+          "pick": 94,
+          "wanted": "Shayne Gostisbehere",
+          "got": "Mark Stone"
+        },
+        {
+          "pick": 104,
+          "wanted": "Mark Stone",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Rasmus Andersson"
+        },
+        {
+          "pick": 123,
+          "wanted": "Rickard Rakell",
+          "got": "Neal Pionk"
+        },
+        {
+          "pick": 124,
+          "wanted": "Neal Pionk",
+          "got": "Ukko-Pekka Luukkonen"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Pierre-Luc Dubois"
+        },
+        {
+          "pick": 129,
+          "wanted": "Logan Cooley",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 130,
+          "wanted": "Pierre-Luc Dubois",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Mattias Ekholm"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Karel Vejmelka"
+        },
+        {
+          "pick": 150,
+          "wanted": "Karel Vejmelka",
+          "got": "Alexander Romanov"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Cam Talbot"
+        }
+      ],
+      "unmatched_opponent_picks": 4,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.8",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    },
+    "465.l.33072.t.9": {
+      "verdict": {
+        "actual_total_fp": 2709.8,
+        "board_total_fp": 2835.5,
+        "actual_lineup_fp": 2592.4,
+        "board_lineup_fp": 2387.4,
+        "board_minus_actual": -205.0,
+        "board_minus_actual_total": 125.7,
+        "board_wins": false
+      },
+      "actual_roster": {
+        "total_fp": 2709.8,
+        "lineup_fp": 2592.4,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 31,
+            "playerId": 8478427,
+            "name": "Sebastian Aho",
+            "position": "C",
+            "actual_fp": 248.7
+          },
+          {
+            "pick": 11,
+            "playerId": 8471675,
+            "name": "Sidney Crosby",
+            "position": "C",
+            "actual_fp": 220.7
+          },
+          {
+            "pick": 63,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 50,
+            "playerId": 8479337,
+            "name": "Alex DeBrincat",
+            "position": "R",
+            "actual_fp": 278.4
+          },
+          {
+            "pick": 28,
+            "playerId": 8482699,
+            "name": "Dylan Guenther",
+            "position": "R",
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 38,
+            "playerId": 8479345,
+            "name": "Jakob Chychrun",
+            "position": "D",
+            "actual_fp": 231.5
+          },
+          {
+            "pick": 18,
+            "playerId": 8477346,
+            "name": "MacKenzie Weegar",
+            "position": "D",
+            "actual_fp": 160.2
+          },
+          {
+            "pick": 3,
+            "playerId": 8479323,
+            "name": "Adam Fox",
+            "position": "D",
+            "actual_fp": 155.7
+          },
+          {
+            "pick": 23,
+            "playerId": 8481581,
+            "name": "Thomas Harley",
+            "position": "D",
+            "actual_fp": 147.9
+          },
+          {
+            "pick": 10,
+            "playerId": 8478048,
+            "name": "Igor Shesterkin",
+            "position": "G",
+            "actual_fp": 216.6
+          },
+          {
+            "pick": 43,
+            "playerId": 8475311,
+            "name": "Darcy Kuemper",
+            "position": "G",
+            "actual_fp": 178.0
+          },
+          {
+            "pick": 30,
+            "playerId": 8480012,
+            "name": "Elias Pettersson",
+            "position": "C",
+            "actual_fp": 195.3
+          },
+          {
+            "pick": 51,
+            "playerId": 8477501,
+            "name": "Valeri Nichushkin",
+            "position": "R",
+            "actual_fp": 147.1
+          }
+        ],
+        "picks": [
+          {
+            "pick": 3,
+            "playerId": 8479323,
+            "name": "Adam Fox",
+            "position": "D",
+            "actual_fp": 155.7
+          },
+          {
+            "pick": 10,
+            "playerId": 8478048,
+            "name": "Igor Shesterkin",
+            "position": "G",
+            "actual_fp": 216.6
+          },
+          {
+            "pick": 11,
+            "playerId": 8471675,
+            "name": "Sidney Crosby",
+            "position": "C",
+            "actual_fp": 220.7
+          },
+          {
+            "pick": 18,
+            "playerId": 8477346,
+            "name": "MacKenzie Weegar",
+            "position": "D",
+            "actual_fp": 160.2
+          },
+          {
+            "pick": 23,
+            "playerId": 8481581,
+            "name": "Thomas Harley",
+            "position": "D",
+            "actual_fp": 147.9
+          },
+          {
+            "pick": 28,
+            "playerId": 8482699,
+            "name": "Dylan Guenther",
+            "position": "R",
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 30,
+            "playerId": 8480012,
+            "name": "Elias Pettersson",
+            "position": "C",
+            "actual_fp": 195.3
+          },
+          {
+            "pick": 31,
+            "playerId": 8478427,
+            "name": "Sebastian Aho",
+            "position": "C",
+            "actual_fp": 248.7
+          },
+          {
+            "pick": 38,
+            "playerId": 8479345,
+            "name": "Jakob Chychrun",
+            "position": "D",
+            "actual_fp": 231.5
+          },
+          {
+            "pick": 43,
+            "playerId": 8475311,
+            "name": "Darcy Kuemper",
+            "position": "G",
+            "actual_fp": 178.0
+          },
+          {
+            "pick": 50,
+            "playerId": 8479337,
+            "name": "Alex DeBrincat",
+            "position": "R",
+            "actual_fp": 278.4
+          },
+          {
+            "pick": 51,
+            "playerId": 8477501,
+            "name": "Valeri Nichushkin",
+            "position": "R",
+            "actual_fp": 147.1
+          },
+          {
+            "pick": 58,
+            "playerId": 8477495,
+            "name": "Seth Jones",
+            "position": "D",
+            "actual_fp": 117.5
+          },
+          {
+            "pick": 63,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "actual_fp": 183.7
+          }
+        ]
+      },
+      "board_roster": {
+        "total_fp": 2835.5,
+        "lineup_fp": 2387.4,
+        "players": 14,
+        "no_outcome_rows": 0,
+        "starters": [
+          {
+            "pick": 3,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 23,
+            "playerId": 8482078,
+            "name": "Lucas Raymond",
+            "position": "L",
+            "vorp": 56.84226989746094,
+            "actual_fp": 233.0
+          },
+          {
+            "pick": 58,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 63,
+            "playerId": 8478414,
+            "name": "Timo Meier",
+            "position": "R",
+            "vorp": 18.526077270507812,
+            "actual_fp": 182.8
+          },
+          {
+            "pick": 31,
+            "playerId": 8479345,
+            "name": "Jakob Chychrun",
+            "position": "D",
+            "vorp": 43.66789245605469,
+            "actual_fp": 231.5
+          },
+          {
+            "pick": 30,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 28,
+            "playerId": 8480865,
+            "name": "Noah Dobson",
+            "position": "D",
+            "vorp": 54.042938232421875,
+            "actual_fp": 202.2
+          },
+          {
+            "pick": 18,
+            "playerId": 8482105,
+            "name": "Jake Sanderson",
+            "position": "D",
+            "vorp": 62.098114013671875,
+            "actual_fp": 188.8
+          },
+          {
+            "pick": 10,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 11,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 43,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          }
+        ],
+        "picks": [
+          {
+            "pick": 3,
+            "playerId": 8476887,
+            "name": "Filip Forsberg",
+            "position": "L",
+            "vorp": 88.92054748535156,
+            "actual_fp": 252.1
+          },
+          {
+            "pick": 10,
+            "playerId": 8478009,
+            "name": "Ilya Sorokin",
+            "position": "G",
+            "vorp": 80.17021105082841,
+            "actual_fp": 245.9
+          },
+          {
+            "pick": 11,
+            "playerId": 8471214,
+            "name": "Alex Ovechkin",
+            "position": "L",
+            "vorp": 71.54713439941406,
+            "actual_fp": 222.0
+          },
+          {
+            "pick": 18,
+            "playerId": 8482105,
+            "name": "Jake Sanderson",
+            "position": "D",
+            "vorp": 62.098114013671875,
+            "actual_fp": 188.8
+          },
+          {
+            "pick": 23,
+            "playerId": 8482078,
+            "name": "Lucas Raymond",
+            "position": "L",
+            "vorp": 56.84226989746094,
+            "actual_fp": 233.0
+          },
+          {
+            "pick": 28,
+            "playerId": 8480865,
+            "name": "Noah Dobson",
+            "position": "D",
+            "vorp": 54.042938232421875,
+            "actual_fp": 202.2
+          },
+          {
+            "pick": 30,
+            "playerId": 8480036,
+            "name": "Miro Heiskanen",
+            "position": "D",
+            "vorp": 49.37266540527344,
+            "actual_fp": 228.6
+          },
+          {
+            "pick": 31,
+            "playerId": 8479345,
+            "name": "Jakob Chychrun",
+            "position": "D",
+            "vorp": 43.66789245605469,
+            "actual_fp": 231.5
+          },
+          {
+            "pick": 38,
+            "playerId": 8475786,
+            "name": "Zach Hyman",
+            "position": "L",
+            "vorp": 37.710601806640625,
+            "actual_fp": 183.7
+          },
+          {
+            "pick": 43,
+            "playerId": 8474590,
+            "name": "John Carlson",
+            "position": "D",
+            "vorp": 33.437744140625,
+            "actual_fp": 188.6
+          },
+          {
+            "pick": 50,
+            "playerId": 8477495,
+            "name": "Seth Jones",
+            "position": "D",
+            "vorp": 30.519927978515625,
+            "actual_fp": 117.5
+          },
+          {
+            "pick": 51,
+            "playerId": 8477501,
+            "name": "Valeri Nichushkin",
+            "position": "R",
+            "vorp": 29.395370483398438,
+            "actual_fp": 147.1
+          },
+          {
+            "pick": 58,
+            "playerId": 8475913,
+            "name": "Mark Stone",
+            "position": "R",
+            "vorp": 18.846343994140625,
+            "actual_fp": 211.9
+          },
+          {
+            "pick": 63,
+            "playerId": 8478414,
+            "name": "Timo Meier",
+            "position": "R",
+            "vorp": 18.526077270507812,
+            "actual_fp": 182.8
+          }
+        ]
+      },
+      "head_to_head": [
+        {
+          "pick": 3,
+          "actual": "Adam Fox",
+          "actual_fp": 155.7,
+          "board": "Filip Forsberg",
+          "board_fp": 252.1,
+          "delta": 96.4
+        },
+        {
+          "pick": 10,
+          "actual": "Igor Shesterkin",
+          "actual_fp": 216.6,
+          "board": "Ilya Sorokin",
+          "board_fp": 245.9,
+          "delta": 29.3
+        },
+        {
+          "pick": 11,
+          "actual": "Sidney Crosby",
+          "actual_fp": 220.7,
+          "board": "Alex Ovechkin",
+          "board_fp": 222.0,
+          "delta": 1.3
+        },
+        {
+          "pick": 18,
+          "actual": "MacKenzie Weegar",
+          "actual_fp": 160.2,
+          "board": "Jake Sanderson",
+          "board_fp": 188.8,
+          "delta": 28.6
+        },
+        {
+          "pick": 23,
+          "actual": "Thomas Harley",
+          "actual_fp": 147.9,
+          "board": "Lucas Raymond",
+          "board_fp": 233.0,
+          "delta": 85.1
+        },
+        {
+          "pick": 28,
+          "actual": "Dylan Guenther",
+          "actual_fp": 228.6,
+          "board": "Noah Dobson",
+          "board_fp": 202.2,
+          "delta": -26.4
+        },
+        {
+          "pick": 30,
+          "actual": "Elias Pettersson",
+          "actual_fp": 195.3,
+          "board": "Miro Heiskanen",
+          "board_fp": 228.6,
+          "delta": 33.3
+        },
+        {
+          "pick": 31,
+          "actual": "Sebastian Aho",
+          "actual_fp": 248.7,
+          "board": "Jakob Chychrun",
+          "board_fp": 231.5,
+          "delta": -17.2
+        },
+        {
+          "pick": 38,
+          "actual": "Jakob Chychrun",
+          "actual_fp": 231.5,
+          "board": "Zach Hyman",
+          "board_fp": 183.7,
+          "delta": -47.8
+        },
+        {
+          "pick": 43,
+          "actual": "Darcy Kuemper",
+          "actual_fp": 178.0,
+          "board": "John Carlson",
+          "board_fp": 188.6,
+          "delta": 10.6
+        },
+        {
+          "pick": 50,
+          "actual": "Alex DeBrincat",
+          "actual_fp": 278.4,
+          "board": "Seth Jones",
+          "board_fp": 117.5,
+          "delta": -160.9
+        },
+        {
+          "pick": 51,
+          "actual": "Valeri Nichushkin",
+          "actual_fp": 147.1,
+          "board": "Valeri Nichushkin",
+          "board_fp": 147.1,
+          "delta": 0.0
+        },
+        {
+          "pick": 58,
+          "actual": "Seth Jones",
+          "actual_fp": 117.5,
+          "board": "Mark Stone",
+          "board_fp": 211.9,
+          "delta": 94.4
+        },
+        {
+          "pick": 63,
+          "actual": "Zach Hyman",
+          "actual_fp": 183.7,
+          "board": "Timo Meier",
+          "board_fp": 182.8,
+          "delta": -0.9
+        }
+      ],
+      "substitutions": [
+        {
+          "pick": 6,
+          "wanted": "Filip Forsberg",
+          "got": "Igor Shesterkin"
+        },
+        {
+          "pick": 21,
+          "wanted": "Jake Sanderson",
+          "got": "Shea Theodore"
+        },
+        {
+          "pick": 27,
+          "wanted": "Shea Theodore",
+          "got": "Dougie Hamilton"
+        },
+        {
+          "pick": 32,
+          "wanted": "Lucas Raymond",
+          "got": "Jordan Binnington"
+        },
+        {
+          "pick": 36,
+          "wanted": "Alex Ovechkin",
+          "got": "Stuart Skinner"
+        },
+        {
+          "pick": 42,
+          "wanted": "Noah Dobson",
+          "got": "Vince Dunn"
+        },
+        {
+          "pick": 49,
+          "wanted": "Ilya Sorokin",
+          "got": "Linus Ullmark"
+        },
+        {
+          "pick": 54,
+          "wanted": "Miro Heiskanen",
+          "got": "Jake Walman"
+        },
+        {
+          "pick": 55,
+          "wanted": "Dougie Hamilton",
+          "got": "Mike Matheson"
+        },
+        {
+          "pick": 60,
+          "wanted": "Jordan Binnington",
+          "got": "Shayne Gostisbehere"
+        },
+        {
+          "pick": 67,
+          "wanted": "Timo Meier",
+          "got": "Colton Parayko"
+        },
+        {
+          "pick": 69,
+          "wanted": "Linus Ullmark",
+          "got": "Thomas Chabot"
+        },
+        {
+          "pick": 73,
+          "wanted": "John Carlson",
+          "got": "Erik Karlsson"
+        },
+        {
+          "pick": 80,
+          "wanted": "Stuart Skinner",
+          "got": "Darnell Nurse"
+        },
+        {
+          "pick": 84,
+          "wanted": "Erik Karlsson",
+          "got": "William Eklund"
+        },
+        {
+          "pick": 94,
+          "wanted": "Shayne Gostisbehere",
+          "got": "Filip Hronek"
+        },
+        {
+          "pick": 104,
+          "wanted": "Mark Stone",
+          "got": "Rasmus Andersson"
+        },
+        {
+          "pick": 106,
+          "wanted": "Vince Dunn",
+          "got": "Neal Pionk"
+        },
+        {
+          "pick": 124,
+          "wanted": "Neal Pionk",
+          "got": "Bryan Rust"
+        },
+        {
+          "pick": 128,
+          "wanted": "Thomas Chabot",
+          "got": "Ukko-Pekka Luukkonen"
+        },
+        {
+          "pick": 134,
+          "wanted": "Colton Parayko",
+          "got": "Brad Marchand"
+        },
+        {
+          "pick": 141,
+          "wanted": "Filip Hronek",
+          "got": "Kris Letang"
+        },
+        {
+          "pick": 153,
+          "wanted": "Bryan Rust",
+          "got": "Mattias Ekholm"
+        }
+      ],
+      "unmatched_opponent_picks": 6,
+      "meta": {
+        "draft_year": 2025,
+        "feature_season": 2024,
+        "outcome_season": 2025,
+        "unmatched_picks": 6,
+        "leakage_warning": null,
+        "team_key": "465.l.33072.t.9",
+        "exclude_unavailable": true,
+        "players_dropped_as_unavailable": 58,
+        "human_picks_that_never_played": 0,
+        "directional_only": true
+      }
+    }
+  },
+  "summary": [
+    {
+      "team": "1",
+      "actual_fp": 2244.6,
+      "board_fp": 2466.4,
+      "margin": 221.8,
+      "pct": 9.88,
+      "board_wins": true,
+      "mix": "C2D4G2L3R3",
+      "subs": 14,
+      "their_zeros": 0
+    },
+    {
+      "team": "10",
+      "actual_fp": 1933.5,
+      "board_fp": 1765.6,
+      "margin": -167.9,
+      "pct": -8.68,
+      "board_wins": false,
+      "mix": "D6G1L4R3",
+      "subs": 2,
+      "their_zeros": 0
+    },
+    {
+      "team": "2",
+      "actual_fp": 2517.4,
+      "board_fp": 2085.4,
+      "margin": -432.0,
+      "pct": -17.16,
+      "board_wins": false,
+      "mix": "D6G1L4R3",
+      "subs": 21,
+      "their_zeros": 0
+    },
+    {
+      "team": "3",
+      "actual_fp": 2059.9,
+      "board_fp": 2292.2,
+      "margin": 232.3,
+      "pct": 11.28,
+      "board_wins": true,
+      "mix": "D5G2L3R4",
+      "subs": 14,
+      "their_zeros": 1
+    },
+    {
+      "team": "4",
+      "actual_fp": 2219.9,
+      "board_fp": 2370.7,
+      "margin": 150.8,
+      "pct": 6.79,
+      "board_wins": true,
+      "mix": "D5G2L3R4",
+      "subs": 24,
+      "their_zeros": 0
+    },
+    {
+      "team": "5",
+      "actual_fp": 2637.3,
+      "board_fp": 2384.1,
+      "margin": -253.2,
+      "pct": -9.6,
+      "board_wins": false,
+      "mix": "D6G2L4R2",
+      "subs": 35,
+      "their_zeros": 0
+    },
+    {
+      "team": "6",
+      "actual_fp": 2058.6,
+      "board_fp": 2084.2,
+      "margin": 25.6,
+      "pct": 1.24,
+      "board_wins": true,
+      "mix": "C1D6G1L4R2",
+      "subs": 15,
+      "their_zeros": 0
+    },
+    {
+      "team": "7",
+      "actual_fp": 2055.9,
+      "board_fp": 2012.2,
+      "margin": -43.7,
+      "pct": -2.13,
+      "board_wins": false,
+      "mix": "C2D5G1L2R4",
+      "subs": 5,
+      "their_zeros": 0
+    },
+    {
+      "team": "8",
+      "actual_fp": 2563.7,
+      "board_fp": 2237.4,
+      "margin": -326.3,
+      "pct": -12.73,
+      "board_wins": false,
+      "mix": "C2D6G1L2R3",
+      "subs": 26,
+      "their_zeros": 0
+    },
+    {
+      "team": "9 (you)",
+      "actual_fp": 2592.4,
+      "board_fp": 2387.4,
+      "margin": -205.0,
+      "pct": -7.91,
+      "board_wins": false,
+      "mix": "D6G1L4R3",
+      "subs": 23,
+      "their_zeros": 0
+    }
+  ]
+}

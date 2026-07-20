@@ -61,6 +61,19 @@ test('each position uses its own rank', () => {
   assert.equal(levels.D, 500 - (REPLACEMENT_RANKS.D - 1));
 });
 
+test('keeper-adjusted ranks from the export override the base ranks', () => {
+  // main.py draft shrinks each rank by the keepers already at that position. If
+  // the board ignored them it would recompute a different number from the one
+  // in the column it is replacing.
+  const players = pool('C', 30);
+  const ranks = { ...REPLACEMENT_RANKS, C: 9 };
+
+  assert.equal(replacementLevels(players, ranks).C, 1000 - 8);
+  assert.equal(liveVorp(players, new Set(), ranks).get(1), 8);
+  assert.equal(withLiveVorp(players, new Set(), ranks)[0].vorp, 8);
+  assert.equal(positionalRuns(players, new Set([1, 2]), ranks)[0].total, 9);
+});
+
 // --- live VORP ------------------------------------------------------------
 
 test('drafting nobody reproduces the static replacement level', () => {

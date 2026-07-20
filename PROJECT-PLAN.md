@@ -741,6 +741,66 @@ Lessons:
 - **Predictions belong in writing.** I predicted ~+15% and was off by roughly double. Recorded
   because a pre-registration that only ever confirms its author is worthless.
 
+### July 2026 (positional floors, demand-aware VORP, keeper-cost units)
+
+**Root cause of the 10-team sweep's −6.48%, found 2026-07-20: the board drafted 0 centers in 140
+picks** (60 D / 40 L / 20 G / 20 R). Every roster it produced was unfieldable — `ROSTER_SLOTS`
+requires 2 C. `mockDraft._best_available` enforced `MAX_BY_POSITION` caps but no **floors**, and
+`grade()` summed all 14 picks with no lineup-legality check, so an unstartable roster still posted
+a full total.
+
+**The first proposed fix was wrong, and measuring it is what showed that.** The handoff plan
+(`docs/superpowers/plans/2026-07-20-post-keeper-replacement-levels.md`) blamed VORP being computed
+against a pre-keeper pool. Simulated on the 2026 board, all three candidate definitions produce the
+same 6 D / 1 C roster:
+
+| definition | C level | D level | greedy-14 |
+|---|---|---|---|
+| rank 24/48, full pool (then-current) | 234.5 | 150.9 | 6D 4L 2G 1C 1R |
+| same ranks, post-keeper pool (the plan) | 208.3 | 143.4 | 6D 4L 2G 1C 1R |
+| rank − keepers at position, post-keeper pool | 236.0 | 150.9 | 6D 4L 2G 1C 1R |
+
+Lesson: **a diagnosis that explains the symptom is not the same as one that fixes it.** Simulating
+the proposed fix before building it cost minutes and redirected the whole change.
+
+**What shipped:** positional floors (reserve the tail of the draft for unfilled starting slots,
+falling back rather than forfeiting a pick), keeper-aware caps AND floors, demand-aware replacement
+ranks (`10 × slots − keepers at that position`; C 24→9 for 2026), and `grade()` scoring the best
+legal lineup (`lineup_fp`) alongside the raw sum (`total_fp`, kept for comparability).
+
+**2025 all-teams sweep, both runs regraded with the same grader** — directional only, the held-out
+look was already spent:
+
+| | all-picks | wins | startable lineup | wins |
+|---|---|---|---|---|
+| pre-fix | −6.48% | 1/10 | −7.13% | 1/10 |
+| post-fix | −2.84% | 3/10 | −2.90% | 4/10 |
+
+All 10 rosters are now legally fieldable (was 0 of 10).
+
+**Separately: `net_keeper_value` was subtracting a season total from a surplus.**
+`raw_keeper_value` is value over replacement (60–85 FP on the 2026 board) while `round_pick_costs`
+returned the mean **absolute** `projected_total` of the round (161–173 FP), so every keeper scored
+around −80 to −115 and the tool concluded "keep nobody." A unit error wearing the costume of a
+conclusion — and one the frontend copy had been describing correctly all along ("N above
+replacement − M pick cost"), which is a reminder that UI text can encode an intent the code never
+implemented.
+
+Fixed by pricing the pick in VORP too. Three details, each of which was independently wrong:
+units; slicing the round by VORP (the board's actual sort order) rather than by `projected_total`;
+and flooring at 0, because forfeiting a pick can never be a *gain* — a below-replacement draftee is
+a bench player interchangeable with a free waiver add. The resulting per-round value curve falls
+monotonically from **+80.2 (round 1) through zero at round 10 to −25.0 (round 18)**, which is the
+shape it should have and crosses replacement about where the league's startable talent runs out.
+
+Consequence to read carefully: rounds 15–18 now all price at **0**, so keeping is free — true for
+an untraded draft, and exactly where the *separate*, still-open `KEEPER_ROUNDS` bug bites. The
+owner's real final four in 2025 were picks 70/71/78/90, worth **+16.8/+16.1/+11.2/+2.2** VORP. That
+bug now has a cost expressed in the right units for the first time.
+
+Recommended keepers (Fox / Hellebuyck / Panarin / Shesterkin) and their order did not move — only
+the net values, from −78…−115 to +60…+85. Suite: 174 pytest, 59 frontend, typecheck clean.
+
 ---
 
 ## Resources & References
@@ -753,12 +813,22 @@ Lessons:
 ---
 
 ## Current Phase
-**I am currently working on:** Phase B — Draft Analyzer (Phase A completed July 3, 2026).
-Interrupted July 20, 2026 for a sustainability/scaling pass (see the bottom of this section) —
-infra debt cleared during the offseason so draft prep lands on solid ground.
+**I am currently working on:** Phase D validation follow-through (Phase A done July 3, Phase B/C/D
+shipped July 15–20, 2026). The draft board, keeper analyzer, goalie ranker, live draft-day board
+and mock-draft backtest are all in. What is left before the October 2026 draft is correctness work
+on what shipped, not new surface area.
+
+**Last session (2026-07-20, branch `feat/mock-draft-multi-team`, PR #14):** swept the mock draft
+across all ten managers, which exposed that the board drafted **zero centers in 140 picks** and
+produced rosters that could not be legally fielded. Fixed with positional floors, keeper-aware
+floors and caps, demand-aware replacement ranks, and startable-lineup grading. Also fixed a unit
+error that had `net_keeper_value` subtracting a season total from a value-over-replacement, which
+made the keeper board recommend keeping nobody. Full write-up in the Learning Log.
 
 **Next immediate task:**
-- [ ] B0: fill in `data/raw/keepers.csv`, implement `src/keepers.py`
+- [x] B0: `data/raw/keepers.csv` filled and committed (2026-07-20, seeded from the 2025 draft via
+      `mockDraft.derive_keepers`); `src/keepers.py` implemented. **These are last season's keepers
+      and will be wrong for the 2026 draft — re-edit when they are announced.**
 - [x] B1: `buildPlayerSeasons` + `scripts/build_player_seasons.py` — cached
       `data/processed/player_seasons.csv` (16,237 rows), GATE B1 passed July 6, 2026
 - [x] B2: draft features in `src/features/draft.py::build_draft_features` — **done July 6, 2026**.
@@ -872,8 +942,9 @@ birthdate build hanging 12+ hours on a laptop and making the draft tools unusabl
       3,060 sets / 3.9 MB at 18 players, 12,650 at 25, 27,405 at 30. And
       `loadAdvisorContext` re-reads and re-validates the whole file on *every* chat POST. Emit
       only top-N sets and compute constrained ones on demand; memoize the load on file mtime.
-- [ ] **CI.** GitHub Actions: `pytest` + `npm run typecheck` + `npm run test:unit`. Now unblocked —
-      the suite is green, so a red build means something.
+- [x] **CI — DONE 2026-07-20.** `.github/workflows/ci.yml` runs `pytest` + `npm run typecheck` +
+      `npm run test:unit`. It must never train a model: `.pkl` files and the MoneyPuck CSVs are
+      gitignored, so CI has neither.
 - [ ] **Smoke tests for orchestration** (`main.py draft`/`keeper`, `api_export`) against small
       fixtures. The Learning Log already records one signature-drift bug one smoke test would have
       caught.
@@ -893,6 +964,32 @@ birthdate build hanging 12+ hours on a laptop and making the draft tools unusabl
       changes the label, so it needs a full retrain and a pre-registered prediction per
       `fht-quality-gates`.
 
-**Blocked on:** nothing. (C1 still needs my league's keeper-cost rules from Yahoo settings to
-validate the advisor's pick-cost assumptions; the advisor ships with `keeper_tenure: "unknown"`
-surfaced as a context warning until then.)
+**Open correctness work on what already shipped (in priority order, 2026-07-20):**
+- [ ] **`KEEPER_ROUNDS` assumes an untraded draft.** The rule is settled — *"keeping a player costs
+      your final 4 picks, whichever picks those happen to be"* (owner, 2026-07-20) — but
+      `keeper.KEEPER_ROUNDS = (18, 17, 16, 15)` is only what that resolves to when nobody traded
+      picks. Now quantified in VORP: rounds 15–18 price at **0** (dead picks), while the owner's
+      real 2025 final four — picks 70/71/78/90 — were worth **+16.8/+16.1/+11.2/+2.2**. The blocker
+      is that pre-draft pick ownership is not fetched from Yahoo, so the practical shape is a
+      configurable "my final four pick numbers" defaulting to rounds 15–18. Class (a): tests first,
+      and re-run the keeper board before and after to see which recommendations move.
+- [ ] **Every skater is projected for exactly 78 games.** `buildFullProjections` sets
+      `projections['projected_gp'] = 78` flat, so `projected_total` and VORP inherit it and a
+      55-game player is ranked as though he plays 78. Goalies already get a modelled
+      `projected_gp`. The draft target is deliberately PPG to avoid conflating skill with injury
+      luck — multiplying by a flat 78 re-introduces that in reverse. Checked and it did **not**
+      decide the 2025 mock draft, so this is a principled fix, not a diagnosed cause. Gate it on
+      validation Spearman, not a re-run mock draft.
+- [ ] **Positional floors are in `mockDraft` only.** The live board and the frontend show VORP order
+      with no roster-legality signal, so a human reading the board can still walk into the 6D/0C
+      trap the backtest no longer can. The frontend does not track which picks are *yours*, which
+      is what makes this its own change.
+
+**Validation power is itself a work item.** n = 14 picks per team cannot separate "a wash" from "a
+modest real edge". Keep **validation Spearman on held-out seasons** (hundreds of players) as the
+primary model metric and treat the mock draft as a product sanity check, per `fht-quality-gates` §2.
+There is no second honest look at 2025 available.
+
+**Blocked on:** nothing. C1 is resolved — the keeper-cost rule was settled by the owner 2026-07-20
+(see the `KEEPER_ROUNDS` item above). Keeper *tenure* (how many years you may keep the same player)
+is still unknown and ships as a `keeper_tenure: "unknown"` context warning in the advisor.

@@ -45,7 +45,7 @@ update.
 
 ## 3. Certified / golden inventory (verified 2026-07-05)
 
-- `pytest -v` as of 2026-07-20: **125 passed, 0 failed**. Both
+- `pytest -v` as of 2026-07-20: **174 passed, 0 failed**. Both
   long-standing failures are resolved, and both were resolved the way this skill said to:
   by fixing the *code*, not the test. `loadGameLogs` now serves a valid cache before
   requiring the 2.6 GB source files (the test encoded the intended cache contract all
@@ -84,7 +84,7 @@ update.
   `[tool.pytest.ini_options]` block, but `pytest.ini` wins — verified today, pytest prints
   `configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)`. Don't edit the
   pyproject block expecting it to take effect.
-- Run it: `.\.venv\Scripts\python.exe -m pytest -v` — VERIFIED 2026-07-20, output: **125 passed,
+- Run it: `.\.venv\Scripts\python.exe -m pytest -v` — VERIFIED 2026-07-20, output: **174 passed,
   0 failed in ~2.6s** (times vary by run; count does not).
 
 ## 5. Repo hygiene gates
@@ -139,7 +139,7 @@ baseline — not "this feels dated."
 ## Provenance and maintenance
 
 - Re-verify the pytest count with `.\.venv\Scripts\python.exe -m pytest -v` — this file states
-  125 passed / 0 failed as of 2026-07-20. A red suite is now a real regression; Incident 6 is
+  174 passed / 0 failed as of 2026-07-20. A red suite is now a real regression; Incident 6 is
   resolved.
 - Re-check `.gitignore` for `models/**/*.pkl` and PROJECT-PLAN.md Design Decision #9 before citing
   the binaries-are-gitignored claim — these have already contradicted each other once.

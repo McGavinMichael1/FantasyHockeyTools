@@ -37,20 +37,31 @@ Matthews at round 10, which no round-based rule would have found.
 ### Consequence for the shipped keeper analyzer — NOT yet fixed
 
 `src/keeper.py` hardcodes `KEEPER_ROUNDS = (18, 17, 16, 15)` and `round_pick_costs()` prices a
-keeper as the mean projected value of the board slice in those rounds (picks 141-180). That is
-correct **only when you actually hold your rounds 15-18 picks.**
+keeper against the board slice in those rounds (picks 141-180). That is correct **only when you
+actually hold your rounds 15-18 picks.**
 
 The owner traded late picks away in 2025 and held only rounds 1-9, so his final four picks were
-overall **70, 71, 78 and 90** — far more valuable slots than 141-180. Measured against the
-current 774-player board:
+overall **70, 71, 78 and 90** — far more valuable slots than 141-180.
 
-| | Modelled cost (rounds 15-18) | Real cost (picks 70/71/78/90) |
+**Restated in VORP, 2026-07-20.** The figures previously recorded here (722.4 vs 898.3 projected FP,
+"24% understated") were absolute season totals, which is the unit error that has since been fixed —
+`round_pick_costs()` now returns value over replacement, floored at 0. Against the current board the
+per-round value falls monotonically from +80.2 (round 1) through zero at round 10 to -25.0
+(round 18), so:
+
+| | Modelled (rounds 15-18) | Real (picks 70/71/78/90) |
 |---|---|---|
-| Four keepers | 722.4 projected FP | 898.3 projected FP |
+| Cost per pick, VORP | 0 / 0 / 0 / 0 | +16.8 / +16.1 / +11.2 / +2.2 |
 
-**A 175.9 FP understatement — 24%, or ~44 FP per keeper.** `net_keeper_value` is overstated by
-that much whenever late picks have been traded away, which can flip a marginal keep/don't-keep
-call.
+So the analyzer currently prices four keepers at **zero cost** while the owner's real picks were
+worth **~46 FP over replacement in total**. `net_keeper_value` is overstated by that much whenever
+late picks have been traded away, which can flip a marginal keep/don't-keep call. Note the sign is
+unchanged from the old framing — still an understatement of cost — but the magnitude is far smaller
+than "44 FP per keeper" once both sides are measured the same way.
+
+**Do not conflate this with the units bug, which is fixed.** That one had `net_keeper_value`
+subtracting an absolute season total from a VORP, so every keeper scored ≈-80 to -115 and the board
+recommended keeping nobody. This one is about *which picks* get priced.
 
 ### What a fix needs
 

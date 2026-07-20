@@ -243,6 +243,28 @@ Rehearsing on 2024 first was what caught three scoring bugs -- goalies graded ze
 board skipping the games-played floors the live board applies. All three inflated the board's
 margin. Do not skip the rehearsal.
 
+**GATE RESULT (2026-07-20): the board does NOT beat hand-drafting.** Owner's team, keepers
+correctly excluded: **-1.75% over 14 picks** -- inconclusive against pre-registered bands, and the
+held-out look is now spent. Do not present the board as an authority that overrides the owner. What
+it legitimately offers is consistency and the live mode's VORP recomputation.
+
+**Then run `--all-teams`, and always run it.** Sweeping all ten managers instead of only the owner
+is what exposed the campaign's worst bug: the board drafted **0 centers in 140 picks** (60 D / 40 L
+/ 20 G / 20 R) and produced rosters that could not be legally fielded. A single-team run had hidden
+it -- one roster of plausible players reads as fine; ten identical D-heavy rosters do not. Fixed
+with positional floors and `lineup_fp` grading (see PROJECT-PLAN's Learning Log); the sweep moved
+-6.48% -> -2.84% with 10 of 10 rosters fieldable, up from 0 of 10. **That improvement is
+directional only** -- 2025 was already spent, so it says which way the fix moved the board, not
+that the board now wins.
+
+Two harness lessons worth carrying forward:
+- **Grade what a manager could actually start.** `grade()` reports `lineup_fp` (2C/2L/2R/4D/2G plus
+  two utility skaters) alongside `total_fp`. A raw sum over all 14 picks credits points nobody
+  could ever field, which is exactly how an unstartable roster posted a full total.
+- **Simulate a proposed fix before building it.** The first plan for the 0-centers bug blamed
+  replacement levels; simulating all three candidate definitions on the live board showed every one
+  still drafts 6 D and 1 C, which redirected the whole change for the cost of a few minutes.
+
 ## Fenced-off wrong paths
 
 - **Random-row train/val/test splits.** Settled: leaks future information into training via
@@ -300,7 +322,7 @@ Facts here drift as phases complete. Re-verify with:
   `scripts/build_player_seasons.py`). Also `ls data/raw/player_birthdates.csv` (B2 age cache, built
   by `scripts/build_birthdates.py`) -- both flip back to absent only if deleted for a rebuild.
 - `ls data/raw/keepers.csv` -- confirm still absent/empty; flips once B0 is filled in.
-- `.\.venv\Scripts\python.exe -m pytest -v` -- as of 2026-07-20: **125 passed, 0 failed**. Both
+- `.\.venv\Scripts\python.exe -m pytest -v` -- as of 2026-07-20: **174 passed, 0 failed**. Both
   long-standing failures were fixed in the July 2026 sustainability pass, so the suite is now a
   real signal: treat any red as a regression, not as expected noise.
 - `grep -n "NotImplementedError" main.py src/models/draft.py` -- **no longer raises**:

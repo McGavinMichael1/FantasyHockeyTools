@@ -112,7 +112,7 @@ comment documenting an incident. Do not relitigate without new evidence.
 | Season constants duplicated across entry points | Three copies of the season id (`main.py`, `api_export.py`, `src/backtest.py`) plus two hardcoded `20252026` literals. The authoritative file:line catalog — and the annual-rollover checklist that maintains it — lives in `fht-operations`' constants catalog; don't maintain a second copy here. |
 | `latestGameState()` duplicated | `main.py:36-66` and `api_export.py:28-49` — identical cache/compute logic, two copies |
 | ~~No CI~~ | Fixed 2026-07-20: `.github/workflows/ci.yml` runs pytest plus frontend typecheck/unit tests. Scoped to what a fresh clone can run — model `.pkl` files and the MoneyPuck CSVs are gitignored, so **CI must never train**. |
-| ~~Test suite fails on `main`~~ | Fixed July 2026. `.\.venv\Scripts\python.exe -m pytest -v` → **125 passed, 0 failed** (verified 2026-07-20). Both long-standing failures (the `loadGameLogs` guard ordering and the token-budget assertion) are gone. The suite was 65/2 for months, so red used to mean nothing; it now means a real regression. |
+| ~~Test suite fails on `main`~~ | Fixed July 2026. `.\.venv\Scripts\python.exe -m pytest -v` → **174 passed, 0 failed** (verified 2026-07-20). Both long-standing failures (the `loadGameLogs` guard ordering and the token-budget assertion) are gone. The suite was 65/2 for months, so red used to mean nothing; it now means a real regression. |
 
 ## When NOT to use this skill
 

@@ -5,6 +5,7 @@ import type { DraftPlayer, Position } from '@/types/player';
 import {
   loadDrafted,
   positionalRuns,
+  REPLACEMENT_RANKS,
   saveDrafted,
   withLiveVorp,
 } from '@/lib/liveDraft';
@@ -177,7 +178,15 @@ function ExpandedDraftDetail({ player }: { player: DraftPlayer }) {
   );
 }
 
-export default function DraftBoard({ players }: { players: DraftPlayer[] }) {
+export default function DraftBoard({
+  players,
+  // Ranks the exported vorp was computed with (keeper-adjusted). Undefined for
+  // snapshots exported before they existed -- the base ranks are what those used.
+  replacementRanks = REPLACEMENT_RANKS,
+}: {
+  players: DraftPlayer[];
+  replacementRanks?: Record<Position, number>;
+}) {
   const [sortKey, setSortKey] = useState('vorp');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [position, setPosition] = useState<Position | 'ALL'>('ALL');
@@ -215,13 +224,13 @@ export default function DraftBoard({ players }: { players: DraftPlayer[] }) {
   // VORP is recomputed against whoever is left, so the ranking re-sorts itself
   // as the pool thins. Outside draft mode the exported preseason value stands.
   const board = useMemo(
-    () => (draftMode ? withLiveVorp(players, drafted) : players),
-    [players, drafted, draftMode],
+    () => (draftMode ? withLiveVorp(players, drafted, replacementRanks) : players),
+    [players, drafted, draftMode, replacementRanks],
   );
 
   const runs = useMemo(
-    () => (draftMode ? positionalRuns(players, drafted) : []),
-    [players, drafted, draftMode],
+    () => (draftMode ? positionalRuns(players, drafted, replacementRanks) : []),
+    [players, drafted, draftMode, replacementRanks],
   );
 
   const rows = useMemo(() => {
