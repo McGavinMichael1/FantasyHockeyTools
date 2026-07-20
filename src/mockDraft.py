@@ -188,6 +188,16 @@ def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str) -> dic
                 'position': choice['position'],
                 'vorp': float(choice['vorp']) if pd.notna(choice['vorp']) else None,
             })
+            # The owner's real pick also leaves the pool. In the counterfactual
+            # that pick never happens, so the player is arguably free -- but no
+            # opponent takes him either, because opponents replay their actual
+            # picks, so he floats down to the board for nothing. In the 2025 run
+            # that let the board re-draft Adam Fox at pick 78 whom the owner had
+            # taken at pick 3: a free 155.7 FP. Every such case favours the
+            # board, so the pool has to lose him.
+            if pd.notna(player_id):
+                taken.add(player_id)
+
             # Graded on the OUTCOME id, which exists even for players the board
             # never had (see attach_outcome_ids); falls back to the board id when
             # outcome resolution was not run.

@@ -126,6 +126,24 @@ def test_positional_caps_stop_the_board_drafting_only_centers():
     assert positions.count('C') == mockDraft.MAX_BY_POSITION['C']
 
 
+def test_the_board_cannot_re_draft_a_player_the_owner_really_took():
+    # Regression from the 2025 run: the owner's real picks were never removed
+    # from the pool, so a player he took early floated down to the board later
+    # for free (Adam Fox, owner's pick 3, taken by the board at 78 for 155.7 FP).
+    # No opponent takes him either, since opponents replay their actual picks.
+    board = make_board([(1, 'Best Guy', 'C', 30.0),
+                        (2, 'Second Guy', 'L', 20.0),
+                        (3, 'Third Guy', 'R', 10.0)])
+    # Owner really took Third Guy at pick 1, then picks again at pick 2.
+    draft = make_draft([(1, MINE, 'Third Guy'), (2, MINE, 'Third Guy')])
+    resolved = mockDraft.resolve_picks(draft, board)
+
+    replayed = mockDraft.replay(resolved, board, MINE)
+
+    board_names = [p['name'] for p in replayed['board_roster']]
+    assert 'Third Guy' not in board_names
+
+
 def test_a_player_is_never_drafted_twice():
     board = make_board([(1, 'Best Guy', 'C', 30.0), (2, 'Second Guy', 'L', 20.0)])
     draft = make_draft([(1, MINE, 'Best Guy'), (2, MINE, 'Second Guy')])
