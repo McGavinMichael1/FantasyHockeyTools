@@ -2,6 +2,7 @@ from yahoo_oauth import OAuth2
 import yahoo_fantasy_api as yfa
 import objectpath
 import os
+import pandas as pd
 from src import dataProcessing
 from rapidfuzz import process
 
@@ -59,3 +60,98 @@ def getRosteredNHLIds(rostered_names, players_df):
         else:
             print(f"No good match found for {name}")
     return rostered_ids
+
+
+# --- Historical draft results (for the mock-draft backtest) -----------------
+#
+# getLeague() hardcodes this season's league key. Past seasons are DIFFERENT
+# Yahoo leagues with different keys, so anything historical has to resolve the
+# key by year first -- reusing getLeague() would silently grade the wrong draft.
+
+DRAFT_RESULTS_PATH = os.path.join(BASE_DIR, '..', 'data', 'raw', 'draft_results_{year}.csv')
+
+
+def getLeagueForYear(year):
+    """The authenticated user's NHL league for one season, by draft year.
+
+    Yahoo's season numbering follows the draft: the league drafted in Oct 2025
+    is season 2025, matching the MoneyPuck convention used everywhere else.
+    """
+    oauth = OAuth2(None, None, from_file=os.path.join(BASE_DIR, '..', 'oauth2.json'))
+    gm = yfa.Game(oauth, 'nhl')
+
+    # `seasons` is the current API; `year` routes to a deprecated endpoint that
+    # still works. Try the modern one, fall back rather than fail.
+    try:
+        league_ids = gm.league_ids(seasons=[str(year)])
+    except Exception as error:
+        print(f"seasons lookup failed ({error}); falling back to the year endpoint")
+        league_ids = gm.league_ids(year=year)
+
+    if not league_ids:
+        raise RuntimeError(
+            f"No Yahoo NHL league found for {year}. The authenticated account may "
+            f"not have played that season, or the OAuth token lacks history access."
+        )
+    if len(league_ids) > 1:
+        print(f"⚠️  {len(league_ids)} leagues found for {year}: {league_ids}")
+        print(f"   Using the first one. Check this is the right league before trusting results.")
+    return gm.to_league(league_ids[0])
+
+
+def getDraftResults(year, lg=None):
+    """Every pick of one season's draft, newest-first order preserved.
+
+    Returns a list of dicts: pick, round, team_key, yahoo_player_id, player_name.
+    Yahoo returns player IDs only, so names are resolved in one batched
+    player_details() call rather than one request per pick.
+    """
+    league = lg or getLeagueForYear(year)
+    picks = league.draft_results()
+    if not picks:
+        raise RuntimeError(
+            f"Yahoo returned no draft results for {year} -- either the draft never "
+            f"happened or the league key is wrong."
+        )
+
+    player_ids = [int(pick['player_id']) for pick in picks]
+    details = league.player_details(player_ids)
+    names = {}
+    for detail in details:
+        name = detail.get('name') or {}
+        names[int(detail['player_id'])] = name.get('full')
+
+    rows = []
+    for pick in picks:
+        player_id = int(pick['player_id'])
+        rows.append({
+            'pick': int(pick['pick']),
+            'round': int(pick['round']),
+            'team_key': pick['team_key'],
+            'yahoo_player_id': player_id,
+            'player_name': names.get(player_id),
+        })
+
+    missing = [row['pick'] for row in rows if not row['player_name']]
+    if missing:
+        print(f"⚠️  {len(missing)} picks had no name from Yahoo (picks {missing[:5]}...)")
+    return rows
+
+
+def loadDraftResults(year, refresh=False):
+    """Cached draft results as a DataFrame.
+
+    Cached to data/raw so the mock draft never needs live OAuth -- Yahoo's OAuth
+    can block on stdin when it is not run interactively, which would hang a test
+    or a batch run. Fetch once per season by hand; grade as often as you like.
+    """
+    path = DRAFT_RESULTS_PATH.format(year=year)
+    if not refresh and os.path.exists(path):
+        return pd.read_csv(path)
+
+    rows = getDraftResults(year)
+    df = pd.DataFrame(rows)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    df.to_csv(path, index=False)
+    print(f"Wrote {len(df)} picks to {path}")
+    return df
