@@ -364,21 +364,13 @@ def runKeeper():
     ]].to_string(index=False))
 
 
-def runMockDraft(year, refresh=False):
-    """Replay a past draft with the board making the owner's picks.
+def _mockDraftBoard(year, draft_df, exclude_unavailable, outcomes):
+    """The draftable pool for a mock draft: keepers out, optionally absentees out.
 
-    The board is rebuilt from the season BEFORE the draft -- the only data that
-    existed on draft day -- and graded on what players actually scored in the
-    season they were drafted for.
+    Split out from runMockDraft so an all-teams sweep builds it once. Rebuilding
+    per team would be ten passes over the projection pipeline for an identical
+    result -- the board does not depend on whose picks are being replaced.
     """
-    warning = mockDraft.leakage_warning(year)
-    if warning:
-        print(f"\n⚠️  {warning}\n")
-
-    draft_df = yahooAPI.loadDraftResults(year, refresh=refresh)
-    my_team_key = mockDraft.owner_team_key(draft_df)
-    print(f"Loaded {len(draft_df)} picks from the {year} draft; owner is {my_team_key}")
-
     # Kept players were never in the pool. Yahoo records them as ordinary picks
     # in the late slot the keeper cost, so they have to be excluded -- leaving
     # them in is what voided the first 2025 run, where the board drafted eight
@@ -394,9 +386,6 @@ def runMockDraft(year, refresh=False):
         keeper_names = kept['player_name'].dropna().tolist()
         print(f"Keepers: derived {len(keeper_names)} from each team's last "
               f"{keeper.KEEPER_COUNT} picks")
-        mine = kept[kept['team_key'] == my_team_key]
-        print(f"   yours: " + ', '.join(
-            f"{r.player_name} (p{r.pick})" for r in mine.itertuples()))
 
     before = len(draft_df)
     draft_df = draft_df[~draft_df['player_name'].isin(keeper_names)].copy()
@@ -415,44 +404,130 @@ def runMockDraft(year, refresh=False):
     if unmatched_keepers:
         print(f"⚠️  {len(unmatched_keepers)} keepers unmatched on the board and still "
               f"draftable: {unmatched_keepers}")
-    print(f"Board rebuilt from season {year - 1}: {len(board)} draftable players")
 
+    dropped = []
+    if exclude_unavailable:
+        board, dropped = mockDraft.drop_unavailable(board, outcomes)
+        print(f"⚠️  DIRECTIONAL RUN: dropped {len(dropped)} players who never played "
+              f"season {year}. This uses hindsight the board would not have had, so "
+              f"the margin is inflated by an unknown amount -- not evidence.")
+
+    print(f"Board rebuilt from season {year - 1}: {len(board)} draftable players")
+    return board, draft_df, dropped
+
+
+def _mockDraftOneTeam(year, draft_df, board, outcomes, team_key, warning,
+                      exclude_unavailable, dropped, verbose=True):
+    """Replay a single team's draft against an already-built board."""
     resolved = mockDraft.resolve_picks(draft_df, board)
     unmatched = int(resolved['playerId'].isna().sum())
-    print(f"Name matching: {len(resolved) - unmatched} of {len(resolved)} picks resolved")
 
     # Grading ids are resolved separately: a pick the board never had (a rookie
     # off a non-NHL season) still produced, and must not be scored as a zero.
-    outcomes = mockDraft.load_outcomes(year)
     resolved = mockDraft.attach_outcome_ids(resolved, outcomes)
-    off_board = int(resolved['playerId'].isna().sum() - resolved['outcome_playerId'].isna().sum())
-    print(f"Picks with production but no board row: {max(off_board, 0)}")
 
-    replayed = mockDraft.replay(resolved, board, my_team_key)
+    replayed = mockDraft.replay(resolved, board, team_key)
     result = mockDraft.compare(replayed, outcomes)
+
+    # The human keeps eating absentees even when the board no longer can. This
+    # number is the price of that asymmetry, reported rather than absorbed.
+    human_zeros = mockDraft.count_unavailable(replayed['my_actual'], outcomes)
+
     result['meta'] = {
         'draft_year': year,
         'feature_season': year - 1,
         'outcome_season': year,
         'unmatched_picks': unmatched,
         'leakage_warning': warning,
+        'team_key': team_key,
+        'exclude_unavailable': exclude_unavailable,
+        'players_dropped_as_unavailable': len(dropped),
+        'human_picks_that_never_played': human_zeros,
+        'directional_only': exclude_unavailable,
     }
 
-    verdict = result['verdict']
-    print(f"\n=== {year} mock draft ===")
-    print(f"Actual roster: {verdict['actual_total_fp']:.1f} FP")
-    print(f"Board roster:  {verdict['board_total_fp']:.1f} FP")
-    print(f"Margin:        {verdict['board_minus_actual']:+.1f} FP "
-          f"({'board wins' if verdict['board_wins'] else 'actual draft wins'})")
-    print(f"Opponent substitutions forced by the board: {len(result['substitutions'])}")
+    if verbose:
+        verdict = result['verdict']
+        print(f"Name matching: {len(resolved) - unmatched} of {len(resolved)} picks resolved")
+        print(f"\n=== {year} mock draft vs {team_key} ===")
+        print(f"Actual roster: {verdict['actual_total_fp']:.1f} FP")
+        print(f"Board roster:  {verdict['board_total_fp']:.1f} FP")
+        print(f"Margin:        {verdict['board_minus_actual']:+.1f} FP "
+              f"({'board wins' if verdict['board_wins'] else 'actual draft wins'})")
+        print(f"Opponent substitutions forced by the board: {len(result['substitutions'])}")
+        print(f"Their picks that never played: {human_zeros}")
+        print("\n=== Pick by pick ===")
+        print(pd.DataFrame(result['head_to_head']).to_string(index=False))
 
-    print("\n=== Pick by pick ===")
-    print(pd.DataFrame(result['head_to_head']).to_string(index=False))
+    return result
 
-    path = mockDraft.write_report(result, year)
-    print(f"\nWrote {path}")
+
+def runMockDraft(year, refresh=False, team=None, all_teams=False,
+                 exclude_unavailable=False):
+    """Replay a past draft with the board making one team's picks.
+
+    The board is rebuilt from the season BEFORE the draft -- the only data that
+    existed on draft day -- and graded on what players actually scored in the
+    season they were drafted for.
+
+    `team` replays a league-mate instead of the owner; `all_teams` sweeps every
+    manager in the league, which turns a single anecdote into a distribution.
+    """
+    warning = mockDraft.leakage_warning(year)
     if warning:
-        print("Remember: this run is contaminated. Harness check only.")
+        print(f"\n⚠️  {warning}\n")
+
+    draft_df = yahooAPI.loadDraftResults(year, refresh=refresh)
+    outcomes = mockDraft.load_outcomes(year)
+    board, draft_df, dropped = _mockDraftBoard(year, draft_df, exclude_unavailable, outcomes)
+
+    if not all_teams:
+        team_key = mockDraft.select_team_key(draft_df, team)
+        result = _mockDraftOneTeam(year, draft_df, board, outcomes, team_key,
+                                   warning, exclude_unavailable, dropped)
+        # A league-mate's run gets its own file: the owner's 2025 report is the
+        # recorded FINAL GATE result and must not be overwritten by a variant.
+        suffix = '' if team is None else f"_{team_key.split('.')[-1]}"
+        suffix += '_noinj' if exclude_unavailable else ''
+        path = mockDraft.write_report(result, f"{year}{suffix}")
+        print(f"\nWrote {path}")
+        if warning:
+            print("Remember: this run is contaminated. Harness check only.")
+        return result
+
+    owner_key = mockDraft.owner_team_key(draft_df)
+    rows, results = [], {}
+    for team_key in sorted(draft_df['team_key'].astype(str).unique()):
+        result = _mockDraftOneTeam(year, draft_df, board, outcomes, team_key,
+                                   warning, exclude_unavailable, dropped, verbose=False)
+        verdict = result['verdict']
+        results[team_key] = result
+        rows.append({
+            'team': team_key.split('.')[-1] + (' (you)' if team_key == owner_key else ''),
+            'actual_fp': verdict['actual_total_fp'],
+            'board_fp': verdict['board_total_fp'],
+            'margin': verdict['board_minus_actual'],
+            'pct': round(100 * verdict['board_minus_actual'] / verdict['actual_total_fp'], 2),
+            'board_wins': verdict['board_wins'],
+            'subs': len(result['substitutions']),
+            'their_zeros': result['meta']['human_picks_that_never_played'],
+        })
+
+    table = pd.DataFrame(rows).sort_values('pct', ascending=False)
+    print(f"\n=== {year} mock draft: all {len(rows)} teams ===")
+    print(table.to_string(index=False))
+    wins = int(table['board_wins'].sum())
+    print(f"\nBoard beat {wins} of {len(rows)} managers")
+    print(f"Mean margin:   {table['margin'].mean():+.1f} FP ({table['pct'].mean():+.2f}%)")
+    print(f"Median margin: {table['margin'].median():+.1f} FP ({table['pct'].median():+.2f}%)")
+    if exclude_unavailable:
+        print("\n⚠️  DIRECTIONAL ONLY -- absentees were removed with hindsight.")
+
+    suffix = '_all' + ('_noinj' if exclude_unavailable else '')
+    path = mockDraft.write_report(
+        {'per_team': results, 'summary': rows}, f"{year}{suffix}")
+    print(f"Wrote {path}")
+    return results
 
 
 def main():
@@ -471,6 +546,13 @@ def main():
     mock.add_argument('--year', type=int, required=True, help='draft year (Oct 2025 draft = 2025)')
     mock.add_argument('--refresh', action='store_true',
                       help='re-fetch draft results from Yahoo instead of using the cache')
+    mock.add_argument('--team', help="replay a league-mate's draft instead of your own "
+                                     "(full team_key, or just its number e.g. 5)")
+    mock.add_argument('--all-teams', action='store_true',
+                      help='sweep every manager in the league and summarise')
+    mock.add_argument('--exclude-unavailable', action='store_true',
+                      help='drop players who never played the outcome season from the '
+                           'pool. Uses hindsight -- makes the run DIRECTIONAL ONLY')
 
     args = parser.parse_args()
     if args.command == 'train-pickups':
@@ -488,7 +570,9 @@ def main():
     elif args.command == 'spot-check':
         backtest.runSpotChecks(dates=[args.date] if args.date else None, top_n=args.top)
     elif args.command == 'mock-draft':
-        runMockDraft(args.year, refresh=args.refresh)
+        runMockDraft(args.year, refresh=args.refresh, team=args.team,
+                     all_teams=args.all_teams,
+                     exclude_unavailable=args.exclude_unavailable)
 
 
 if __name__ == "__main__":

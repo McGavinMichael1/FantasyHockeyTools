@@ -452,6 +452,71 @@ def owner_team_key(draft_df: pd.DataFrame) -> str:
     return keys[0]
 
 
+def drop_unavailable(board: pd.DataFrame, outcomes: pd.DataFrame) -> tuple[pd.DataFrame, list]:
+    """Remove board players who never played the outcome season.
+
+    A player with no outcome row played zero games -- season-ending injury,
+    Europe, retirement. The board has no injury feed, so it will happily spend a
+    high pick on someone a human drafter knew was out (Barkov, ACL, September
+    2025, drafted by the board at slot 33 for 0.0 FP).
+
+    ## This weakens the result on purpose -- read before quoting a margin
+
+    The filter is applied with hindsight. It removes not just the absences that
+    were public on draft day but also the ones nobody could have predicted, so
+    the board can never whiff on an injury while the human still can. That is a
+    one-directional favour to the board of unknown size.
+
+    Runs using this are DIRECTIONAL ONLY. A margin from here is not evidence
+    that the board beats hand-drafting; it is evidence about the board's
+    ranking quality with injuries held harmless. Pair it with
+    `count_unavailable` on the human's roster, which prices the asymmetry.
+    """
+    played = set(outcomes.index)
+    keep = board['playerId'].isin(played)
+    dropped = board.loc[~keep, 'full_name'].tolist()
+    return board[keep].copy(), dropped
+
+
+def count_unavailable(roster: list, outcomes: pd.DataFrame) -> int:
+    """How many of a roster's picks produced nothing -- the un-forgiven zeros.
+
+    Reported alongside a `drop_unavailable` run so the favour done to the board
+    is visible as a number instead of being absorbed into the margin.
+    """
+    return sum(1 for entry in roster
+               if entry.get('playerId') is None or entry['playerId'] not in outcomes.index)
+
+
+def select_team_key(draft_df: pd.DataFrame, team: str = None) -> str:
+    """Which roster the board replaces -- the owner's by default, or any team.
+
+    Replaying an opponent's draft is a second, independent read on the same
+    question: the owner is one drafter with one set of habits, and a board that
+    beats him might only be beating those habits. Other managers cost nothing
+    extra to test, since their picks are already in the same draft record.
+
+    `team` accepts the full Yahoo key or just its tail ('t.5', '5'), because
+    nobody wants to type '465.l.33072.t.5'.
+    """
+    if team is None:
+        return owner_team_key(draft_df)
+
+    keys = draft_df['team_key'].astype(str).unique()
+    if team in keys:
+        return team
+
+    # Match on a dot-delimited suffix, so '2' cannot match '...t.12'.
+    wanted = team if team.startswith('t.') else f't.{team}'
+    hits = [k for k in keys if k.endswith(f'.{wanted}')]
+    if len(hits) > 1:
+        raise ValueError(f"'{team}' matches several teams: {hits}")
+    if not hits:
+        raise ValueError(
+            f"'{team}' has no picks in this draft. Teams present: {sorted(keys)}")
+    return hits[0]
+
+
 def write_report(result: dict, year: int, path: str = None) -> str:
     """Persist the result as text.
 

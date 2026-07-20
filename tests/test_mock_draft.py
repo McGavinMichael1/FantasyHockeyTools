@@ -385,6 +385,105 @@ def test_a_partial_keeper_list_is_rejected(tmp_path):
         mockDraft.load_season_keepers(2025, path=path)
 
 
+# --- unavailable-player exclusion ----------------------------------------
+
+def test_dropping_unavailable_removes_board_players_who_never_played():
+    board = make_board([(1, 'Played', 'C', 10.0), (2, 'Never Played', 'C', 9.0)])
+    outcomes = make_outcomes([(1, 200.0)])
+
+    filtered, dropped = mockDraft.drop_unavailable(board, outcomes)
+
+    assert filtered['playerId'].tolist() == [1]
+    assert dropped == ['Never Played']
+
+
+def test_dropping_unavailable_leaves_the_board_alone_when_everyone_played():
+    board = make_board([(1, 'A', 'C', 10.0), (2, 'B', 'C', 9.0)])
+    outcomes = make_outcomes([(1, 200.0), (2, 150.0)])
+
+    filtered, dropped = mockDraft.drop_unavailable(board, outcomes)
+
+    assert len(filtered) == 2
+    assert dropped == []
+
+
+def test_the_board_will_not_draft_an_unavailable_player_end_to_end():
+    """The whole point: a zero-scoring absentee must not reach the roster."""
+    board = make_board([(1, 'Injured Star', 'C', 99.0), (2, 'Healthy', 'C', 10.0)])
+    outcomes = make_outcomes([(2, 150.0)])
+    filtered, _ = mockDraft.drop_unavailable(board, outcomes)
+    draft = make_draft([(1, MINE, 'Somebody')])
+    resolved = mockDraft.resolve_picks(draft, filtered)
+
+    replayed = mockDraft.replay(resolved, filtered, MINE)
+
+    assert [p['name'] for p in replayed['board_roster']] == ['Healthy']
+
+
+def test_unavailable_human_picks_are_counted_so_the_asymmetry_is_visible():
+    """The human keeps eating their zeros; the count makes that cost explicit."""
+    roster = [{'pick': 1, 'playerId': 1, 'name': 'A'},
+              {'pick': 2, 'playerId': 2, 'name': 'Ghost'},
+              {'pick': 3, 'playerId': None, 'name': 'Unmatched'}]
+    outcomes = make_outcomes([(1, 200.0)])
+
+    assert mockDraft.count_unavailable(roster, outcomes) == 2
+
+
+# --- whose draft is being replayed ---------------------------------------
+
+def _draft_with_is_mine():
+    draft = make_draft([(1, THEIRS, 'A'), (2, MINE, 'B'), (3, THEIRS, 'C')])
+    draft['is_mine'] = draft['team_key'] == MINE
+    return draft
+
+
+def test_no_team_argument_replays_the_owners_own_draft():
+    assert mockDraft.select_team_key(_draft_with_is_mine()) == MINE
+
+
+def test_a_full_team_key_selects_that_teams_draft():
+    assert mockDraft.select_team_key(_draft_with_is_mine(), THEIRS) == THEIRS
+
+
+def test_a_team_can_be_named_by_its_short_suffix():
+    """Nobody wants to type '465.l.33072.t.2'; 't.2' and '2' mean the same team."""
+    draft = _draft_with_is_mine()
+
+    assert mockDraft.select_team_key(draft, 't.2') == THEIRS
+    assert mockDraft.select_team_key(draft, '2') == THEIRS
+
+
+def test_a_team_that_never_picked_is_rejected_rather_than_silently_empty():
+    """A typo'd key would replay a roster of zero picks and report a 0.0 tie."""
+    with pytest.raises(ValueError, match='no picks'):
+        mockDraft.select_team_key(_draft_with_is_mine(), 't.7')
+
+
+def test_a_short_suffix_does_not_match_a_longer_team_number():
+    """'2' must not resolve to t.12 -- that would replay the wrong roster."""
+    draft = make_draft([(1, '465.l.33072.t.2', 'A'), (2, '465.l.33072.t.12', 'B')])
+    draft['is_mine'] = False
+
+    assert mockDraft.select_team_key(draft, '2') == '465.l.33072.t.2'
+    assert mockDraft.select_team_key(draft, '12') == '465.l.33072.t.12'
+
+
+def test_a_suffix_spanning_two_leagues_is_rejected_as_ambiguous():
+    draft = make_draft([(1, '465.l.33072.t.5', 'A'), (2, '465.l.99999.t.5', 'B')])
+    draft['is_mine'] = False
+
+    with pytest.raises(ValueError, match='matches several'):
+        mockDraft.select_team_key(draft, '5')
+
+
+def test_selecting_another_team_does_not_need_the_is_mine_column():
+    """Only the no-argument path depends on is_mine, so an old cache still works."""
+    draft = make_draft([(1, THEIRS, 'A')])
+
+    assert mockDraft.select_team_key(draft, THEIRS) == THEIRS
+
+
 # --- leakage guard --------------------------------------------------------
 
 def test_a_draft_year_the_model_trained_through_is_flagged_contaminated():
