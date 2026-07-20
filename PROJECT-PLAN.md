@@ -35,7 +35,8 @@
   - `src/models/cooling.py` — XGBoost regressor; low projected next-5 FP/g = drop candidate
   - `src/models/lstmPickups.py` — LSTM sequence model (experimental, has a bug — see below)
 - **Blended output** (`main.py`): 0.3 × heuristic + 0.7 × ML score, prints top 20
-- **Streamlit skeleton** (`ui/app.py`, `ui/pages/`): pages exist but are TODO stubs
+- ~~**Streamlit skeleton** (`ui/app.py`, `ui/pages/`)~~ — deleted July 2026, superseded by the
+  Next.js `frontend/` (this "Current State" block is a July 3, 2026 snapshot)
 - **Data on disk** (`data/raw/`, gitignored):
   - `moneypuck_2020_2024.csv`, `moneypuck_current.csv` — game-level skater logs (ML training)
   - `2008_to_2024.csv` (2.6 GB) — full-history MoneyPuck game logs, **all situations** — this is
@@ -76,7 +77,8 @@
 6. **Baselines before models, always.** "Last season's PPG" and "3-season weighted PPG" must be on
    the scoreboard before any ML model claims credit.
 7. **Train/predict separation**: `main.py train-pickups | train-draft | pickups | draft | keeper`
-   subcommands (argparse). Streamlit is the product interface; scripts are the workbench.
+   subcommands (argparse). The Next.js `frontend/` is the product interface; scripts are the
+   workbench. (Written when Streamlit was the planned UI; `ui/` was deleted July 2026.)
 8. **Add pytest for pure functions only** — scoring math, season aggregation, label construction.
    Cheap to write, catches the exact class of bug found in this review (wrong scoring formula),
    and it's a core skill. No need to test API wrappers.
@@ -257,10 +259,11 @@ worthless as a keeper if the draft is full of 60-FP players at his position.
 ---
 
 ### Phase E: In-Season Pickups v2 (Oct+, after the draft)
-- [ ] Wire the (retrained, corrected-label) pickup model into `ui/pages/pickups.py`
+- [x] Wire the (retrained, corrected-label) pickup model into the frontend (via `api_export.py`;
+      the original `ui/pages/pickups.py` target no longer exists)
 - [ ] Fix the hardcoded `20252026` season id (derive from date, or config constant)
 - [ ] Weekly rhythm: manually download fresh `moneypuck_current.csv` (license — see decision
-      notes) → `python main.py pickups` (or the Streamlit page)
+      notes) → `python main.py pickups` (or `api_export.py` + the frontend)
 - [ ] Revisit: heuristic/ML blend weights, cooling-model surfacing for *drop* candidates,
       un-park the LSTM if still curious (fix the `save(model)` signature bug first)
 
@@ -373,7 +376,7 @@ both are small and partly luck-driven. Documented, accepted.
 - **M2 (Aug 23):** Draft model beats both baselines on Spearman for held-out 2024; 2026-27
   rankings CSV generated and sanity-checked
 - **M3 (Sept 6):** Keeper recommendations for my actual roster
-- **M4 (Sept 20):** Draft-day Streamlit board + goalie table; mock-draft tested. **Draft-ready.**
+- **M4 (Sept 20):** Draft-day board (Next.js `frontend/`) + goalie table; mock-draft tested. **Draft-ready.**
 - **M5 (Oct):** Pickups running weekly in the UI
 
 ---
@@ -714,7 +717,9 @@ infra debt cleared during the offseason so draft prep lands on solid ground.
       held-out look), then fill `data/raw/keepers.csv` on draft day (B0).
 - [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an
       API key the owner doesn't have — plan on a Claude Code session in chunks), then re-run
-      `api_export.py`. Only 5 of 704 players have summaries today.
+      `api_export.py`. 50 of 774 players have summaries as of 2026-07-20. Generate these
+      AFTER `data/raw/keepers.csv` is filled, so credits are not spent on the ~40 players
+      who will not be in the draft pool (owner decision, 2026-07-20).
 
 **Goalie analyzer — DONE 2026-07-16** (part of Phase D, ahead of the UI work; branch
 `codex/keeper-analyzer`, commits d6aa10e..770e427; spec

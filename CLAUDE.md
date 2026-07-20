@@ -47,7 +47,8 @@ Yahoo API       -> src/yahooAPI.py (optional roster filtering)
                 -> src/fantasyPoints.py (SKATER_WEIGHTS + GOALIE_WEIGHTS — scoring source of truth)
                 -> src/features/{mlFeatures,pickups,draft,goalies,shared}.py
                 -> src/models/{pickups,cooling,draft,goalieDraft,lstmPickups}.py
-                -> main.py (CLI: train-pickups, pickups, train-draft, train-goalies, draft, keeper, spot-check)
+                -> main.py (CLI: train-pickups, pickups, train-draft, train-goalies, draft, keeper, spot-check, mock-draft)
+                -> src/mockDraft.py (end-to-end backtest: would the board have beaten the real draft?)
                 -> scripts/ (one-time builds: build_player_seasons.py, build_birthdates.py)
                 -> api_export.py (JSON for frontend/) -> frontend/ (Next.js — the only UI)
 ```
@@ -83,7 +84,9 @@ Full rationale and file:line citations: `fht-architecture-contract`.
   `loadGameLogs` now serves a valid cache *before* requiring the 2.6 GB source files
   (the guard-ordering bug), and the token-budget test asserted the *smaller* budget in
   contradiction of its own name and of the deliberate `MAX_TOKENS = 16000` change.
-- No CI configured.
+- ~~No CI configured~~ — added July 2026: `.github/workflows/ci.yml` runs pytest plus the
+  frontend typecheck and unit tests. It must never train a model: `.pkl` files and the
+  MoneyPuck CSVs are gitignored, so CI has neither.
 - `train-draft` / `draft` / `keeper` / `train-goalies` CLI commands are implemented (draft board shipped Phase B4; goalie ranker shipped 2026-07-16). Remaining Phase B/C/D work is tracked in `fht-draft-campaign` and PROJECT-PLAN's Current Phase.
 - ~~Season constants duplicated across files~~ — fixed July 2026: `src/season.py` owns `CURRENT_SEASON` and derives every split boundary, spot-check date, season label and headshot season id from it. Rollover is a one-line edit there, and `tests/test_season.py` pins the derived values so a silent shift fails loudly. `backtest.KNOWN_PICKUPS` still needs hand re-curation each season — it cannot be derived.
 
