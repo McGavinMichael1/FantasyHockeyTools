@@ -1,5 +1,30 @@
 # Post-keeper replacement levels
 
+> **SUPERSEDED 2026-07-20 by commit ac6e9b8 — do not execute this plan.**
+>
+> Its diagnosis is wrong in a way worth keeping on the record. It blames the 0-centers board on
+> VORP being computed against a pre-keeper pool, and proposes filtering the pool while leaving
+> `REPLACEMENT_RANKS` alone. Simulated on the 2026 board before building it, that fix does not
+> change the roster — all three candidate definitions still draft 6 D and 1 C:
+>
+> | definition | C level | D level | greedy-14 |
+> |---|---|---|---|
+> | rank 24/48, full pool (then-current) | 234.5 | 150.9 | 6D 4L 2G 1C 1R |
+> | same ranks, post-keeper pool (this plan) | 208.3 | 143.4 | 6D 4L 2G 1C 1R |
+> | rank − keepers at position, post-keeper pool | 236.0 | 150.9 | 6D 4L 2G 1C 1R |
+>
+> Two corrections. First, the real defect is the **drafter**, not the replacement level:
+> `mockDraft._best_available` capped positions but set no floors, and `grade()` summed all 14
+> picks with no lineup-legality check. This plan deferred both as "out of scope — do not bundle,"
+> which was backwards. Second, "rank 24 on the post-keeper pool" double-counts the keeper removal;
+> replacement level is the marginal *drafted* starter, so the rank has to come down with the
+> keepers (`10 × slots − keepers at that position`).
+>
+> What shipped instead: positional floors, keeper-aware floors AND caps, demand-aware ranks, and
+> `lineup_fp` grading. See the July 2026 Learning Log entry in `PROJECT-PLAN.md`.
+>
+> Kept unedited below because the measurement that refuted it is the useful part of the record.
+
 ## Context
 
 VORP is computed against a pool that includes players nobody can draft. `runDraft`
