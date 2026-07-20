@@ -52,6 +52,7 @@ from src import season
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PLAYER_SEASONS_PATH = os.path.join(BASE_DIR, '..', 'data', 'processed', 'player_seasons.csv')
+GOALIE_SEASONS_PATH = os.path.join(BASE_DIR, '..', 'data', 'processed', 'goalie_seasons.csv')
 REPORT_PATH = os.path.join(BASE_DIR, '..', 'reports', 'mock_draft_{year}.json')
 
 NAME_MATCH_CUTOFF = 85  # same threshold as keepers.filterOutKeepers
@@ -89,37 +90,57 @@ def resolve_picks(draft_df: pd.DataFrame, board: pd.DataFrame,
     keep their row with a null playerId rather than disappearing -- dropping
     them would shift every later pick's position in the replay.
     """
-    candidates = board['full_name'].astype(str).tolist()
-    by_name = board.drop_duplicates('full_name').set_index('full_name')
+    matched_ids, matched_names = _match_names(draft_df['player_name'], board, cutoff)
+    resolved = draft_df.copy()
+    resolved['playerId'] = matched_ids
+    resolved['board_name'] = matched_names
+    return resolved
 
-    matched_ids, matched_names = [], []
-    claimed = set()
-    for raw_name in draft_df['player_name']:
+
+def _match_names(raw_names, reference: pd.DataFrame, cutoff: int = NAME_MATCH_CUTOFF):
+    """Fuzzy-resolve Yahoo display names against any playerId/full_name table.
+
+    Each reference row can be claimed once: two Yahoo names collapsing onto one
+    row means one of them is wrong, and taking it twice would double-count a
+    player's season.
+    """
+    candidates = reference['full_name'].astype(str).tolist()
+    by_name = reference.drop_duplicates('full_name').set_index('full_name')
+
+    matched_ids, matched_names, claimed = [], [], set()
+    for raw_name in raw_names:
         if not isinstance(raw_name, str) or not raw_name.strip():
             matched_ids.append(None)
             matched_names.append(None)
             continue
         match = process.extractOne(raw_name, candidates, score_cutoff=cutoff)
-        if not match:
+        if not match or match[0] in claimed:
+            if match:
+                print(f"⚠️  '{raw_name}' matched '{match[0]}', already claimed -- leaving unmatched")
             matched_ids.append(None)
             matched_names.append(None)
             continue
-        board_name = match[0]
-        if board_name in claimed:
-            # Two Yahoo names collapsing onto one board row means one of them is
-            # wrong; taking it twice would double-count a player's season.
-            print(f"⚠️  '{raw_name}' matched '{board_name}', already claimed -- leaving unmatched")
-            matched_ids.append(None)
-            matched_names.append(None)
-            continue
-        claimed.add(board_name)
-        matched_ids.append(by_name.loc[board_name, 'playerId'])
-        matched_names.append(board_name)
+        claimed.add(match[0])
+        matched_ids.append(by_name.loc[match[0], 'playerId'])
+        matched_names.append(match[0])
+    return matched_ids, matched_names
 
-    resolved = draft_df.copy()
-    resolved['playerId'] = matched_ids
-    resolved['board_name'] = matched_names
-    return resolved
+
+def attach_outcome_ids(resolved: pd.DataFrame, outcomes: pd.DataFrame,
+                       cutoff: int = NAME_MATCH_CUTOFF) -> pd.DataFrame:
+    """Resolve picks against the OUTCOME table as well as the board.
+
+    A player who was not in the board's feature season has no board row -- a
+    rookie like Michkov, drafted in 2024 off a KHL season. He still produced,
+    and scoring him zero would understate the owner's real draft and hand the
+    board a free win it did not earn. The board is judged on players it could
+    actually have recommended; the owner is judged on what he actually got.
+    """
+    reference = outcomes.reset_index()[['playerId', 'full_name']]
+    outcome_ids, _ = _match_names(resolved['player_name'], reference, cutoff)
+    attached = resolved.copy()
+    attached['outcome_playerId'] = outcome_ids
+    return attached
 
 
 def _best_available(board: pd.DataFrame, taken: set, counts: dict) -> pd.Series | None:
@@ -167,19 +188,15 @@ def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str) -> dic
                 'position': choice['position'],
                 'vorp': float(choice['vorp']) if pd.notna(choice['vorp']) else None,
             })
-            # The owner's real pick still comes off the board for everyone else.
-            if pd.notna(player_id):
-                my_actual.append({
-                    'pick': int(pick['pick']),
-                    'playerId': int(player_id),
-                    'name': pick['board_name'],
-                })
-            else:
-                my_actual.append({
-                    'pick': int(pick['pick']),
-                    'playerId': None,
-                    'name': pick['player_name'],
-                })
+            # Graded on the OUTCOME id, which exists even for players the board
+            # never had (see attach_outcome_ids); falls back to the board id when
+            # outcome resolution was not run.
+            outcome_id = pick.get('outcome_playerId', player_id)
+            my_actual.append({
+                'pick': int(pick['pick']),
+                'playerId': int(outcome_id) if pd.notna(outcome_id) else None,
+                'name': pick['board_name'] if pd.notna(pick['board_name']) else pick['player_name'],
+            })
             continue
 
         # Opponent: take their real player unless the board already has them.
@@ -212,24 +229,53 @@ def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str) -> dic
     }
 
 
-def load_outcomes(outcome_season: int, path: str = PLAYER_SEASONS_PATH) -> pd.DataFrame:
-    """Actual fantasy production for the season a draft was made for."""
+def load_outcomes(outcome_season: int, path: str = PLAYER_SEASONS_PATH,
+                  goalie_path: str = GOALIE_SEASONS_PATH) -> pd.DataFrame:
+    """Actual fantasy production for the season a draft was made for.
+
+    Skaters and goalies live in separate tables -- player_seasons.csv has no
+    goalie rows at all. Reading only the skater table silently scored every
+    drafted goalie zero, which is not a small distortion: a roster carries two
+    or three of them, and both sides of the comparison lose real points.
+
+    Returns one frame indexed by playerId with `actual_fp` and `full_name`.
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"{path} missing -- run scripts/build_player_seasons.py first")
-    seasons = pd.read_csv(path)
-    outcomes = seasons[seasons['season'] == outcome_season]
-    if outcomes.empty:
+
+    skaters = pd.read_csv(path)
+    skaters = skaters[skaters['season'] == outcome_season]
+    if skaters.empty:
         raise ValueError(
             f"No player-season rows for season {outcome_season}; cannot grade a "
-            f"draft made for it. Available: {sorted(seasons['season'].unique())}")
-    # One row per player per season is the table's contract; a duplicate would
+            f"draft made for it.")
+    frames = [skaters[['playerId', 'full_name']].assign(
+        actual_fp=pd.to_numeric(skaters['totalFP'], errors='coerce'))]
+
+    # Goalies degrade loudly rather than fatally, matching buildFullProjections:
+    # a skaters-only grade is still informative, a silent one is not.
+    if os.path.exists(goalie_path):
+        goalies = pd.read_csv(goalie_path)
+        goalies = goalies[goalies['season'] == outcome_season]
+        if goalies.empty:
+            print(f"⚠️  No goalie rows for season {outcome_season}; goalies will score zero")
+        else:
+            frames.append(goalies[['playerId', 'full_name']].assign(
+                actual_fp=pd.to_numeric(goalies['fantasyPoints'], errors='coerce')))
+    else:
+        print(f"⚠️  {goalie_path} missing; every drafted goalie will score zero")
+
+    outcomes = pd.concat(frames, ignore_index=True).dropna(subset=['actual_fp'])
+
+    # One row per player per season is the tables' contract; a duplicate would
     # make .loc return a Series and silently inflate a roster's total.
-    duplicates = outcomes['playerId'].duplicated().sum()
+    duplicates = int(outcomes['playerId'].duplicated().sum())
     if duplicates:
         raise ValueError(
-            f"{duplicates} duplicate playerIds in season {outcome_season} of {path} -- "
-            f"rebuild it with scripts/build_player_seasons.py")
+            f"{duplicates} duplicate playerIds across the season-{outcome_season} "
+            f"outcome tables -- rebuild them with scripts/build_player_seasons.py "
+            f"and scripts/build_goalie_seasons.py")
     return outcomes.set_index('playerId')
 
 
@@ -246,7 +292,7 @@ def grade(roster: list, outcomes: pd.DataFrame) -> dict:
         player_id = entry.get('playerId')
         fp = 0.0
         if player_id is not None and player_id in outcomes.index:
-            fp = float(outcomes.loc[player_id, 'totalFP'])
+            fp = float(outcomes.loc[player_id, 'actual_fp'])
         else:
             missing += 1
         total += fp

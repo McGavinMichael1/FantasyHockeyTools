@@ -26,9 +26,11 @@ def make_draft(rows):
 
 
 def make_outcomes(rows):
-    """rows: (playerId, totalFP)"""
+    """rows: (playerId, actual_fp) or (playerId, actual_fp, full_name)"""
     return pd.DataFrame(
-        [{'playerId': p, 'season': 2025, 'totalFP': fp} for p, fp in rows]
+        [{'playerId': r[0], 'actual_fp': r[1],
+          'full_name': r[2] if len(r) > 2 else f'Player {r[0]}'}
+         for r in rows]
     ).set_index('playerId')
 
 
@@ -176,11 +178,69 @@ def test_compare_reports_the_margin_and_who_won():
 def test_load_outcomes_rejects_duplicate_player_rows(tmp_path):
     # A duplicate would make .loc return a Series and inflate the total.
     path = tmp_path / 'player_seasons.csv'
-    pd.DataFrame([{'playerId': 1, 'season': 2025, 'totalFP': 10.0},
-                  {'playerId': 1, 'season': 2025, 'totalFP': 20.0}]).to_csv(path, index=False)
+    pd.DataFrame([{'playerId': 1, 'season': 2025, 'totalFP': 10.0, 'full_name': 'A'},
+                  {'playerId': 1, 'season': 2025, 'totalFP': 20.0, 'full_name': 'A'}]
+                 ).to_csv(path, index=False)
 
     with pytest.raises(ValueError, match='duplicate playerIds'):
-        mockDraft.load_outcomes(2025, path=str(path))
+        mockDraft.load_outcomes(2025, path=str(path), goalie_path=str(tmp_path / 'none.csv'))
+
+
+def _write_outcome_tables(tmp_path, skaters, goalies=None):
+    skater_path = tmp_path / 'player_seasons.csv'
+    pd.DataFrame(skaters).to_csv(skater_path, index=False)
+    goalie_path = tmp_path / 'goalie_seasons.csv'
+    if goalies is not None:
+        pd.DataFrame(goalies).to_csv(goalie_path, index=False)
+    return str(skater_path), str(goalie_path)
+
+
+def test_goalies_are_graded_from_the_goalie_table(tmp_path):
+    # Regression: player_seasons.csv has no goalie rows, so reading only it
+    # scored every drafted goalie zero -- several picks per roster.
+    skater_path, goalie_path = _write_outcome_tables(
+        tmp_path,
+        skaters=[{'playerId': 1, 'season': 2025, 'totalFP': 500.0, 'full_name': 'A Skater'}],
+        goalies=[{'playerId': 2, 'season': 2025, 'fantasyPoints': 300.0,
+                  'full_name': 'A Goalie'}],
+    )
+
+    outcomes = mockDraft.load_outcomes(2025, path=skater_path, goalie_path=goalie_path)
+
+    assert outcomes.loc[2, 'actual_fp'] == 300.0
+    graded = mockDraft.grade([{'playerId': 2, 'name': 'A Goalie'}], outcomes)
+    assert graded['total_fp'] == 300.0
+
+
+def test_missing_goalie_table_degrades_loudly_rather_than_fatally(tmp_path, capsys):
+    skater_path, goalie_path = _write_outcome_tables(
+        tmp_path,
+        skaters=[{'playerId': 1, 'season': 2025, 'totalFP': 500.0, 'full_name': 'A Skater'}],
+    )
+
+    outcomes = mockDraft.load_outcomes(2025, path=skater_path, goalie_path=goalie_path)
+
+    assert len(outcomes) == 1
+    assert 'goalie' in capsys.readouterr().out.lower()
+
+
+def test_a_pick_the_board_never_had_is_graded_on_real_production():
+    # Michkov, drafted in 2024 off a KHL season: no row in the 2023 board, but a
+    # real NHL season afterwards. Scoring him zero would hand the board a free
+    # win it did not earn.
+    board = make_board([(1, 'Established Guy', 'C', 30.0)])
+    draft = make_draft([(1, MINE, 'Rookie Sensation')])
+    outcomes = make_outcomes([(1, 100.0, 'Established Guy'),
+                              (77, 250.0, 'Rookie Sensation')])
+
+    resolved = mockDraft.attach_outcome_ids(
+        mockDraft.resolve_picks(draft, board), outcomes)
+
+    assert pd.isna(resolved.loc[0, 'playerId'])          # not on the board
+    assert resolved.loc[0, 'outcome_playerId'] == 77     # but he did produce
+
+    replayed = mockDraft.replay(resolved, board, MINE)
+    assert mockDraft.grade(replayed['my_actual'], outcomes)['total_fp'] == 250.0
 
 
 # --- leakage guard --------------------------------------------------------

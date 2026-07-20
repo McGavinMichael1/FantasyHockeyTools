@@ -253,16 +253,27 @@ def buildFullProjections(feature_season=None):
     return projections
 
 
-def runDraft():
-    """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
-    rankings = buildFullProjections()
-    # Display-side GP floors: an injury-shortened season can still carry keeper
-    # value, but a tiny-sample rate stat is too noisy for the draft board.
+SKATER_DISPLAY_MIN_GP = 20  # tiny-sample rate stats are too noisy to rank
+
+
+def applyDisplayFloors(rankings):
+    """Drop tiny-sample players from a projection board.
+
+    An injury-shortened season can still carry keeper value, but a rate stat off
+    a handful of games is noise. Shared by the live board and the mock-draft
+    backtest: if the backtest ranked players the real board never shows, it would
+    be grading a tool the owner does not have.
+    """
     is_goalie = rankings['position'] == 'G'
-    rankings = rankings[
-        (~is_goalie & (rankings['gamesPlayed'] >= 20))
+    return rankings[
+        (~is_goalie & (rankings['gamesPlayed'] >= SKATER_DISPLAY_MIN_GP))
         | (is_goalie & (rankings['gamesPlayed'] >= GOALIE_DISPLAY_MIN_GP))
     ].copy()
+
+
+def runDraft():
+    """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
+    rankings = applyDisplayFloors(buildFullProjections())
 
     # VORP before the keeper filter: replacement level is about league-wide
     # talent depth, not about who happens to still be draftable.
@@ -369,7 +380,10 @@ def runMockDraft(year, refresh=False):
     print(f"Loaded {len(draft_df)} picks from the {year} draft; owner is {my_team_key}")
 
     # Features from the season before the draft; outcomes from the season after.
-    board = buildFullProjections(feature_season=year - 1)
+    # Same display floors as the live board -- otherwise the backtest drafts
+    # tiny-sample players the real tool would never have shown, and grades a
+    # tool the owner does not have.
+    board = applyDisplayFloors(buildFullProjections(feature_season=year - 1))
     board['vorp'] = keeper.vorp_column(board)
     board = board.dropna(subset=['vorp'])
     print(f"Board rebuilt from season {year - 1}: {len(board)} players")
@@ -378,8 +392,14 @@ def runMockDraft(year, refresh=False):
     unmatched = int(resolved['playerId'].isna().sum())
     print(f"Name matching: {len(resolved) - unmatched} of {len(resolved)} picks resolved")
 
-    replayed = mockDraft.replay(resolved, board, my_team_key)
+    # Grading ids are resolved separately: a pick the board never had (a rookie
+    # off a non-NHL season) still produced, and must not be scored as a zero.
     outcomes = mockDraft.load_outcomes(year)
+    resolved = mockDraft.attach_outcome_ids(resolved, outcomes)
+    off_board = int(resolved['playerId'].isna().sum() - resolved['outcome_playerId'].isna().sum())
+    print(f"Picks with production but no board row: {max(off_board, 0)}")
+
+    replayed = mockDraft.replay(resolved, board, my_team_key)
     result = mockDraft.compare(replayed, outcomes)
     result['meta'] = {
         'draft_year': year,
