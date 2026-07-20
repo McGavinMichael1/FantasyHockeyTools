@@ -4,6 +4,7 @@ import objectpath
 import os
 import pandas as pd
 from src import dataProcessing
+from src import keeper
 from rapidfuzz import process
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -75,32 +76,103 @@ def getRosteredNHLIds(rostered_names, players_df):
 DRAFT_RESULTS_PATH = os.path.join(BASE_DIR, '..', 'data', 'raw', 'draft_results_{year}.csv')
 
 
-def getLeagueForYear(year):
-    """The authenticated user's NHL league for one season, by draft year.
+LEAGUE_NAME = 'Greasy Slappy'
 
-    Yahoo's season numbering follows the draft: the league drafted in Oct 2025
-    is season 2025, matching the MoneyPuck convention used everywhere else.
+
+def _nhl_league_ids(gm, year):
+    """League keys for one season, filtered to hockey.
+
+    game_codes is NOT optional. Constructing yfa.Game(oauth, 'nhl') does not
+    scope league_ids(): asking for season 2025 without it returns every sport
+    the account played, and taking the first would grade an NHL draft board
+    against a fantasy BASEBALL draft -- which is exactly what happened once.
     """
-    oauth = OAuth2(None, None, from_file=os.path.join(BASE_DIR, '..', 'oauth2.json'))
-    gm = yfa.Game(oauth, 'nhl')
-
-    # `seasons` is the current API; `year` routes to a deprecated endpoint that
-    # still works. Try the modern one, fall back rather than fail.
     try:
-        league_ids = gm.league_ids(seasons=[str(year)])
+        return gm.league_ids(seasons=[str(year)], game_codes=['nhl'])
     except Exception as error:
         print(f"seasons lookup failed ({error}); falling back to the year endpoint")
-        league_ids = gm.league_ids(year=year)
+        # The deprecated year endpoint is already game-scoped by yfa.Game.
+        return gm.league_ids(year=year)
 
+
+def _resolve_league(gm, year):
+    """Pick this owner's NHL league out of everything the account played.
+
+    The numeric league id changes every season (2024 was 453.l.27273, 2025 is
+    465.l.33072), so the league NAME is the only stable identifier across years.
+    Where several NHL leagues exist for one season, the one named LEAGUE_NAME
+    wins; anything still ambiguous raises rather than guesses.
+    """
+    league_ids = _nhl_league_ids(gm, year)
     if not league_ids:
         raise RuntimeError(
             f"No Yahoo NHL league found for {year}. The authenticated account may "
             f"not have played that season, or the OAuth token lacks history access."
         )
-    if len(league_ids) > 1:
-        print(f"⚠️  {len(league_ids)} leagues found for {year}: {league_ids}")
-        print(f"   Using the first one. Check this is the right league before trusting results.")
-    return gm.to_league(league_ids[0])
+    if len(league_ids) == 1:
+        return gm.to_league(league_ids[0])
+
+    named = []
+    for candidate in league_ids:
+        try:
+            settings = gm.to_league(candidate).settings()
+        except Exception as error:
+            print(f"⚠️  Could not read settings for {candidate} ({error}); skipping")
+            continue
+        if settings.get('name') == LEAGUE_NAME:
+            named.append(candidate)
+
+    if len(named) == 1:
+        return gm.to_league(named[0])
+    raise RuntimeError(
+        f"Could not identify the {year} league. NHL leagues found: {league_ids}; "
+        f"{len(named)} named '{LEAGUE_NAME}'. Re-run with an explicit league_id "
+        f"rather than guessing -- grading the wrong league produces a confident, "
+        f"meaningless result."
+    )
+
+
+def getLeagueForYear(year, league_id=None):
+    """The authenticated user's NHL league for one season, by draft year.
+
+    Yahoo's season numbering follows the draft: the league drafted in Oct 2025
+    is season 2025, matching the MoneyPuck convention used everywhere else.
+    Pass `league_id` to bypass resolution entirely.
+    """
+    oauth = OAuth2(None, None, from_file=os.path.join(BASE_DIR, '..', 'oauth2.json'))
+    gm = yfa.Game(oauth, 'nhl')
+    if league_id:
+        return gm.to_league(league_id)
+    return _resolve_league(gm, year)
+
+
+def _assert_expected_league(league, year):
+    """Refuse to grade a league that is not this one.
+
+    Belt-and-braces behind getLeagueForYear's name matching. A wrong league does
+    not fail loudly on its own -- it returns a perfectly well-formed draft that
+    produces a confident, meaningless verdict. Checking the name and team count
+    costs one request and makes that failure impossible to miss.
+    """
+    try:
+        settings = league.settings()
+    except Exception as error:
+        print(f"⚠️  Could not verify the {year} league identity ({error})")
+        return
+
+    name = settings.get('name')
+    if name != LEAGUE_NAME:
+        raise RuntimeError(
+            f"The {year} league resolved to '{name}', not '{LEAGUE_NAME}'. "
+            f"Refusing to grade a draft from a different league."
+        )
+
+    teams = settings.get('num_teams')
+    if teams is not None and int(teams) != keeper.TEAM_COUNT:
+        raise RuntimeError(
+            f"The {year} league '{name}' has {teams} teams, but the keeper math "
+            f"assumes {keeper.TEAM_COUNT} (src/keeper.py). Refusing to grade it."
+        )
 
 
 def getDraftResults(year, lg=None):
@@ -115,6 +187,7 @@ def getDraftResults(year, lg=None):
     have to re-authenticate just to learn which team was the owner's.
     """
     league = lg or getLeagueForYear(year)
+    _assert_expected_league(league, year)
     picks = league.draft_results()
     if not picks:
         raise RuntimeError(
@@ -155,7 +228,7 @@ def getDraftResults(year, lg=None):
     return rows
 
 
-def loadDraftResults(year, refresh=False):
+def loadDraftResults(year, refresh=False, league_id=None):
     """Cached draft results as a DataFrame.
 
     Cached to data/raw so the mock draft never needs live OAuth -- Yahoo's OAuth
@@ -166,7 +239,7 @@ def loadDraftResults(year, refresh=False):
     if not refresh and os.path.exists(path):
         return pd.read_csv(path)
 
-    rows = getDraftResults(year)
+    rows = getDraftResults(year, lg=getLeagueForYear(year, league_id=league_id))
     df = pd.DataFrame(rows)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     df.to_csv(path, index=False)
