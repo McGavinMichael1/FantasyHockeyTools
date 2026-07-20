@@ -48,7 +48,7 @@ import os
 import pandas as pd
 from rapidfuzz import process
 
-from src import season
+from src import keeper, season
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PLAYER_SEASONS_PATH = os.path.join(BASE_DIR, '..', 'data', 'processed', 'player_seasons.csv')
@@ -344,6 +344,68 @@ def compare(replayed: dict, outcomes: pd.DataFrame) -> dict:
         'substitutions': replayed['substitutions'],
         'unmatched_opponent_picks': replayed['unmatched_opponent_picks'],
     }
+
+
+SEASON_KEEPERS_PATH = os.path.join(BASE_DIR, '..', 'data', 'raw', 'keepers_{year}.csv')
+
+
+def load_season_keepers(year: int, path: str = None) -> list[str]:
+    """The players kept before a past season's draft, so never draftable.
+
+    This must be an explicit list, not inferred. Yahoo records a kept player as
+    an ordinary pick in whatever round the keeper cost, exposes no keeper flag,
+    and the cost is NOT a fixed round in this league -- 2025 has six teams with a
+    clean one-per-round-15-to-18 pattern and four without, including keepers as
+    early as round 10. Inferring from round number is what produced the void
+    2025 run, where the board drafted eight of other teams' keepers.
+
+    Distinct from src/keepers.py, which reads the single data/raw/keepers.csv for
+    the UPCOMING draft. Backtests need one list per historical season.
+    """
+    path = path or SEASON_KEEPERS_PATH.format(year=year)
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"{path} missing. A mock draft cannot run without the season's keeper "
+            f"list: every kept player left in the pool is a player the board can "
+            f"draft but never could have. Create it with a 'player_name' column, "
+            f"one kept player per row."
+        )
+    df = pd.read_csv(path, index_col=False)
+    if 'player_name' not in df.columns:
+        raise ValueError(f"{path} is missing a 'player_name' column")
+    names = df['player_name'].dropna().astype(str).str.strip()
+    names = names[names != '']
+    if names.empty:
+        raise ValueError(f"{path} has no names -- an empty keeper list drafts everyone")
+
+    # A partial list is the dangerous case, not the obviously-empty one: the run
+    # completes, looks plausible, and quietly lets the board draft whichever
+    # keepers are missing. The league keeps a fixed 4 per team across 10 teams,
+    # so any other count means the file is unfinished.
+    expected = keeper.TEAM_COUNT * keeper.KEEPER_COUNT
+    if len(names) != expected:
+        raise ValueError(
+            f"{path} lists {len(names)} keepers, expected {expected} "
+            f"({keeper.TEAM_COUNT} teams x {keeper.KEEPER_COUNT}). A partial list "
+            f"silently leaves the rest draftable -- finish it, or pass "
+            f"expected_count=None if the league rules genuinely changed."
+        )
+    return names.tolist()
+
+
+def remove_keepers(board: pd.DataFrame, keeper_names: list[str],
+                   cutoff: int = NAME_MATCH_CUTOFF) -> tuple[pd.DataFrame, list]:
+    """Drop kept players from the draftable pool.
+
+    Returns the filtered board and the names that could not be matched, which are
+    reported rather than swallowed: an unmatched keeper is still in the pool and
+    can still hand the board a player it could never have had.
+    """
+    matched_ids, _ = _match_names(keeper_names, board, cutoff)
+    resolved = {pid for pid in matched_ids if pid is not None and pd.notna(pid)}
+    unmatched = [name for name, pid in zip(keeper_names, matched_ids)
+                 if pid is None or pd.isna(pid)]
+    return board[~board['playerId'].isin(resolved)].copy(), unmatched
 
 
 def owner_team_key(draft_df: pd.DataFrame) -> str:

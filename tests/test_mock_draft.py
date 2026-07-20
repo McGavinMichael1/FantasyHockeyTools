@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src import mockDraft, season
+from src import keeper, mockDraft, season
 
 
 MINE = '465.l.33072.t.1'
@@ -259,6 +259,81 @@ def test_a_pick_the_board_never_had_is_graded_on_real_production():
 
     replayed = mockDraft.replay(resolved, board, MINE)
     assert mockDraft.grade(replayed['my_actual'], outcomes)['total_fp'] == 250.0
+
+
+# --- keepers were never in the pool ---------------------------------------
+
+def test_kept_players_are_removed_from_the_draftable_pool():
+    # The bug that voided the 2025 run: Yahoo records a kept player as an
+    # ordinary pick in the round the keeper cost, so the board treated McDavid,
+    # MacKinnon and Kucherov as available from pick 1 and "won" on them.
+    board = make_board([(1, 'Connor McDavid', 'C', 99.0),
+                        (2, 'Available Guy', 'C', 10.0)])
+
+    filtered, unmatched = mockDraft.remove_keepers(board, ['Connor McDavid'])
+
+    assert list(filtered['full_name']) == ['Available Guy']
+    assert unmatched == []
+
+
+def test_a_keeper_the_board_cannot_match_is_reported_not_swallowed():
+    # An unmatched keeper is still in the pool and can still hand the board a
+    # player it could never have had -- silence there is how this went wrong.
+    board = make_board([(1, 'Connor McDavid', 'C', 99.0)])
+
+    _, unmatched = mockDraft.remove_keepers(board, ['Some Unknown Keeper'])
+
+    assert unmatched == ['Some Unknown Keeper']
+
+
+def test_the_board_cannot_draft_a_keeper_end_to_end():
+    board = make_board([(1, 'Connor McDavid', 'C', 99.0),
+                        (2, 'Available Guy', 'L', 10.0)])
+    filtered, _ = mockDraft.remove_keepers(board, ['Connor McDavid'])
+    draft = make_draft([(1, MINE, 'Available Guy')])
+
+    replayed = mockDraft.replay(mockDraft.resolve_picks(draft, filtered), filtered, MINE)
+
+    assert 'Connor McDavid' not in [p['name'] for p in replayed['board_roster']]
+
+
+def test_missing_keeper_file_refuses_rather_than_running_unfiltered(tmp_path):
+    # Running without the list is exactly the void run. Failing loudly is the
+    # only safe default, because the unfiltered result looks plausible.
+    with pytest.raises(FileNotFoundError, match='keeper list'):
+        mockDraft.load_season_keepers(2025, path=str(tmp_path / 'nope.csv'))
+
+
+def test_empty_keeper_file_refuses(tmp_path):
+    path = tmp_path / 'keepers_2025.csv'
+    pd.DataFrame({'player_name': []}).to_csv(path, index=False)
+
+    with pytest.raises(ValueError, match='empty keeper list'):
+        mockDraft.load_season_keepers(2025, path=str(path))
+
+
+def _write_keepers(tmp_path, count):
+    path = tmp_path / 'keepers_2025.csv'
+    pd.DataFrame({'player_name': [f'Keeper {i}' for i in range(count)]}).to_csv(
+        path, index=False)
+    return str(path)
+
+
+def test_season_keepers_round_trip(tmp_path):
+    full = keeper.TEAM_COUNT * keeper.KEEPER_COUNT
+    path = _write_keepers(tmp_path, full)
+
+    assert len(mockDraft.load_season_keepers(2025, path=path)) == full
+
+
+def test_a_partial_keeper_list_is_rejected(tmp_path):
+    # The dangerous case. An obviously-empty file fails loudly on its own; a
+    # 24-of-40 file completes, looks plausible, and quietly leaves 16 keepers
+    # draftable -- which is the exact shape of the bug that voided the 2025 run.
+    path = _write_keepers(tmp_path, keeper.TEAM_COUNT * keeper.KEEPER_COUNT - 16)
+
+    with pytest.raises(ValueError, match='expected'):
+        mockDraft.load_season_keepers(2025, path=path)
 
 
 # --- leakage guard --------------------------------------------------------

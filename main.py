@@ -379,14 +379,30 @@ def runMockDraft(year, refresh=False):
     my_team_key = mockDraft.owner_team_key(draft_df)
     print(f"Loaded {len(draft_df)} picks from the {year} draft; owner is {my_team_key}")
 
+    # Kept players were never in the pool. Yahoo records them as ordinary picks
+    # in whatever round the keeper cost, so they have to be excluded explicitly
+    # -- leaving them in is what voided the first 2025 run, where the board
+    # drafted eight of other teams' keepers and "won" on the strength of it.
+    keeper_names = mockDraft.load_season_keepers(year)
+    before = len(draft_df)
+    draft_df = draft_df[~draft_df['player_name'].isin(keeper_names)].copy()
+    print(f"Keepers: dropped {before - len(draft_df)} of {len(keeper_names)} "
+          f"keeper rows from the draft record")
+
     # Features from the season before the draft; outcomes from the season after.
     # Same display floors as the live board -- otherwise the backtest drafts
     # tiny-sample players the real tool would never have shown, and grades a
     # tool the owner does not have.
     board = applyDisplayFloors(buildFullProjections(feature_season=year - 1))
+    # VORP before the keeper filter, matching runDraft: replacement level is
+    # about league-wide talent depth, not about who happens to still be free.
     board['vorp'] = keeper.vorp_column(board)
     board = board.dropna(subset=['vorp'])
-    print(f"Board rebuilt from season {year - 1}: {len(board)} players")
+    board, unmatched_keepers = mockDraft.remove_keepers(board, keeper_names)
+    if unmatched_keepers:
+        print(f"⚠️  {len(unmatched_keepers)} keepers unmatched on the board and still "
+              f"draftable: {unmatched_keepers}")
+    print(f"Board rebuilt from season {year - 1}: {len(board)} draftable players")
 
     resolved = mockDraft.resolve_picks(draft_df, board)
     unmatched = int(resolved['playerId'].isna().sum())
