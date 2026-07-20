@@ -35,7 +35,8 @@
   - `src/models/cooling.py` — XGBoost regressor; low projected next-5 FP/g = drop candidate
   - `src/models/lstmPickups.py` — LSTM sequence model (experimental, has a bug — see below)
 - **Blended output** (`main.py`): 0.3 × heuristic + 0.7 × ML score, prints top 20
-- **Streamlit skeleton** (`ui/app.py`, `ui/pages/`): pages exist but are TODO stubs
+- ~~**Streamlit skeleton** (`ui/app.py`, `ui/pages/`)~~ — deleted July 2026, superseded by the
+  Next.js `frontend/` (this "Current State" block is a July 3, 2026 snapshot)
 - **Data on disk** (`data/raw/`, gitignored):
   - `moneypuck_2020_2024.csv`, `moneypuck_current.csv` — game-level skater logs (ML training)
   - `2008_to_2024.csv` (2.6 GB) — full-history MoneyPuck game logs, **all situations** — this is
@@ -76,7 +77,8 @@
 6. **Baselines before models, always.** "Last season's PPG" and "3-season weighted PPG" must be on
    the scoreboard before any ML model claims credit.
 7. **Train/predict separation**: `main.py train-pickups | train-draft | pickups | draft | keeper`
-   subcommands (argparse). Streamlit is the product interface; scripts are the workbench.
+   subcommands (argparse). The Next.js `frontend/` is the product interface; scripts are the
+   workbench. (Written when Streamlit was the planned UI; `ui/` was deleted July 2026.)
 8. **Add pytest for pure functions only** — scoring math, season aggregation, label construction.
    Cheap to write, catches the exact class of bug found in this review (wrong scoring formula),
    and it's a core skill. No need to test API wrappers.
@@ -251,16 +253,20 @@ worthless as a keeper if the draft is full of 60-FP players at his position.
       > analyzer Learning Log entry / Current Phase items below. `GOALIE_WEIGHTS` +
       > `calculateGoaliePoints` shipped in `src/fantasyPoints.py`; the ranker is
       > `src/models/goalieDraft.py`.
-- [ ] Run a **mock draft against last year's results** as the end-to-end test: would this board
-      have beaten my actual 2025 draft?
+- [x] Run a **mock draft against last year's results** as the end-to-end test: would this board
+      have beaten my actual 2025 draft? **No — INCONCLUSIVE, −47.3 FP (−1.75%), 2026-07-20.**
+      The board is a wash with hand-drafting: a reference, not an authority. `main.py mock-draft
+      --year YYYY`; see the Learning Log and
+      `docs/superpowers/plans/2026-07-20-mock-draft-preregistration.md`. Held-out look spent.
 
 ---
 
 ### Phase E: In-Season Pickups v2 (Oct+, after the draft)
-- [ ] Wire the (retrained, corrected-label) pickup model into `ui/pages/pickups.py`
+- [x] Wire the (retrained, corrected-label) pickup model into the frontend (via `api_export.py`;
+      the original `ui/pages/pickups.py` target no longer exists)
 - [ ] Fix the hardcoded `20252026` season id (derive from date, or config constant)
 - [ ] Weekly rhythm: manually download fresh `moneypuck_current.csv` (license — see decision
-      notes) → `python main.py pickups` (or the Streamlit page)
+      notes) → `python main.py pickups` (or `api_export.py` + the frontend)
 - [ ] Revisit: heuristic/ML blend weights, cooling-model surfacing for *drop* candidates,
       un-park the LSTM if still curious (fix the `save(model)` signature bug first)
 
@@ -373,7 +379,7 @@ both are small and partly luck-driven. Documented, accepted.
 - **M2 (Aug 23):** Draft model beats both baselines on Spearman for held-out 2024; 2026-27
   rankings CSV generated and sanity-checked
 - **M3 (Sept 6):** Keeper recommendations for my actual roster
-- **M4 (Sept 20):** Draft-day Streamlit board + goalie table; mock-draft tested. **Draft-ready.**
+- **M4 (Sept 20):** Draft-day board (Next.js `frontend/`) + goalie table; mock-draft tested. **Draft-ready.**
 - **M5 (Oct):** Pickups running weekly in the UI
 
 ---
@@ -655,6 +661,86 @@ run autonomously. Note the frontend test harness required two files the plan did
 (`src/types/cssModules.d.ts` for `tsc`, and `test-setup.cjs`/`test-css-stub.cjs` to stub CSS-module
 imports under `node --test`); no new npm dependency was added.
 
+### July 2026 (Phase D FINAL GATE — mock draft: INCONCLUSIVE, the board is a wash)
+
+**Corrected result: the board LOSES to the owner's real 2025 draft by 47.3 FP — 2,662.5 vs
+2,709.8, or −1.75%.** Pre-registered bands put anything between −5% and +5% at *inconclusive*:
+the board is roughly a wash with the owner's own judgement, usable as a reference, not as an
+authority. It won 7 of 14 picks. A coin flip on both measures. All validity gates pass, zero
+kept players on the board roster, `leakage_warning: None`. The held-out look is now spent.
+
+**Do not claim the tool drafts better than the owner.** It does not, on the one honest test
+available. What it does offer is consistency — it does not get tired in round 12 — and the live
+draft mode recomputes VORP against the remaining pool, which no human tracks unaided.
+
+Getting here took three attempts, and the first two were both wrong in the same direction:
+
+> ⛔ **The earlier +29.3% result was VOID — keepers were never excluded from the draft pool.**
+> Yahoo records kept players as picks in their keeper round (Makar 172, Draisaitl 174,
+> McDavid 175, MacKinnon 176, Kucherov 177 — rounds 15-18), so the board drafted eight
+> players who were already kept by other teams and were never available. The real round 1
+> opens Hedman/Hutson/Fox for exactly that reason. Caught by the owner reading the board's
+> roster. Per the pre-registration, a gate failure makes a run void rather than spent, so
+> **the held-out look remains available** once keeper exclusion is fixed. Yahoo exposes no
+> `is_keeper` flag, and rounds 15-18 appear to mix keepers with traded picks, so keeper
+> identification is the open blocker.
+>
+> Lesson: the eyeball gate was looking for absurd *players*. A roster of McDavid, MacKinnon
+> and Kucherov looks perfectly plausible — the absurdity was in their *availability*. Check
+> that the pool is right, not just that the names are.
+>
+> **Superseded (VOID): +1,071.2 FP (+29.3%), 4,727.8 vs 3,656.6.**
+
+**Keeper identification, settled 2026-07-20 (owner):** *"The final 4 picks of every team are
+always the kept players."* Per team, by **pick number** — never by round. Rounds cannot work
+here: picks are traded wholesale, so in 2025 team t.9 held only rounds 1-9 while t.10 held only
+10-18. Six of ten teams happened to show a clean one-per-round-15-to-18 pattern, which is
+exactly the misleading regularity that made a round-based rule look correct. `derive_keepers()`
+implements the real rule and reproduces the owner's stated keepers exactly (Swayman p70, Michkov
+p71, Johnston p78, Stützle p90), plus all eight kept stars including Matthews at round 10.
+
+**Keeper COST, settled 2026-07-20 (owner):** *"keepers are always final 4 picks you hold."* Not a
+fixed round — rounds 15-18 are just what that resolves to when nobody has traded picks. This makes
+`keeper.KEEPER_ROUNDS = (18, 17, 16, 15)` a **default rather than the rule**, and it understates
+cost whenever late picks were traded away: the owner held only rounds 1-9 in 2025, so his final
+four picks were overall 70/71/78/90, worth **898.3 projected FP against the 722.4 the constant
+assumes — a 24% understatement, ~44 FP per keeper**, enough to flip a marginal keep decision.
+Not yet fixed; see `.claude/skills/OPEN-QUESTIONS.md` #1b for what a fix needs.
+
+Lessons:
+- **My predictions were wrong twice, in the same direction.** Predicted +15%, first run said
+  +29.3%, truth is −1.75%. The pre-registration's worth was not in being right; it was in
+  making both errors impossible to quietly walk back.
+- **The owner caught what every automated gate missed**, by reading player names. Concrete
+  domain output beats summary metrics for validation — surface the roster, not just the margin.
+Pre-registered beforehand in `docs/superpowers/plans/2026-07-20-mock-draft-preregistration.md`
+(bar was ≥+5%); run at commit `6298898`; full report in `reports/mock_draft_2025.json`.
+`leakage_warning: None` — the shipped model's newest label is season 2024, and this grades
+season 2025, so the model could not have seen it. **The held-out look is now spent.**
+
+Validity gates all passed *before* the verdict was read: 0 of 18 owner picks unresolved, 5
+unmatched opponent picks, 24 substitutions, no eyeball absurdities. The board won 12 of 18
+individual picks, so the margin is broad-based rather than outlier-driven.
+
+Disclosed artifact: the owner's real picks are never removed from the pool, so the board
+re-drafted Adam Fox (owner's pick 3) at pick 78 for a free 155.7 FP. Corrected margin
+**+915.5 (+25.0%)** — verdict unchanged, and every correction moves against the board.
+2025 is deliberately not re-run; it gets one look.
+
+Lessons:
+- **The rehearsal earned its keep three times over.** Running 2024 first (a contaminated year
+  that costs nothing) caught three scoring bugs — goalies graded zero because
+  `player_seasons.csv` is skaters-only, off-board rookies graded zero despite producing, and
+  the mock board skipping the GP floors the live board applies. All three inflated the board's
+  margin. Firing straight at 2025 would have burned the only clean look on a broken harness.
+- **A warning is only as good as someone reading it.** The 2025 fetch initially returned a
+  fantasy *baseball* draft: `yfa.Game(oauth, 'nhl')` does not scope `league_ids()`, and the
+  code took `[0]` of five leagues across several sports. It printed an ambiguity warning, which
+  is the only reason it was caught. That warning is now an exception, plus a league
+  name/team-count assertion at fetch time.
+- **Predictions belong in writing.** I predicted ~+15% and was off by roughly double. Recorded
+  because a pre-registration that only ever confirms its author is worthless.
+
 ---
 
 ## Resources & References
@@ -710,11 +796,18 @@ infra debt cleared during the offseason so draft prep lands on solid ground.
       knee cleared, Draisaitl's 65 GP was a March lower-body injury not decline, Kucherov is the
       reigning Hart winner the model marks down hardest on age) — all added real context rather
       than restating stats. New dependency `anthropic==0.116.0`, pinned in pyproject + requirements.
-- [ ] **B4 remainder:** the ONE-time test-2024 confirm (do it deliberately — it burns the only
-      held-out look), then fill `data/raw/keepers.csv` on draft day (B0).
+- [x] **B4 remainder:** the ONE-time test-2024 confirm — **DONE 2026-07-20, and it is the same
+      thing as the mock draft**, not a separate item: a board for the Oct 2025 draft uses
+      season-2024 features graded on season-2025 outcomes, which is exactly
+      `season.DRAFT_TEST_SEASON`. Spent against a written pre-registration. Verdict:
+      inconclusive — the model does not beat the owner's own drafting.
+- [ ] Fill `data/raw/keepers.csv` on draft day (B0) — the filter machinery already exists
+      (`src/keepers.py`, wired at `main.py:253`); it only needs the announced list.
 - [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an
       API key the owner doesn't have — plan on a Claude Code session in chunks), then re-run
-      `api_export.py`. Only 5 of 704 players have summaries today.
+      `api_export.py`. 50 of 774 players have summaries as of 2026-07-20. Generate these
+      AFTER `data/raw/keepers.csv` is filled, so credits are not spent on the ~40 players
+      who will not be in the draft pool (owner decision, 2026-07-20).
 
 **Goalie analyzer — DONE 2026-07-16** (part of Phase D, ahead of the UI work; branch
 `codex/keeper-analyzer`, commits d6aa10e..770e427; spec

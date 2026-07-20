@@ -317,6 +317,117 @@
   color: var(--cold);
 }
 
+/* Live draft mode */
+.draftToggle {
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--boards);
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+}
+
+.draftToggle:hover {
+  background: var(--ice-deep);
+}
+
+.draftToggleOn,
+.draftToggleOn:hover {
+  background: var(--hot-deep, var(--ink));
+  border-color: var(--hot-deep, var(--ink));
+  color: var(--boards);
+}
+
+.resetButton {
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--boards);
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.resetButton:hover {
+  background: var(--ice-deep);
+  color: var(--ink-2);
+}
+
+/* Positional-run strip: which positions are being picked over right now. */
+.runs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.run {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--boards);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.runTrack {
+  width: 54px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.runBar {
+  height: 100%;
+  background: var(--ink-3);
+}
+
+.runBarHot {
+  background: var(--hot-deep, var(--ink));
+}
+
+.draftCell {
+  text-align: center;
+}
+
+.draftButton {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--boards);
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.draftButton:hover {
+  background: var(--ice-deep);
+  color: var(--ink);
+}
+
+.draftButtonOn {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--boards);
+}
+
+/* Drafted players stay visible but recede -- seeing who is gone is part of
+   reading the room, so they are dimmed rather than removed. */
+.rowDrafted {
+  opacity: 0.42;
+}
+
+.rowDrafted .playerName {
+  text-decoration: line-through;
+}
+
 .rosteredChip {
   display: inline-block;
   margin-top: 10px;

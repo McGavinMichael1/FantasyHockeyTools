@@ -1,6 +1,6 @@
 ---
 name: fht-draft-campaign
-description: Use when working on the draft analyzer or keeper analyzer (PROJECT-PLAN.md Phases B, C, D) -- the player_seasons table, draft features, baselines vs. models, draft_rankings.csv, replacement-value keeper math, or the draft-day Streamlit board and goalie ranking ahead of the October 2026 draft.
+description: Use when working on the draft analyzer or keeper analyzer (PROJECT-PLAN.md Phases B, C, D) -- the player_seasons table, draft features, baselines vs. models, draft_rankings.csv, replacement-value keeper math, the mock-draft backtest, or the draft-day board (Next.js) and goalie ranking ahead of the October 2026 draft.
 ---
 
 # FHT draft campaign
@@ -187,12 +187,18 @@ Per `PROJECT-PLAN.md` C2 (lines 221-228), from `draft_rankings.csv`:
 
 ## Phase D -- draft-day UI + goalies
 
-`ui/pages/draft.py` is a comment-only TODO stub today (confirmed by reading it) -- title +
-markdown line, then five `# TODO` comments, no logic. Target: Streamlit board loading
-`draft_rankings.csv`, sortable, position filter, "mark as drafted" checkboxes backed by
-`st.session_state` so the board survives Streamlit's rerun-on-interaction model during a live
-draft, plus a best-available-by-position panel. `ui/pages/keeper.py` does not exist yet either
-(confirmed) -- planned as your roster with keeper values, top 4 highlighted.
+**Shipped 2026-07-20.** The UI is the Next.js `frontend/`, not Streamlit -- `ui/` was deleted in
+the July 2026 sustainability pass.
+
+- Board: `frontend/src/components/rink/DraftBoard.tsx`, fed by `api_export.py` ->
+  `data/processed/frontend_data.json`. Sortable, position filter, expandable per-player detail.
+- Live draft mode: "mark as drafted" per row, VORP recomputed against the *remaining* pool, and a
+  positional-run strip. The math is `frontend/src/lib/liveDraft.ts` (kept out of the component so
+  `tsconfig.test.json` can compile it -- that config includes `src/lib` but not
+  `src/components/rink`). It mirrors `src/keeper.py::replacement_levels`; keep the two in step.
+- Picks persist to `localStorage`, hydrated in an effect rather than during render (no
+  `localStorage` on the server -> SSR mismatch).
+- Keeper board: `frontend/src/app/keeper/page.tsx` plus the advisor chat.
 
 **Goalie ranker -- SHIPPED 2026-07-16** (full spec:
 `docs/superpowers/specs/2026-07-16-goalie-draft-keeper-design.md`; gates G1/G3/G4 recorded in the
@@ -222,6 +228,20 @@ superseded -- goalies are now VORP-interleaved with skaters on the same board.
 **FINAL GATE:** run a mock draft against last year's results -- would this board (rankings +
 keeper recommendations + goalie table) have beaten the actual 2025 draft? This is the end-to-end
 test for the whole campaign, not just Phase D.
+
+Harness shipped 2026-07-20: `src/mockDraft.py`, `main.py mock-draft --year YYYY`.
+
+**The 2025 mock draft IS the one-time test-2024 confirm.** They are not separate items. A board
+built for the Oct 2025 draft uses season-2024 features graded on season-2025 outcomes -- exactly
+`season.DRAFT_TEST_SEASON`. Running it spends the held-out look permanently, so pre-register the
+prediction first (see `fht-quality-gates`) and get owner sign-off. `mockDraft.leakage_warning()`
+flags contaminated years in code; 2024 is contaminated by construction (the model trained on
+those outcomes) and is only useful for checking the harness.
+
+Rehearsing on 2024 first was what caught three scoring bugs -- goalies graded zero because
+`player_seasons.csv` is skaters-only, off-board picks graded zero despite producing, and the mock
+board skipping the games-played floors the live board applies. All three inflated the board's
+margin. Do not skip the rehearsal.
 
 ## Fenced-off wrong paths
 
@@ -280,9 +300,9 @@ Facts here drift as phases complete. Re-verify with:
   `scripts/build_player_seasons.py`). Also `ls data/raw/player_birthdates.csv` (B2 age cache, built
   by `scripts/build_birthdates.py`) -- both flip back to absent only if deleted for a rebuild.
 - `ls data/raw/keepers.csv` -- confirm still absent/empty; flips once B0 is filled in.
-- `.\.venv\Scripts\python.exe -m pytest -v` -- as of 2026-07-16: **48 passed, 2 failed** (both
-  pre-existing: the `loadGameLogs` guard-ordering bug and
-  `test_draft_summaries::test_all_summary_calls_allow_the_larger_token_budget`).
+- `.\.venv\Scripts\python.exe -m pytest -v` -- as of 2026-07-20: **125 passed, 0 failed**. Both
+  long-standing failures were fixed in the July 2026 sustainability pass, so the suite is now a
+  real signal: treat any red as a regression, not as expected noise.
 - `grep -n "NotImplementedError" main.py src/models/draft.py` -- **no longer raises**:
   `trainDraft`/`runDraft`/`runKeeper` and `models/draft.py`'s four functions are all implemented
   (Phase B3/B4 landed). The Phase B3/B4 body prose still says "raises `NotImplementedError`" and is

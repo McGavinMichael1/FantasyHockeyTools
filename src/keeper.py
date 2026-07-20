@@ -14,6 +14,21 @@ from src import season
 
 TEAM_COUNT = 10
 KEEPER_COUNT = 4
+
+# The league rule (owner, 2026-07-20) is "keeping a player costs your final 4
+# picks -- whichever picks those happen to be." Rounds 18/17/16/15 are only what
+# that resolves to in a draft where nobody traded picks, so this is a DEFAULT,
+# not the rule.
+#
+# It understates the cost whenever late picks have been traded away. In 2025 the
+# owner held only rounds 1-9, so his last four picks were overall 70/71/78/90 --
+# priced against the current board that is 898.3 projected FP of real cost
+# versus the 722.4 this constant assumes, a 24% understatement that inflates
+# net_keeper_value by ~44 FP per keeper.
+#
+# Fixing it properly means pricing against the picks actually held; see
+# .claude/skills/OPEN-QUESTIONS.md #1b. Keeper math is a class (a) change
+# (fht-quality-gates) -- highest bar, tests first.
 KEEPER_ROUNDS = (18, 17, 16, 15)
 KEEPER_TENURE = "unknown"
 ROSTER_SLOTS = {
