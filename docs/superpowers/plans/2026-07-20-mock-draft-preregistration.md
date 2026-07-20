@@ -87,7 +87,46 @@ one or two outliers and should be reported as fragile rather than as a clean win
 - Reporting the margin without the validity-gate values alongside it.
 - Treating a second 2025 run as independent evidence. There is one look.
 
-## Result — run 2026-07-20, code at commit `6298898`
+## ⛔ RESULT VOID — keepers were never excluded from the pool
+
+**Do not cite the +29.3% figure below. It is an artifact, not a finding.**
+
+Caught by the owner on 2026-07-20, reading the board's roster: *"was that with
+Nikita Kucherov taken first overall? The active draft at the time had Kucherov
+and others as kept players."* Correct.
+
+In a keeper league, Yahoo records each kept player as a "pick" in the round the
+keeper cost. The 2025 draft results place Makar at pick 172, Draisaitl 174,
+McDavid 175, MacKinnon 176, Kucherov 177 — rounds 15-18, i.e.
+`keeper.KEEPER_ROUNDS`. The real round 1 opens Hedman, Hutson, Fox precisely
+because every superstar was already kept and was **never in the draft pool**.
+
+`replay()` treated those players as available from pick 1, so the board drafted
+eight players who belonged to other teams before the draft began. The margin
+measures that, and nothing else.
+
+**Why the validity gates missed it:** gate 4 (eyeball) should have caught it. A
+board roster of McDavid + MacKinnon + Kucherov + Makar + Draisaitl looks
+*plausible* in isolation — every player is real and productive — so it passed a
+check aimed at absurd players rather than at absurd *availability*. The gate was
+looking for the wrong kind of wrong.
+
+**The held-out look is NOT spent.** Per the protocol above, a run failing a
+validity gate is "void for harness reasons, not evidence either way", and fix-
+and-re-run is permitted: a void run grades a broken mechanism, not the season.
+That is what happened, and it is the second time the pre-registration's own rules
+have done real work.
+
+Yahoo exposes no `is_keeper` flag (verified against the raw payload: draft_result
+records carry only pick, round, team_key, player_key), so keeper identification
+has to be inferred. Rounds 15-18 hold exactly 40 picks — 10 teams x 4 keepers —
+but across only 8 teams (one with 9, one with 7, two with none), which implies
+traded picks mixed in with keepers. **Resolving that is the blocker before any
+re-run.**
+
+---
+
+## Superseded result — run 2026-07-20, code at commit `6298898` (VOID, see above)
 
 **The board wins by +1,071.2 FP (+29.3%).** Above the pre-registered +5% bar by
 a wide margin.
