@@ -26,11 +26,12 @@ NHL API (api-web.nhle.com)  ---->  src/nhlAPI.py (raw calls)             draft, 
                                     src/keepers.py (keepers.csv IO)
 Yahoo Fantasy API           ---->  src/yahooAPI.py (OAuth, roster)  ---->  api_export.py (JSON
                                     src/backtest.py (spot-check)            for frontend/)
-                                    src/features/{shared,pickups,     ---->  ui/ (Streamlit,
-                                      draft,goalies}.py (features)         mostly stub)
+                                    src/features/{shared,pickups,
+                                      draft,goalies}.py (features)
                                     src/models/{pickups,cooling,      ---->  frontend/ (Next.js,
                                       draft,goalieDraft,lstmPickups}.py      reads frontend_data.json)
                                       (train/predict/load/save)
+                                    src/season.py (every season constant)
 ```
 
 Goalie data flow (shipped 2026-07-16): `data/raw/goalies/*.csv` (MoneyPuck goalie skill stats) is
@@ -42,15 +43,18 @@ permanently in `data/raw/goalie_nhl_seasons.csv` by `src/dataProcessing.py`) int
 
 Working product: `src/moneypuck.py`, `src/fantasyPoints.py`, `src/features/mlFeatures.py`,
 `src/models/pickups.py`, `src/models/cooling.py`, `src/backtest.py`, `main.py:runPickups`,
-`src/features/pickups.py::rankFreeAgents` (`src/features/pickups.py:24-41`), `ui/app.py` (title
-page only).
+`src/features/pickups.py::rankFreeAgents` (`src/features/pickups.py:24-41`).
 
 Stubs — raise `NotImplementedError` or are TODO-only, verified by reading each file (2026-07-16):
 - `src/features/shared.py` (`build_shared_features`) — still raises `NotImplementedError`
 - `src/features/pickups.py` (`build_pickup_features`) — still raises `NotImplementedError`
-- `ui/pages/pickups.py` and `ui/pages/draft.py` — comment-only TODO lists, no logic (the live draft
-  board is the Next.js "The Rink" frontend, not this Streamlit page)
-- `src/models/lstmPickups.py` — intentionally parked (see decisions table), not broken.
+- `src/models/lstmPickups.py` — intentionally parked (see decisions table), not broken. Since
+  July 2026 its `torch` dependency is an optional extra (`uv pip install -e ".[lstm]"`), so a
+  base install cannot import this module. Nothing on the shipped path does.
+
+Deleted July 2026: `ui/` (Streamlit skeleton — `app.py` title page plus two comment-only TODO
+stubs). The Next.js "The Rink" frontend is the only UI, and carrying `streamlit` as a dependency
+for three stub files was not worth it.
 
 No longer stubs (implemented Phase B4 / goalie campaign, verified no `NotImplementedError` remains):
 `src/models/draft.py` (`train`/`predict`/`load`/`save`), `src/features/draft.py`

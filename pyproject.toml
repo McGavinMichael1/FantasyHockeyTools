@@ -4,112 +4,41 @@ version = "0.1.0"
 description = "Fantasy hockey analysis and prediction tools with ML models"
 readme = "README.md"
 requires-python = ">=3.12"
+# Direct dependencies only -- what this repo actually imports. This list used to
+# be a flat freeze of an entire venv (110 pins, including ipykernel, jedi,
+# debugpy and pydeck), so every transitive upgrade needed a manual bump. Floors
+# rather than exact pins for the same reason: annual pin-bumping is exactly the
+# friction this repo is trying to remove.
 dependencies = [
-    "altair==6.2.2",
-    "anthropic==0.116.0",
-    "anyio==4.14.1",
-    "asttokens==3.0.1",
-    "attrs==26.1.0",
-    "blinker==1.9.0",
-    "cachetools==7.1.4",
-    "certifi==2026.2.25",
-    "charset-normalizer==3.4.6",
-    "click==8.4.2",
-    "colorama==0.4.6",
-    "comm==0.2.3",
-    "contourpy==1.3.3",
-    "cycler==0.12.1",
-    "debugpy==1.8.20",
-    "decorator==5.2.1",
-    "docopt==0.6.2",
-    "executing==2.2.1",
-    "filelock==3.25.2",
-    "fonttools==4.62.1",
-    "fsspec==2026.2.0",
-    "gitdb==4.0.12",
-    "GitPython==3.1.50",
-    "h11==0.16.0",
-    "httptools==0.8.0",
-    "idna==3.11",
-    "iniconfig==2.3.0",
-    "ipykernel==7.2.0",
-    "ipython==9.12.0",
-    "ipython-pygments-lexers==1.1.1",
-    "itsdangerous==2.2.0",
-    "jedi==0.19.2",
-    "Jinja2==3.1.6",
-    "joblib==1.5.3",
-    "jsonschema==4.26.0",
-    "jsonschema-specifications==2025.9.1",
-    "jupyter-client==8.8.0",
-    "jupyter-core==5.9.1",
-    "kiwisolver==1.5.0",
-    "MarkupSafe==3.0.3",
-    "matplotlib==3.10.8",
-    "matplotlib-inline==0.2.1",
-    "mpmath==1.3.0",
-    "myql==1.2.7",
-    "narwhals==2.23.0",
-    "nest-asyncio==1.6.0",
-    "networkx==3.6.1",
-    "numpy==2.4.3",
-    "oauthlib==3.3.1",
-    "objectpath==0.6.1",
-    "packaging==26.0",
-    "pandas==3.0.2",
-    "parso==0.8.6",
-    "pillow==12.1.1",
-    "platformdirs==4.9.4",
-    "pluggy==1.6.0",
-    "prompt-toolkit==3.0.52",
-    "protobuf==7.35.1",
-    "psutil==7.2.2",
-    "pure-eval==0.2.3",
-    "pyaml==24.12.1",
-    "pyarrow==24.0.0",
-    "pydeck==0.9.3",
-    "Pygments==2.20.0",
-    "pyparsing==3.3.2",
-    "pytest==9.1.1",
-    "python-dateutil==2.9.0.post0",
-    "python-dotenv==1.2.2",
-    "python-multipart==0.0.32",
-    "pytz==2026.1.post1",
-    "PyYAML==6.0.3",
-    "pyzmq==27.1.0",
-    "RapidFuzz==3.14.3",
-    "rauth==0.7.3",
-    "referencing==0.37.0",
-    "requests==2.33.1",
-    "requests-oauthlib==2.0.0",
-    "rpds-py==2026.6.3",
-    "scikit-learn==1.8.0",
-    "scipy==1.17.1",
-    "setuptools==70.2.0",
-    "six==1.17.0",
-    "smmap==5.0.3",
-    "stack-data==0.6.3",
-    "starlette==1.3.1",
-    "streamlit==1.58.0",
-    "sympy==1.14.0",
-    "tenacity==9.1.4",
-    "threadpoolctl==3.6.0",
-    "toml==0.10.2",
-    "torch==2.11.0",
-    "torchaudio==2.11.0",
-    "torchvision==0.26.0",
-    "tornado==6.5.5",
-    "traitlets==5.14.3",
-    "typing-extensions==4.15.0",
-    "tzdata==2025.3",
-    "urllib3==2.6.3",
-    "uvicorn==0.49.0",
-    "watchdog==6.0.0",
-    "wcwidth==0.6.0",
-    "websockets==16.0",
-    "xgboost==3.2.0",
-    "yahoo-oauth==2.1.1",
-    "yahoo-fantasy-api==2.12.2",
+    "anthropic>=0.116.0",       # keeper advisor + draft summary generation
+    "matplotlib>=3.10.8",       # feature-importance / ROC plots in reports/
+    "numpy>=2.4.3",
+    "objectpath>=0.6.1",        # src/yahooAPI.py team-key extraction
+    "pandas>=3.0.2",
+    "pyarrow>=24.0.0",          # Parquet engine for the processed cache layer
+    "RapidFuzz>=3.14.3",        # Yahoo name -> projection matching
+    "requests>=2.33.1",
+    "scikit-learn>=1.8.0",
+    "scipy>=1.17.1",            # spearmanr, the ranking metric used everywhere
+    "xgboost>=3.2.0",
+    "yahoo-oauth>=2.1.1",
+    "yahoo-fantasy-api>=2.12.2",
+]
+
+[project.optional-dependencies]
+# The LSTM (src/models/lstmPickups.py, src/features/lstmFeatures.py) is parked
+# until after draft season -- see fht-architecture-contract. Torch is ~3 GB and
+# nothing on the shipped path imports it, so it is opt-in:
+#     uv pip install -e ".[lstm]"
+# For GPU support with CUDA 12.8:
+#     uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+lstm = [
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "torchaudio>=2.11.0",
+]
+dev = [
+    "pytest>=9.1.1",
 ]
 
 [project.scripts]
@@ -120,16 +49,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src", "ui"]
+packages = ["src"]
 
-[tool.uv]
-# For GPU support with CUDA 12.8, run:
-# uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-dev-dependencies = []
-
-[tool.pytest.ini_options]
-pythonpath = "."
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
+# NOTE: pytest config lives in pytest.ini, NOT here. pytest.ini wins when both
+# exist, so a [tool.pytest.ini_options] block here would be a lie that silently
+# does nothing.
