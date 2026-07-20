@@ -8,6 +8,7 @@ import os
 import pandas as pd
 
 from src import dataProcessing
+from src import keeper
 from src import moneypuck
 from src import season
 from src import yahooAPI
@@ -19,10 +20,30 @@ CURRENT_SEASON = season.CURRENT_SEASON
 OUTPUT_PATH = os.path.join('data', 'processed', 'frontend_data.json')
 DRAFT_RANKINGS_PATH = os.path.join('data', 'processed', 'draft_rankings.csv')
 DRAFT_SUMMARIES_PATH = os.path.join('data', 'processed', 'draft_summaries.json')
+DRAFT_REPLACEMENT_RANKS_PATH = os.path.join(
+    'data', 'processed', 'draft_replacement_ranks.json')
 KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
 KEEPER_ADVISOR_CONTEXT_PATH = os.path.join(
     'data', 'processed', 'keeper_advisor_context.json')
 FACTOR_COLS = [f'factor_{i}' for i in range(1, 7)]
+
+
+def _draft_replacement_ranks() -> dict:
+    """Replacement ranks matching the exported board's vorp.
+
+    `main.py draft` shrinks each rank by the keepers already filling that
+    position, so draft-day recomputation in the frontend has to use the same
+    ranks or its numbers quietly disagree with the exported column. Without a
+    keeper list the base ranks are correct, which is also what main.py used.
+    The ranks cannot be re-derived here: draft_rankings.csv is already
+    keeper-filtered, so the kept players' positions are no longer on it. They are
+    written by `main.py draft` alongside the board.
+    """
+    try:
+        with open(DRAFT_REPLACEMENT_RANKS_PATH) as handle:
+            return json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return dict(keeper.REPLACEMENT_RANKS)
 
 
 def _load_draft_summaries() -> dict:
@@ -368,6 +389,9 @@ def export_data():
         'cooling': cooling_list,
         'draft': draft_list,
         'keeper': build_keeper_section(),
+        # The ranks the exported vorp was computed with, so live draft-day
+        # recomputation uses the same definition instead of the base constant.
+        'draft_replacement_ranks': _draft_replacement_ranks(),
         'generated_at': pd.Timestamp.now().isoformat(),
     }
 

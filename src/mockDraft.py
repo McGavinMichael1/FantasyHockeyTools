@@ -63,6 +63,11 @@ NAME_MATCH_CUTOFF = 85  # same threshold as keepers.filterOutKeepers
 # draft nine centers and post a fake win, since FP does not care about slots.
 MAX_BY_POSITION = {'C': 4, 'L': 4, 'R': 4, 'D': 6, 'G': 2}
 
+# Slots a fieldable lineup must fill, and the flex that sits on top of them.
+# UTIL takes any skater; goalies cannot fill it.
+UTIL_SLOTS = keeper.ROSTER_SLOTS['UTIL']
+SKATER_POSITIONS = frozenset({'C', 'L', 'R', 'D'})
+
 
 def leakage_warning(draft_year: int) -> str | None:
     """Whether the shipped model already saw the season this run grades on.
@@ -143,20 +148,83 @@ def attach_outcome_ids(resolved: pd.DataFrame, outcomes: pd.DataFrame,
     return attached
 
 
-def _best_available(board: pd.DataFrame, taken: set, counts: dict) -> pd.Series | None:
-    """Highest-VORP player left who does not blow a positional cap."""
+def _unmet_needs(counts: dict, kept_counts: dict | None = None) -> dict:
+    """Starting slots still unfilled, counting the team's keepers as filled."""
+    kept_counts = kept_counts or {}
+    return {
+        position: max(0, minimum - counts.get(position, 0) - kept_counts.get(position, 0))
+        for position, minimum in keeper.STARTING_SLOTS.items()
+    }
+
+
+def _position_caps(kept_counts: dict | None = None) -> dict:
+    """Caps with the team's own keepers already counted against them.
+
+    A team that kept a goalie can start only one more, so drafting two is a
+    wasted pick -- the third goalie can never leave the bench (UTIL takes
+    skaters only). The floors have the same shape: both are about slots, and
+    a keeper occupies its slot whether or not it cost a pick.
+    """
+    kept_counts = kept_counts or {}
+    return {
+        position: max(0, cap - kept_counts.get(position, 0))
+        for position, cap in MAX_BY_POSITION.items()
+    }
+
+
+def _best_available(board: pd.DataFrame, taken: set, counts: dict,
+                    kept_counts: dict | None = None,
+                    picks_left: int | None = None) -> pd.Series | None:
+    """Highest-VORP player left who does not blow a positional cap.
+
+    Once there are only as many picks left as unfilled starting slots, the pick
+    is reserved for a position that still needs one. Without this the board
+    drafts pure best-available and posts a roster it could never start: the 2025
+    all-teams sweep took 60 D, 40 L, 20 G, 20 R and ZERO centers across 140
+    picks, because D replacement is drawn at rank 48 against forwards' 24 and so
+    always shows the fatter surplus. Caps alone cannot stop it -- they set a
+    ceiling, and the problem is the floor.
+
+    Reserving only the tail means early picks are undistorted; the board still
+    takes the best player available until the roster math forces its hand.
+
+    If nothing at a needed position is left, it falls back to best-available
+    rather than forfeiting the pick -- a skipped pick would hand the comparison
+    to the owner for free. `picks_left=None` disables the rule entirely, which
+    is what the opponent-substitution path wants: we do not model opponent
+    rosters, and inventing constraints for them would change the owner's result.
+    """
+    needed = None
+    if picks_left is not None:
+        needs = _unmet_needs(counts, kept_counts)
+        if sum(needs.values()) >= picks_left:
+            needed = {position for position, count in needs.items() if count > 0}
+
+    # Caps only shrink for a team whose keepers we know. The opponent path
+    # passes nothing, which leaves them exactly as they were.
+    caps = MAX_BY_POSITION if kept_counts is None else _position_caps(kept_counts)
+
+    fallback = None
     for _, row in board.iterrows():
         if row['playerId'] in taken:
             continue
         position = row['position']
-        if counts.get(position, 0) >= MAX_BY_POSITION.get(position, 99):
+        if counts.get(position, 0) >= caps.get(position, 99):
+            continue
+        if needed is not None and position not in needed:
+            if fallback is None:
+                fallback = row
             continue
         return row
-    return None
+    return fallback
 
 
-def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str) -> dict:
+def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str,
+           kept_counts: dict | None = None) -> dict:
     """Run the draft twice over: once as it happened, once with the board.
+
+    `kept_counts` is the drafting team's OWN keepers by position: those slots
+    are already filled, so the board does not owe picks for them.
 
     Returns the owner's actual roster, the board's roster, and bookkeeping about
     how often the fallback rule had to fire.
@@ -169,13 +237,15 @@ def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str) -> dic
     counts: dict = {}
     substitutions = []
     unmatched_opponent_picks = 0
+    picks_left = int((ordered['team_key'] == my_team_key).sum())
 
     for _, pick in ordered.iterrows():
         is_mine = pick['team_key'] == my_team_key
         player_id = pick['playerId']
 
         if is_mine:
-            choice = _best_available(ranked, taken, counts)
+            choice = _best_available(ranked, taken, counts, kept_counts, picks_left)
+            picks_left -= 1
             if choice is None:
                 print(f"⚠️  Board had nobody left at pick {pick['pick']}")
                 continue
@@ -248,7 +318,10 @@ def load_outcomes(outcome_season: int, path: str = PLAYER_SEASONS_PATH,
     drafted goalie zero, which is not a small distortion: a roster carries two
     or three of them, and both sides of the comparison lose real points.
 
-    Returns one frame indexed by playerId with `actual_fp` and `full_name`.
+    Returns one frame indexed by playerId with `actual_fp`, `full_name` and
+    `position`. Position comes from the outcome tables rather than the board so
+    that picks the board never had (a rookie off a non-NHL season) can still be
+    slotted into a lineup by grade().
     """
     if not os.path.exists(path):
         raise FileNotFoundError(
@@ -261,7 +334,8 @@ def load_outcomes(outcome_season: int, path: str = PLAYER_SEASONS_PATH,
             f"No player-season rows for season {outcome_season}; cannot grade a "
             f"draft made for it.")
     frames = [skaters[['playerId', 'full_name']].assign(
-        actual_fp=pd.to_numeric(skaters['totalFP'], errors='coerce'))]
+        actual_fp=pd.to_numeric(skaters['totalFP'], errors='coerce'),
+        position=skaters['position'] if 'position' in skaters.columns else pd.NA)]
 
     # Goalies degrade loudly rather than fatally, matching buildFullProjections:
     # a skaters-only grade is still informative, a silent one is not.
@@ -272,7 +346,8 @@ def load_outcomes(outcome_season: int, path: str = PLAYER_SEASONS_PATH,
             print(f"⚠️  No goalie rows for season {outcome_season}; goalies will score zero")
         else:
             frames.append(goalies[['playerId', 'full_name']].assign(
-                actual_fp=pd.to_numeric(goalies['fantasyPoints'], errors='coerce')))
+                actual_fp=pd.to_numeric(goalies['fantasyPoints'], errors='coerce'),
+                position='G'))
     else:
         print(f"⚠️  {goalie_path} missing; every drafted goalie will score zero")
 
@@ -289,6 +364,44 @@ def load_outcomes(outcome_season: int, path: str = PLAYER_SEASONS_PATH,
     return outcomes.set_index('playerId')
 
 
+def best_lineup(picks: list) -> tuple[list, float]:
+    """The highest-scoring legal lineup a set of picks can start, and its total.
+
+    A raw sum over every pick credits points nobody could ever have started: the
+    2025 sweep's rosters carried six defensemen and no centers, and still posted
+    a full total. Two C slots you cannot fill are worth zero, and the sixth
+    defenseman is worth whatever UTIL is worth, not his full season.
+
+    Greedy is optimal here because UTIL is the only flex slot: fill each
+    position-exclusive slot with that position's best, then let UTIL take the
+    best skaters nobody else could use.
+
+    Season totals stand in for a week-by-week lineup, which is an approximation
+    -- it ignores that a real manager re-sets the lineup every week -- but it is
+    the same approximation on both sides of the comparison.
+    """
+    by_position: dict = {}
+    for pick in picks:
+        position = pick.get('position')
+        if position is None or pd.isna(position):
+            continue
+        by_position.setdefault(position, []).append(pick)
+    for entries in by_position.values():
+        entries.sort(key=lambda entry: entry.get('actual_fp') or 0.0, reverse=True)
+
+    starters, bench = [], []
+    for position, slots in keeper.STARTING_SLOTS.items():
+        entries = by_position.get(position, [])
+        starters.extend(entries[:slots])
+        if position in SKATER_POSITIONS:
+            bench.extend(entries[slots:])
+
+    bench.sort(key=lambda entry: entry.get('actual_fp') or 0.0, reverse=True)
+    starters.extend(bench[:UTIL_SLOTS])
+    total = sum(float(entry.get('actual_fp') or 0.0) for entry in starters)
+    return starters, round(total, 1)
+
+
 def grade(roster: list, outcomes: pd.DataFrame) -> dict:
     """Sum a roster's ACTUAL fantasy points, counting misses honestly.
 
@@ -296,21 +409,35 @@ def grade(roster: list, outcomes: pd.DataFrame) -> dict:
     Europe. That scores zero rather than being skipped: a draft pick that
     produced nothing is a real cost of the pick, and dropping it would flatter
     whichever roster whiffed more.
+
+    Reports both totals: `total_fp` over every pick (comparable to runs recorded
+    before lineup grading existed) and `lineup_fp` over the best legal lineup,
+    which is what a manager could actually have started.
     """
+    has_position = 'position' in outcomes.columns
     total, lines, missing = 0.0, [], 0
     for entry in roster:
         player_id = entry.get('playerId')
         fp = 0.0
+        position = entry.get('position')
         if player_id is not None and player_id in outcomes.index:
             fp = float(outcomes.loc[player_id, 'actual_fp'])
+            # The outcome table wins: it has a position for picks the board
+            # never carried, which is exactly where the roster entry has none.
+            if has_position:
+                position = outcomes.loc[player_id, 'position']
         else:
             missing += 1
         total += fp
-        lines.append({**entry, 'actual_fp': round(fp, 1)})
+        lines.append({**entry, 'position': position, 'actual_fp': round(fp, 1)})
+
+    starters, lineup_fp = best_lineup(lines)
     return {
         'total_fp': round(total, 1),
+        'lineup_fp': lineup_fp,
         'players': len(roster),
         'no_outcome_rows': missing,
+        'starters': starters,
         'picks': lines,
     }
 
@@ -332,11 +459,18 @@ def compare(replayed: dict, outcomes: pd.DataFrame) -> dict:
         })
 
     return {
+        # The verdict is decided on the STARTABLE lineup. `*_total_fp` is the
+        # raw sum over every pick, kept so runs recorded before lineup grading
+        # existed stay comparable -- it over-credits a roster that hoards one
+        # position, which is the very failure this backtest has to catch.
         'verdict': {
             'actual_total_fp': actual['total_fp'],
             'board_total_fp': board['total_fp'],
-            'board_minus_actual': round(board['total_fp'] - actual['total_fp'], 1),
-            'board_wins': board['total_fp'] > actual['total_fp'],
+            'actual_lineup_fp': actual['lineup_fp'],
+            'board_lineup_fp': board['lineup_fp'],
+            'board_minus_actual': round(board['lineup_fp'] - actual['lineup_fp'], 1),
+            'board_minus_actual_total': round(board['total_fp'] - actual['total_fp'], 1),
+            'board_wins': board['lineup_fp'] > actual['lineup_fp'],
         },
         'actual_roster': actual,
         'board_roster': board,

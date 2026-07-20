@@ -741,6 +741,66 @@ Lessons:
 - **Predictions belong in writing.** I predicted ~+15% and was off by roughly double. Recorded
   because a pre-registration that only ever confirms its author is worthless.
 
+### July 2026 (positional floors, demand-aware VORP, keeper-cost units)
+
+**Root cause of the 10-team sweep's −6.48%, found 2026-07-20: the board drafted 0 centers in 140
+picks** (60 D / 40 L / 20 G / 20 R). Every roster it produced was unfieldable — `ROSTER_SLOTS`
+requires 2 C. `mockDraft._best_available` enforced `MAX_BY_POSITION` caps but no **floors**, and
+`grade()` summed all 14 picks with no lineup-legality check, so an unstartable roster still posted
+a full total.
+
+**The first proposed fix was wrong, and measuring it is what showed that.** The handoff plan
+(`docs/superpowers/plans/2026-07-20-post-keeper-replacement-levels.md`) blamed VORP being computed
+against a pre-keeper pool. Simulated on the 2026 board, all three candidate definitions produce the
+same 6 D / 1 C roster:
+
+| definition | C level | D level | greedy-14 |
+|---|---|---|---|
+| rank 24/48, full pool (then-current) | 234.5 | 150.9 | 6D 4L 2G 1C 1R |
+| same ranks, post-keeper pool (the plan) | 208.3 | 143.4 | 6D 4L 2G 1C 1R |
+| rank − keepers at position, post-keeper pool | 236.0 | 150.9 | 6D 4L 2G 1C 1R |
+
+Lesson: **a diagnosis that explains the symptom is not the same as one that fixes it.** Simulating
+the proposed fix before building it cost minutes and redirected the whole change.
+
+**What shipped:** positional floors (reserve the tail of the draft for unfilled starting slots,
+falling back rather than forfeiting a pick), keeper-aware caps AND floors, demand-aware replacement
+ranks (`10 × slots − keepers at that position`; C 24→9 for 2026), and `grade()` scoring the best
+legal lineup (`lineup_fp`) alongside the raw sum (`total_fp`, kept for comparability).
+
+**2025 all-teams sweep, both runs regraded with the same grader** — directional only, the held-out
+look was already spent:
+
+| | all-picks | wins | startable lineup | wins |
+|---|---|---|---|---|
+| pre-fix | −6.48% | 1/10 | −7.13% | 1/10 |
+| post-fix | −2.84% | 3/10 | −2.90% | 4/10 |
+
+All 10 rosters are now legally fieldable (was 0 of 10).
+
+**Separately: `net_keeper_value` was subtracting a season total from a surplus.**
+`raw_keeper_value` is value over replacement (60–85 FP on the 2026 board) while `round_pick_costs`
+returned the mean **absolute** `projected_total` of the round (161–173 FP), so every keeper scored
+around −80 to −115 and the tool concluded "keep nobody." A unit error wearing the costume of a
+conclusion — and one the frontend copy had been describing correctly all along ("N above
+replacement − M pick cost"), which is a reminder that UI text can encode an intent the code never
+implemented.
+
+Fixed by pricing the pick in VORP too. Three details, each of which was independently wrong:
+units; slicing the round by VORP (the board's actual sort order) rather than by `projected_total`;
+and flooring at 0, because forfeiting a pick can never be a *gain* — a below-replacement draftee is
+a bench player interchangeable with a free waiver add. The resulting per-round value curve falls
+monotonically from **+80.2 (round 1) through zero at round 10 to −25.0 (round 18)**, which is the
+shape it should have and crosses replacement about where the league's startable talent runs out.
+
+Consequence to read carefully: rounds 15–18 now all price at **0**, so keeping is free — true for
+an untraded draft, and exactly where the *separate*, still-open `KEEPER_ROUNDS` bug bites. The
+owner's real final four in 2025 were picks 70/71/78/90, worth **+16.8/+16.1/+11.2/+2.2** VORP. That
+bug now has a cost expressed in the right units for the first time.
+
+Recommended keepers (Fox / Hellebuyck / Panarin / Shesterkin) and their order did not move — only
+the net values, from −78…−115 to +60…+85. Suite: 174 pytest, 59 frontend, typecheck clean.
+
 ---
 
 ## Resources & References

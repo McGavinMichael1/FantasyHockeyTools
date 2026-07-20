@@ -3,11 +3,11 @@ import type { DraftPlayer, Position } from '@/types/player';
 /**
  * Live draft-day VORP.
  *
- * The exported `vorp` on each player is computed against the FULL preseason
- * pool. On draft day that goes stale the moment picks start coming off the
- * board: once the top 20 centers are gone, the replacement-level center is a
- * much worse player, and everyone still available at the position is worth more
- * than their static number says.
+ * The exported `vorp` on each player is computed against the preseason pool
+ * with every keeper removed. On draft day that goes stale the moment picks start
+ * coming off the board: once the top 20 centers are gone, the replacement-level
+ * center is a much worse player, and everyone still available at the position is
+ * worth more than their static number says.
  *
  * These helpers recompute the same quantity against whoever is still available.
  *
@@ -16,9 +16,15 @@ import type { DraftPlayer, Position } from '@/types/player';
  * VORP is projected_total minus that. Keep the two in step; a divergence would
  * mean the draft-day number and the keeper number quietly disagree about what
  * "value" means.
+ *
+ * N itself is not fixed: keeper.replacement_ranks() shrinks each rank by the
+ * keepers already filling that position, because the league does not draft slots
+ * its keepers occupy. Pass the exported `draft_replacement_ranks` through, or
+ * these helpers fall back to the no-keeper base below and disagree with the
+ * exported column.
  */
 
-/** Mirrors keeper.REPLACEMENT_RANKS (src/keeper.py:29). */
+/** Mirrors keeper.REPLACEMENT_RANKS -- the NO-KEEPER base ranks. */
 export const REPLACEMENT_RANKS: Record<Position, number> = {
   C: 24,
   L: 24,
@@ -42,7 +48,10 @@ export function remaining(players: DraftPlayer[], drafted: ReadonlySet<number>):
  * out rather than defaulted to zero, which would make every remaining player at
  * a thin position look absurdly valuable.
  */
-export function replacementLevels(players: DraftPlayer[]): ReplacementLevels {
+export function replacementLevels(
+  players: DraftPlayer[],
+  ranks: Record<Position, number> = REPLACEMENT_RANKS,
+): ReplacementLevels {
   const byPosition = new Map<Position, number[]>();
   for (const player of players) {
     const totals = byPosition.get(player.positionCode) ?? [];
@@ -52,7 +61,7 @@ export function replacementLevels(players: DraftPlayer[]): ReplacementLevels {
 
   const levels: ReplacementLevels = {};
   for (const [position, totals] of byPosition) {
-    const rank = REPLACEMENT_RANKS[position];
+    const rank = ranks[position];
     if (rank === undefined || totals.length < rank) continue;
     totals.sort((a, b) => b - a);
     levels[position] = totals[rank - 1];
@@ -69,8 +78,9 @@ export function replacementLevels(players: DraftPlayer[]): ReplacementLevels {
 export function liveVorp(
   players: DraftPlayer[],
   drafted: ReadonlySet<number>,
+  ranks: Record<Position, number> = REPLACEMENT_RANKS,
 ): Map<number, number | null> {
-  const levels = replacementLevels(remaining(players, drafted));
+  const levels = replacementLevels(remaining(players, drafted), ranks);
   const result = new Map<number, number | null>();
   for (const player of players) {
     const level = levels[player.positionCode];
@@ -83,8 +93,9 @@ export function liveVorp(
 export function withLiveVorp(
   players: DraftPlayer[],
   drafted: ReadonlySet<number>,
+  ranks: Record<Position, number> = REPLACEMENT_RANKS,
 ): DraftPlayer[] {
-  const live = liveVorp(players, drafted);
+  const live = liveVorp(players, drafted, ranks);
   return players.map((p) => ({ ...p, vorp: live.get(p.id) ?? null }));
 }
 
@@ -108,6 +119,7 @@ export interface PositionalRun {
 export function positionalRuns(
   players: DraftPlayer[],
   drafted: ReadonlySet<number>,
+  ranks: Record<Position, number> = REPLACEMENT_RANKS,
 ): PositionalRun[] {
   const byPosition = new Map<Position, DraftPlayer[]>();
   for (const player of players) {
@@ -118,7 +130,7 @@ export function positionalRuns(
 
   const runs: PositionalRun[] = [];
   for (const [position, group] of byPosition) {
-    const tierSize = Math.min(REPLACEMENT_RANKS[position] ?? group.length, group.length);
+    const tierSize = Math.min(ranks[position] ?? group.length, group.length);
     const tier = [...group]
       .sort((a, b) => b.projected_total - a.projected_total)
       .slice(0, tierSize);

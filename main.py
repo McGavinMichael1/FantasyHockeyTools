@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from collections import Counter
 
 import pandas as pd
 
@@ -275,23 +276,37 @@ def runDraft():
     """Rank this year's draft-eligible (non-keeper) players by projected fantasy value."""
     rankings = applyDisplayFloors(buildFullProjections())
 
-    # VORP before the keeper filter: replacement level is about league-wide
-    # talent depth, not about who happens to still be draftable.
-    rankings['vorp'] = keeper.vorp_column(rankings)
-
     # Draft pool must exclude anyone already kept -- keeper lists aren't in the Yahoo
     # API until draft day, so they're maintained manually in data/raw/keepers.csv.
     # Missing/empty file = keepers not announced yet: warn loudly and rank everyone
     # rather than refuse, so pre-draft-day rankings (and the frontend) still work.
+    kept_counts = None
     try:
         keeper_names = keepers.loadKeepers()
+        kept_counts = keeper.keeper_position_counts(keeper_names, rankings)
         before = len(rankings)
         rankings = keepers.filterOutKeepers(rankings, keeper_names)
         print(f"Keepers: removed {before - len(rankings)} of {len(keeper_names)} listed keepers from the pool")
+        print(f"   kept by position: {kept_counts}")
     except (FileNotFoundError, ValueError) as e:
         print(f"⚠️  No keeper list applied ({e})")
         print("   Rankings include EVERY player. Fine before keepers are announced;")
         print("   on draft day, fill data/raw/keepers.csv and re-run.")
+
+    # VORP AFTER the keeper filter, and against demand-adjusted ranks. Both
+    # halves matter and neither is optional:
+    #   - the pool is who you can actually draft; a kept player is not an
+    #     alternative to a pick, so he cannot set the price of one.
+    #   - the RANK has to come down with him. Replacement level is the marginal
+    #     drafted starter, and the league does not draft the slots its keepers
+    #     already fill. Holding C at rank 24 while removing 15 kept centers
+    #     double-counts the removal.
+    # Getting only the pool right measurably does not fix the board: the 2025
+    # all-teams sweep drafted 60 D, 40 L, 20 G, 20 R and ZERO centers, and a
+    # post-keeper pool at the base ranks still produced 6 D and 1 C. The floor
+    # rule in mockDraft._best_available is what fixes the roster; this is what
+    # makes the price honest.
+    rankings['vorp'] = keeper.vorp_column(rankings, kept_counts=kept_counts)
 
     # VORP is the default cross-position order (owner decision 2026-07-16).
     rankings = rankings.sort_values('vorp', ascending=False)
@@ -299,6 +314,14 @@ def runDraft():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     rankings.to_csv(out_path, index=False)
     print(f"\nWrote {len(rankings)} players to {out_path}")
+
+    # The ranks this board's vorp was computed with. api_export.py cannot
+    # re-derive them -- the CSV above is keeper-filtered, so the kept players'
+    # positions are gone from it -- and the frontend's draft-day recomputation
+    # has to use the same ranks or it silently disagrees with the column.
+    ranks_path = os.path.join('data', 'processed', 'draft_replacement_ranks.json')
+    with open(ranks_path, 'w') as handle:
+        json.dump(keeper.replacement_ranks(kept_counts), handle, indent=2)
 
     print("\n=== Top 20 by VORP (cross-position) ===")
     print(rankings[['full_name', 'position', 'age', 'gamesPlayed',
@@ -322,7 +345,23 @@ def runKeeper():
     projections = buildFullProjections()
     league = yahooAPI.getLeague()
     roster = yahooAPI.getMyRoster(league)
-    rankings = keeper.analyze_keepers(roster, projections)
+
+    # What you get INSTEAD of keeping someone is a draft pick, and a draft pick
+    # cannot fetch a player another team kept. So replacement levels and pick
+    # costs come from the pool with all 40 keepers removed -- while `projections`
+    # keeps them, because your own four are exactly who this is rating.
+    pool, kept_counts = None, None
+    try:
+        keeper_names = keepers.loadKeepers()
+        kept_counts = keeper.keeper_position_counts(keeper_names, projections)
+        pool = keepers.filterOutKeepers(projections, keeper_names)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"⚠️  No keeper list applied ({e})")
+        print("   Keeper values are priced against the FULL pool, which overstates")
+        print("   what your picks could fetch. Fill data/raw/keepers.csv and re-run.")
+
+    rankings = keeper.analyze_keepers(roster, projections, pool=pool,
+                                      kept_counts=kept_counts)
     rankings['target_season'] = keeper.target_season_label(CURRENT_SEASON)
 
     os.makedirs(os.path.dirname(KEEPER_RANKINGS_PATH), exist_ok=True)
@@ -344,6 +383,8 @@ def runKeeper():
             skater_history=skater_history,
             goalie_history=goalie_history,
             yahoo_settings=league.settings(),
+            pool=pool,
+            kept_counts=kept_counts,
         )
         keeper_advisor.write_context(context)
         print(f"Wrote keeper advisor context {context['context_id'][:12]} to "
@@ -378,12 +419,17 @@ def _mockDraftBoard(year, draft_df, exclude_unavailable, outcomes):
     #
     # Derived from each team's last picks (owner's rule). An explicit
     # data/raw/keepers_{year}.csv overrides, for a season the rule does not fit.
+    kept_by_team = None
     try:
         keeper_names = mockDraft.load_season_keepers(year)
         print(f"Keepers: using the explicit list ({len(keeper_names)} players)")
     except FileNotFoundError:
         kept = mockDraft.derive_keepers(draft_df)
         keeper_names = kept['player_name'].dropna().tolist()
+        kept_by_team = {
+            team_key: rows['player_name'].dropna().tolist()
+            for team_key, rows in kept.groupby('team_key')
+        }
         print(f"Keepers: derived {len(keeper_names)} from each team's last "
               f"{keeper.KEEPER_COUNT} picks")
 
@@ -396,14 +442,27 @@ def _mockDraftBoard(year, draft_df, exclude_unavailable, outcomes):
     # tiny-sample players the real tool would never have shown, and grades a
     # tool the owner does not have.
     board = applyDisplayFloors(buildFullProjections(feature_season=year - 1))
-    # VORP before the keeper filter, matching runDraft: replacement level is
-    # about league-wide talent depth, not about who happens to still be free.
-    board['vorp'] = keeper.vorp_column(board)
-    board = board.dropna(subset=['vorp'])
+
+    # Positions have to be read off the UNFILTERED board -- the keepers are
+    # about to be removed from it.
+    kept_counts = keeper.keeper_position_counts(keeper_names, board)
+    kept_positions_by_team = None
+    if kept_by_team is not None:
+        kept_positions_by_team = {
+            team_key: keeper.keeper_position_counts(names, board)
+            for team_key, names in kept_by_team.items()
+        }
+
     board, unmatched_keepers = mockDraft.remove_keepers(board, keeper_names)
     if unmatched_keepers:
         print(f"⚠️  {len(unmatched_keepers)} keepers unmatched on the board and still "
               f"draftable: {unmatched_keepers}")
+
+    # VORP AFTER the keeper filter and against demand-adjusted ranks, matching
+    # runDraft. See the comment there for why both halves are needed.
+    board['vorp'] = keeper.vorp_column(board, kept_counts=kept_counts)
+    board = board.dropna(subset=['vorp'])
+    print(f"   kept by position: {kept_counts}")
 
     dropped = []
     if exclude_unavailable:
@@ -413,12 +472,17 @@ def _mockDraftBoard(year, draft_df, exclude_unavailable, outcomes):
               f"the margin is inflated by an unknown amount -- not evidence.")
 
     print(f"Board rebuilt from season {year - 1}: {len(board)} draftable players")
-    return board, draft_df, dropped
+    return board, draft_df, dropped, kept_positions_by_team
 
 
 def _mockDraftOneTeam(year, draft_df, board, outcomes, team_key, warning,
-                      exclude_unavailable, dropped, verbose=True):
-    """Replay a single team's draft against an already-built board."""
+                      exclude_unavailable, dropped, verbose=True,
+                      kept_positions=None):
+    """Replay a single team's draft against an already-built board.
+
+    `kept_positions` is this team's own keepers by position: slots already
+    filled, which the board's positional floors must not ask it to fill again.
+    """
     resolved = mockDraft.resolve_picks(draft_df, board)
     unmatched = int(resolved['playerId'].isna().sum())
 
@@ -426,7 +490,7 @@ def _mockDraftOneTeam(year, draft_df, board, outcomes, team_key, warning,
     # off a non-NHL season) still produced, and must not be scored as a zero.
     resolved = mockDraft.attach_outcome_ids(resolved, outcomes)
 
-    replayed = mockDraft.replay(resolved, board, team_key)
+    replayed = mockDraft.replay(resolved, board, team_key, kept_counts=kept_positions)
     result = mockDraft.compare(replayed, outcomes)
 
     # The human keeps eating absentees even when the board no longer can. This
@@ -450,10 +514,16 @@ def _mockDraftOneTeam(year, draft_df, board, outcomes, team_key, warning,
         verdict = result['verdict']
         print(f"Name matching: {len(resolved) - unmatched} of {len(resolved)} picks resolved")
         print(f"\n=== {year} mock draft vs {team_key} ===")
-        print(f"Actual roster: {verdict['actual_total_fp']:.1f} FP")
-        print(f"Board roster:  {verdict['board_total_fp']:.1f} FP")
+        # Startable lineup is the verdict; the all-picks sum is shown alongside
+        # because it is what runs before lineup grading recorded.
+        print(f"Actual lineup: {verdict['actual_lineup_fp']:.1f} FP "
+              f"(all picks {verdict['actual_total_fp']:.1f})")
+        print(f"Board lineup:  {verdict['board_lineup_fp']:.1f} FP "
+              f"(all picks {verdict['board_total_fp']:.1f})")
         print(f"Margin:        {verdict['board_minus_actual']:+.1f} FP "
               f"({'board wins' if verdict['board_wins'] else 'actual draft wins'})")
+        board_mix = Counter(p['position'] for p in result['board_roster']['picks'])
+        print(f"Board position mix: {dict(sorted(board_mix.items()))}")
         print(f"Opponent substitutions forced by the board: {len(result['substitutions'])}")
         print(f"Their picks that never played: {human_zeros}")
         print("\n=== Pick by pick ===")
@@ -479,12 +549,15 @@ def runMockDraft(year, refresh=False, team=None, all_teams=False,
 
     draft_df = yahooAPI.loadDraftResults(year, refresh=refresh)
     outcomes = mockDraft.load_outcomes(year)
-    board, draft_df, dropped = _mockDraftBoard(year, draft_df, exclude_unavailable, outcomes)
+    board, draft_df, dropped, kept_by_team = _mockDraftBoard(
+        year, draft_df, exclude_unavailable, outcomes)
+    kept_by_team = kept_by_team or {}
 
     if not all_teams:
         team_key = mockDraft.select_team_key(draft_df, team)
         result = _mockDraftOneTeam(year, draft_df, board, outcomes, team_key,
-                                   warning, exclude_unavailable, dropped)
+                                   warning, exclude_unavailable, dropped,
+                                   kept_positions=kept_by_team.get(team_key))
         # A league-mate's run gets its own file: the owner's 2025 report is the
         # recorded FINAL GATE result and must not be overwritten by a variant.
         suffix = '' if team is None else f"_{team_key.split('.')[-1]}"
@@ -499,16 +572,20 @@ def runMockDraft(year, refresh=False, team=None, all_teams=False,
     rows, results = [], {}
     for team_key in sorted(draft_df['team_key'].astype(str).unique()):
         result = _mockDraftOneTeam(year, draft_df, board, outcomes, team_key,
-                                   warning, exclude_unavailable, dropped, verbose=False)
+                                   warning, exclude_unavailable, dropped, verbose=False,
+                                   kept_positions=kept_by_team.get(team_key))
         verdict = result['verdict']
         results[team_key] = result
+        mix = Counter(p['position'] for p in result['board_roster']['picks'])
         rows.append({
             'team': team_key.split('.')[-1] + (' (you)' if team_key == owner_key else ''),
-            'actual_fp': verdict['actual_total_fp'],
-            'board_fp': verdict['board_total_fp'],
+            'actual_fp': verdict['actual_lineup_fp'],
+            'board_fp': verdict['board_lineup_fp'],
             'margin': verdict['board_minus_actual'],
-            'pct': round(100 * verdict['board_minus_actual'] / verdict['actual_total_fp'], 2),
+            'pct': round(100 * verdict['board_minus_actual'] / verdict['actual_lineup_fp'], 2),
             'board_wins': verdict['board_wins'],
+            'mix': ''.join(f"{position}{mix[position]}"
+                           for position in sorted(mix) if mix[position]),
             'subs': len(result['substitutions']),
             'their_zeros': result['meta']['human_picks_that_never_played'],
         })

@@ -115,12 +115,20 @@ def _ensure_finite_decision_data(rankings: pd.DataFrame) -> None:
         )
 
 
-def _board_comparisons(projections: pd.DataFrame) -> dict[int, dict]:
-    board = projections.copy()
-    board["playerId"] = pd.to_numeric(board["playerId"], errors="coerce")
-    board["projected_total"] = pd.to_numeric(board["projected_total"], errors="coerce")
-    board = board.dropna(subset=["playerId", "projected_total", "position"])
-    levels = keeper.replacement_levels(board)
+def _board_comparisons(projections: pd.DataFrame, pool: pd.DataFrame | None = None,
+                       kept_counts: dict[str, int] | None = None) -> dict[int, dict]:
+    """Board ranks for the advisor. `pool`/`kept_counts` must match what
+    analyze_keepers used, or the chat's vorp_rank contradicts the table."""
+    def _clean_board(frame: pd.DataFrame) -> pd.DataFrame:
+        cleaned = frame.copy()
+        cleaned["playerId"] = pd.to_numeric(cleaned["playerId"], errors="coerce")
+        cleaned["projected_total"] = pd.to_numeric(
+            cleaned["projected_total"], errors="coerce")
+        return cleaned.dropna(subset=["playerId", "projected_total", "position"])
+
+    board = _clean_board(projections)
+    levels = keeper.replacement_levels(
+        board if pool is None else _clean_board(pool), kept_counts)
     board["vorp"] = board["projected_total"] - board["position"].map(levels)
     board["position_rank"] = (
         board.groupby("position")["projected_total"]
@@ -139,8 +147,10 @@ def _board_comparisons(projections: pd.DataFrame) -> dict[int, dict]:
 
 def _roster_records(rankings: pd.DataFrame, projections: pd.DataFrame,
                     skater_history: pd.DataFrame | None,
-                    goalie_history: pd.DataFrame | None) -> list[dict]:
-    comparisons = _board_comparisons(projections)
+                    goalie_history: pd.DataFrame | None,
+                    pool: pd.DataFrame | None = None,
+                    kept_counts: dict[str, int] | None = None) -> list[dict]:
+    comparisons = _board_comparisons(projections, pool, kept_counts)
     records = []
     for _, row in rankings.iterrows():
         player_id = _number(row, "playerId", integer=True)
@@ -249,11 +259,14 @@ def build_context(rankings: pd.DataFrame, projections: pd.DataFrame,
                   skater_history: pd.DataFrame | None = None,
                   goalie_history: pd.DataFrame | None = None,
                   yahoo_settings: dict | None = None,
-                  generated_at: datetime | None = None) -> dict:
+                  generated_at: datetime | None = None,
+                  pool: pd.DataFrame | None = None,
+                  kept_counts: dict[str, int] | None = None) -> dict:
     if rankings.empty:
         raise ValueError("Cannot build keeper advisor context from an empty roster")
     _ensure_finite_decision_data(rankings)
-    records = _roster_records(rankings, projections, skater_history, goalie_history)
+    records = _roster_records(rankings, projections, skater_history, goalie_history,
+                              pool, kept_counts)
     official = (
         rankings[rankings["is_recommended"].astype(bool)]
         .sort_values("keeper_rank")
@@ -274,7 +287,7 @@ def build_context(rankings: pd.DataFrame, projections: pd.DataFrame,
         )
     if rules["keeper_tenure"] == "unknown":
         warnings.append("Maximum keeper tenure is unknown")
-    pick_costs = keeper.round_pick_costs(projections)
+    pick_costs = keeper.round_pick_costs(projections, pool=pool, kept_counts=kept_counts)
     if any(not math.isfinite(cost) for cost in pick_costs.values()):
         raise ValueError(
             "Projection board produced non-finite decision data in keeper pick costs"

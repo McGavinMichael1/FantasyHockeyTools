@@ -90,12 +90,26 @@ Full rationale and file:line citations: `fht-architecture-contract`.
 - `train-draft` / `draft` / `keeper` / `train-goalies` / `mock-draft` CLI commands are implemented (draft board shipped Phase B4; goalie ranker shipped 2026-07-16; mock-draft backtest 2026-07-20). Remaining Phase B/C/D work is tracked in `fht-draft-campaign` and PROJECT-PLAN's Current Phase.
 - **Keeper cost is understated when picks are traded.** The league rule is "keeping a player costs
   your final 4 picks — whichever picks those happen to be" (owner, 2026-07-20), but
-  `keeper.KEEPER_ROUNDS = (18, 17, 16, 15)` assumes an untraded draft. Measured 24% understatement
-  (~44 FP per keeper) against the 2025 draft, enough to flip a marginal keep decision. See
-  `.claude/skills/OPEN-QUESTIONS.md` #1b.
+  `keeper.KEEPER_ROUNDS = (18, 17, 16, 15)` assumes an untraded draft. Now quantified in VORP:
+  rounds 15–18 price at **0** (dead picks), while the owner's real 2025 final four — picks
+  70/71/78/90 — were worth +16.8/+16.1/+11.2/+2.2. Still open; see
+  `.claude/skills/OPEN-QUESTIONS.md` #1b. Do NOT conflate it with the units bug below, which is
+  a different bug and is fixed.
+- ~~`net_keeper_value` mixed units~~ — fixed 2026-07-20: it subtracted `round_pick_costs`' mean
+  **absolute** `projected_total` from `raw_keeper_value`, a value-over-replacement, so every
+  keeper scored ≈−80 to −115 and the board said keep nobody. `round_pick_costs` now returns VORP,
+  slices each round by VORP (the board's own sort order), and floors at 0 — forfeiting a pick
+  cannot be a gain. Per-round value now falls monotonically +80.2 (rd 1) → 0 (rd 10) → −25.0 (rd 18).
 - **The draft board does not beat hand-drafting.** The 2025 mock draft (the one held-out look,
   now spent) came out at −1.75% over 14 picks — inconclusive. Treat the board as a consistent
   second opinion, not an authority. See `docs/superpowers/plans/2026-07-20-draft-validation-handoff.md`.
+- ~~The board drafted 0 centers in 140 picks~~ — fixed 2026-07-20: `MAX_BY_POSITION` capped
+  positions but set no **floors**, so a VORP-greedy board produced rosters that could not be
+  legally fielded, and `grade()` summed all 14 picks with no legality check. `mockDraft` now
+  reserves the tail of the draft for unfilled starting slots (keeper-aware on both floors and
+  caps) and reports `lineup_fp` alongside `total_fp`. Replacement ranks are also demand-aware
+  (`10 × slots − keepers at that position`). 2025 sweep went −6.48% → −2.84% (all-picks) with all
+  10 rosters legal, up from 0 of 10 — directional only, the held-out look was already spent.
 - ~~Season constants duplicated across files~~ — fixed July 2026: `src/season.py` owns `CURRENT_SEASON` and derives every split boundary, spot-check date, season label and headshot season id from it. Rollover is a one-line edit there, and `tests/test_season.py` pins the derived values so a silent shift fails loudly. `backtest.KNOWN_PICKUPS` still needs hand re-curation each season — it cannot be derived.
 
 ## Testing
