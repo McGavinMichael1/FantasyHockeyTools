@@ -4,6 +4,8 @@
 # scoring — align it with fantasyPoints.SKATER_WEIGHTS before un-parking.
 
 import pandas as pd
+from src import season
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -42,10 +44,10 @@ def train(epochs=30, batch_size=512, hidden_size=64, num_layers=2, dropout=0.3):
 
     lstm_df = loadLSTMData()
     lstm_df = buildLabel(lstm_df)
-    lstm_df = lstm_df[lstm_df['season'] <= 2024]
+    lstm_df = lstm_df[lstm_df['season'] <= season.LAST_COMPLETED_SEASON]
 
-    train_df = lstm_df[lstm_df['season'] <= 2022]
-    val_df = lstm_df[lstm_df['season'] == 2023]
+    train_df = lstm_df[lstm_df['season'] <= season.PICKUP_TRAIN_MAX_SEASON]
+    val_df = lstm_df[lstm_df['season'] == season.PICKUP_VAL_SEASON]
 
     
     X_train, y_train, _ = buildSequences(train_df)

@@ -18,11 +18,15 @@
 
 import pandas as pd
 
+from src import season
 from src.features import mlFeatures
 from src.models import pickups as pickupModel
 
-SEASON = 2025
-DEFAULT_DATES = [20251101, 20251201, 20260101, 20260201, 20260301]
+SEASON = season.CURRENT_SEASON
+DEFAULT_DATES = season.spot_check_dates(SEASON)
+# NOTE: KNOWN_PICKUPS below is hand-curated for 2025-26 and does NOT roll with
+# SEASON. At season rollover, re-curate it from that season's waiver results or
+# the "known gems" report becomes silently meaningless.
 
 LOOKAHEAD_GAMES = 5       # label horizon the model was trained on
 MIN_LOOKAHEAD_GAMES = 3   # need at least this many future games to grade

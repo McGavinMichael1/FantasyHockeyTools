@@ -11,6 +11,7 @@ from src import keeper
 from src import keeper_advisor
 from src import keepers
 from src import moneypuck
+from src import season
 from src import yahooAPI
 from src.features import draft as draftFeatures
 from src.features import goalies as goalieFeatures
@@ -21,7 +22,7 @@ from src.models import draft as draftModel
 from src.models import goalieDraft as goalieDraftModel
 from src.models import pickups as pickupModel
 
-CURRENT_SEASON = 2025  # MoneyPuck convention: 2025 = the 2025-26 season
+CURRENT_SEASON = season.CURRENT_SEASON
 KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
 GOALIE_SEASONS_PATH = os.path.join('data', 'processed', 'goalie_seasons.csv')
 PLAYER_SEASONS_PATH = os.path.join('data', 'processed', 'player_seasons.csv')
@@ -32,7 +33,7 @@ def loadLabeledHistory():
     df = mlFeatures.loadMoneyPuckData()
     df = mlFeatures.buildRollingFeatures(df)
     # current season has no future games to label — train on completed seasons
-    historical_df = df[df['season'] <= 2024].copy()
+    historical_df = df[df['season'] <= season.LAST_COMPLETED_SEASON].copy()
     return mlFeatures.buildLabel(historical_df)
 
 

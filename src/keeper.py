@@ -9,6 +9,8 @@ from __future__ import annotations
 import pandas as pd
 from rapidfuzz import process
 
+from src import season
+
 
 TEAM_COUNT = 10
 KEEPER_COUNT = 4
@@ -41,8 +43,8 @@ def league_rules() -> dict:
 
 
 def target_season_label(feature_season: int) -> str:
-    start_year = feature_season + 1
-    return f"{start_year}-{str(start_year + 1)[-2:]}"
+    """Keepers are kept FOR the season after the one they were rated on."""
+    return season.season_label(feature_season + 1)
 
 
 def _position(value) -> str | None:

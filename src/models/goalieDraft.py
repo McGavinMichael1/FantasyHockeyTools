@@ -22,6 +22,8 @@ from sklearn.model_selection import PredefinedSplit, RandomizedSearchCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from src import season
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, '..', '..', 'models', 'goalieDraft', 'model.pkl')
 
@@ -31,9 +33,10 @@ FEATURE_COLS = [
     'gs_share', 'career_games', 'age_at_season_start',
 ]
 
-TRAIN_MAX_SEASON = 2021
-VAL_SEASONS = (2022, 2023)
-# Test season 2024 gets ONE manual look after the gate, then is never touched.
+TRAIN_MAX_SEASON = season.DRAFT_TRAIN_MAX_SEASON
+VAL_SEASONS = season.DRAFT_VAL_SEASONS
+# season.DRAFT_TEST_SEASON gets ONE manual look after the gate, then is never
+# touched.
 
 # Goalie seasons max ~65 games; 20 (the skater floor) would discard legitimate
 # backup seasons. 15 keeps backups while excluding cameos.
@@ -124,7 +127,8 @@ def train(df: pd.DataFrame):
 
     if all(xgb_rho > rho for rho in baseline_rhos.values()):
         print("GATE G3: PASS -- XGBoost beats both baselines on val Spearman. "
-              "Confirm on test-2024 exactly once, then stop touching test.")
+              f"Confirm on test-{season.DRAFT_TEST_SEASON} exactly once, "
+              "then stop touching test.")
         model = xgb.XGBRegressor(random_state=42, **search.best_params_)
         model.fit(X_all, y_all)
         save({'kind': 'xgb', 'model': model, 'feature_cols': FEATURE_COLS})

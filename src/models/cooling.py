@@ -16,6 +16,7 @@ from sklearn.metrics import roc_auc_score, RocCurveDisplay
 import matplotlib.pyplot as plt
 
 
+from src import season
 from src.features.mlFeatures import buildFeatureMatrix
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,8 +28,8 @@ def train(df: pd.DataFrame):
     Same continuous target as the pickup model; callers treat a LOW predicted
     next-5 FP/g as a cooling-down / drop candidate.
     """
-    train_df = df[df['season'] <= 2022] # Use data up to 2022 for training
-    val_df = df[df['season'] == 2023]
+    train_df = df[df['season'] <= season.PICKUP_TRAIN_MAX_SEASON]
+    val_df = df[df['season'] == season.PICKUP_VAL_SEASON]
     X_train, y_train = buildFeatureMatrix(train_df, label_col='next_5_avg')
     X_val, y_val = buildFeatureMatrix(val_df, label_col='next_5_avg')
     model = xgb.XGBRegressor(

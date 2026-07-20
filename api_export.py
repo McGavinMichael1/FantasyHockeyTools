@@ -10,13 +10,14 @@ import pandas as pd
 
 from src import dataProcessing
 from src import moneypuck
+from src import season
 from src import yahooAPI
 from src.features import mlFeatures
 from src.features import pickups
 from src.models import cooling as coolingModel
 from src.models import pickups as pickupModel
 
-CURRENT_SEASON = 2025
+CURRENT_SEASON = season.CURRENT_SEASON
 OUTPUT_PATH = os.path.join('data', 'processed', 'frontend_data.json')
 DRAFT_RANKINGS_PATH = os.path.join('data', 'processed', 'draft_rankings.csv')
 DRAFT_SUMMARIES_PATH = os.path.join('data', 'processed', 'draft_summaries.json')
@@ -61,7 +62,8 @@ def _parse_factors(row) -> list:
 
 def get_headshot_url(player_id: int) -> str:
     """NHL headshot URL for a player."""
-    return f"https://assets.nhle.com/mugs/nhl/20252026/{player_id}.png"
+    return (f"https://assets.nhle.com/mugs/nhl/"
+            f"{season.nhl_season_id(CURRENT_SEASON)}/{player_id}.png")
 
 
 def _format_toi(seconds) -> str:
