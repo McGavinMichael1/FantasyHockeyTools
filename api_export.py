@@ -4,7 +4,6 @@
 import argparse
 import json
 import os
-import time
 
 import pandas as pd
 
@@ -12,7 +11,6 @@ from src import dataProcessing
 from src import moneypuck
 from src import season
 from src import yahooAPI
-from src.features import mlFeatures
 from src.features import pickups
 from src.models import cooling as coolingModel
 from src.models import pickups as pickupModel
@@ -72,30 +70,6 @@ def _format_toi(seconds) -> str:
         return '0:00'
     minutes, secs = divmod(int(round(float(seconds))), 60)
     return f"{minutes}:{secs:02d}"
-
-
-def latestGameState():
-    """Most recent game-state row per current-season player with >= 20 GP."""
-    cache_file = os.path.join('data', 'processed', 'current_players_features.csv')
-
-    if os.path.exists(cache_file):
-        age_hours = (time.time() - os.path.getmtime(cache_file)) / 3600
-        if age_hours < 24:
-            print(f"Loading cached current player features ({age_hours:.1f}h old)")
-            return pd.read_csv(cache_file)
-
-    print("Computing current player features...")
-    df = mlFeatures.loadMoneyPuckData()
-    df = mlFeatures.buildRollingFeatures(df)
-    current_df = df[df['season'] == CURRENT_SEASON].copy()
-    games_played = current_df.groupby('playerId').size().reset_index(name='gamesPlayed')
-    current_players = current_df.groupby('playerId').last().reset_index()
-    current_players = current_players.merge(games_played, on='playerId')
-    current_players = current_players[current_players['gamesPlayed'] >= 20]
-
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-    current_players.to_csv(cache_file, index=False)
-    return current_players
 
 
 def build_draft_list():
@@ -287,7 +261,7 @@ def export_data():
     # percentile ranks so the blend and frontend score bars keep a bounded
     # scale. Low predicted FP/g = cooling down, so the cooling score is
     # inverted (higher = stronger drop candidate, as before).
-    current_players = latestGameState()
+    current_players = pickups.latestGameState()
     current_players['ml_score'] = pickupModel.predict(current_players).rank(pct=True)
     current_players['cooling_score'] = 1 - coolingModel.predict(current_players).rank(pct=True)
     current_players = current_players.merge(
@@ -309,7 +283,8 @@ def export_data():
         how='left'
     )
     combined = combined.dropna(subset=['ml_score'])
-    combined['final_score'] = 0.3 * combined['weighted_score_normalized'] + 0.7 * combined['ml_score']
+    combined['final_score'] = pickups.blendScores(
+        combined['weighted_score_normalized'], combined['ml_score'])
 
     # Prepare pickup list
     pickup_df = combined.sort_values('final_score', ascending=False).head(50)
