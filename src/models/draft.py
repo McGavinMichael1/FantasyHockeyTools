@@ -26,6 +26,8 @@ from sklearn.model_selection import PredefinedSplit, RandomizedSearchCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from src import season
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, '..', '..', 'models', 'draft', 'model.pkl')
 
@@ -40,10 +42,10 @@ BASE_FEATURE_COLS = [
     'highDangerShare', 'avgGameScore',
 ]
 
-TRAIN_MAX_SEASON = 2021
-VAL_SEASONS = (2022, 2023)
-# Test season 2024 is deliberately absent here: it gets ONE manual look after a
-# model passes the val gate, then is never touched again.
+TRAIN_MAX_SEASON = season.DRAFT_TRAIN_MAX_SEASON
+VAL_SEASONS = season.DRAFT_VAL_SEASONS
+# season.DRAFT_TEST_SEASON is deliberately not used here: it gets ONE manual
+# look after a model passes the val gate, then is never touched again.
 
 # Rows need >=20 GP in both the feature season and the target season --
 # injury-shortened seasons distort FP/game on either side of the label.
@@ -159,7 +161,8 @@ def train(df: pd.DataFrame):
     # --- GATE B3 verdict ---
     if all(xgb_rho > rho for rho in baseline_rhos.values()):
         print("GATE B3: PASS -- XGBoost beats both baselines on val Spearman. "
-              "Confirm on test-2024 exactly once, then stop touching test.")
+              f"Confirm on test-{season.DRAFT_TEST_SEASON} exactly once, "
+              "then stop touching test.")
     else:
         print("GATE B3: FAIL -- XGBoost does not beat both baselines. "
               "Ship Baseline B (fp_w3) as the ranker; that is a legitimate "

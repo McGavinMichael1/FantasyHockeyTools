@@ -11,6 +11,7 @@ from src import keeper
 from src import keeper_advisor
 from src import keepers
 from src import moneypuck
+from src import season
 from src import yahooAPI
 from src.features import draft as draftFeatures
 from src.features import goalies as goalieFeatures
@@ -21,7 +22,7 @@ from src.models import draft as draftModel
 from src.models import goalieDraft as goalieDraftModel
 from src.models import pickups as pickupModel
 
-CURRENT_SEASON = 2025  # MoneyPuck convention: 2025 = the 2025-26 season
+CURRENT_SEASON = season.CURRENT_SEASON
 KEEPER_RANKINGS_PATH = os.path.join('data', 'processed', 'keeper_rankings.csv')
 GOALIE_SEASONS_PATH = os.path.join('data', 'processed', 'goalie_seasons.csv')
 PLAYER_SEASONS_PATH = os.path.join('data', 'processed', 'player_seasons.csv')
@@ -32,7 +33,7 @@ def loadLabeledHistory():
     df = mlFeatures.loadMoneyPuckData()
     df = mlFeatures.buildRollingFeatures(df)
     # current season has no future games to label — train on completed seasons
-    historical_df = df[df['season'] <= 2024].copy()
+    historical_df = df[df['season'] <= season.LAST_COMPLETED_SEASON].copy()
     return mlFeatures.buildLabel(historical_df)
 
 
@@ -42,39 +43,6 @@ def trainPickups():
     pickupModel.train(historical_df)
     print("=== Training cooling model ===")
     coolingModel.train(historical_df)
-
-
-def latestGameState():
-    """Most recent game-state row per current-season player with >= 20 GP."""
-    import os
-    import time
-
-    cache_file = os.path.join('data', 'processed', 'current_players_features.csv')
-
-    # Check if cache exists and is fresh (< 24 hours old)
-    if os.path.exists(cache_file):
-        age_hours = (time.time() - os.path.getmtime(cache_file)) / 3600
-        if age_hours < 24:
-            import pandas as pd
-            print(f"Loading cached current player features ({age_hours:.1f}h old)")
-            return pd.read_csv(cache_file)
-
-    # Cache miss or stale - compute features
-    print("Computing current player features (this may take 30-60 seconds)...")
-    df = mlFeatures.loadMoneyPuckData()
-    df = mlFeatures.buildRollingFeatures(df)
-    current_df = df[df['season'] == CURRENT_SEASON].copy()
-    games_played = current_df.groupby('playerId').size().reset_index(name='gamesPlayed')
-    current_players = current_df.groupby('playerId').last().reset_index()
-    current_players = current_players.merge(games_played, on='playerId')
-    current_players = current_players[current_players['gamesPlayed'] >= 20]
-
-    # Save to cache
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-    current_players.to_csv(cache_file, index=False)
-    print(f"Cached features to {cache_file}")
-
-    return current_players
 
 
 def runPickups():
@@ -109,7 +77,7 @@ def runPickups():
     # Models regress next-5-game FP/g; convert to 0-1 percentile ranks so the
     # heuristic blend and score displays keep a bounded scale. Low predicted
     # FP/g = cooling down, so the cooling score is inverted.
-    current_players = latestGameState()
+    current_players = pickups.latestGameState()
     current_players['pred_next5_fp'] = pickupModel.predict(current_players)
     current_players['ml_score'] = current_players['pred_next5_fp'].rank(pct=True)
     current_players['cooling_pred_next5_fp'] = coolingModel.predict(current_players)
@@ -126,7 +94,8 @@ def runPickups():
     combined = results.merge(current_players[['playerId', 'ml_score', 'pred_next5_fp']],
                              on='playerId', how='left')
     combined = combined.dropna(subset=['ml_score'])
-    combined['final_score'] = 0.3 * combined['weighted_score_normalized'] + 0.7 * combined['ml_score']
+    combined['final_score'] = pickups.blendScores(
+        combined['weighted_score_normalized'], combined['ml_score'])
 
     print("\n=== Top available pickups (heuristic + ML blend) ===")
     print(combined[['full_name', 'positionCode', 'weighted_score', 'pred_next5_fp', 'ml_score', 'final_score']]

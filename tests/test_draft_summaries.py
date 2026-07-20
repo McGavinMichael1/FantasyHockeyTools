@@ -101,4 +101,9 @@ def test_top_50_players_receive_the_deeper_search_budget():
 
 
 def test_all_summary_calls_allow_the_larger_token_budget():
-    assert summaries.MAX_TOKENS == 4096
+    """4096 was measured to truncate news-heavy players mid-turn, throwing away
+    the thinking and searches already paid for. MAX_TOKENS is a ceiling, not a
+    reservation, so headroom is free -- assert generosity, not an exact number
+    that drifts (this test asserted the *smaller* budget for months, in direct
+    contradiction of its own name)."""
+    assert summaries.MAX_TOKENS > 4096

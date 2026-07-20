@@ -667,7 +667,9 @@ imports under `node --test`); no new npm dependency was added.
 ---
 
 ## Current Phase
-**I am currently working on:** Phase B — Draft Analyzer (Phase A completed July 3, 2026)
+**I am currently working on:** Phase B — Draft Analyzer (Phase A completed July 3, 2026).
+Interrupted July 20, 2026 for a sustainability/scaling pass (see the bottom of this section) —
+infra debt cleared during the offseason so draft prep lands on solid ground.
 
 **Next immediate task:**
 - [ ] B0: fill in `data/raw/keepers.csv`, implement `src/keepers.py`
@@ -745,6 +747,58 @@ imports under `node --test`); no new npm dependency was added.
       `next build` all clean.
 - [ ] **Remainder:** live three-turn acceptance (Task 10 step 6) — pending owner run; needs
       `ANTHROPIC_API_KEY` + `KEEPER_ADVISOR_MODEL` and makes a paid call.
+
+**Sustainability pass — DONE 2026-07-20** (branch `chore/sustainability-tier1`; triggered by a
+birthdate build hanging 12+ hours on a laptop and making the draft tools unusable there):
+- [x] **NHL API hang fixed.** Root cause: no `requests` timeout anywhere (there is no default), so
+      a half-open socket blocked forever; `executor.map` then waited on that one worker while the
+      other four idled. Nothing was written until the whole build finished, so ~2,400 fetched
+      players were lost on kill. `nhlAPI._get` now sets a (5, 30) timeout, caps every retry, and
+      backs off on 429; `fetchAllPlayers` uses `as_completed` and checkpoints to a `.partial`
+      sidecar every 100 players, so a killed run resumes. `build_birthdates.py` now uses
+      `appendMissingBirthDates` (it previously returned the cache as-is, so rookies silently
+      carried NaN age forever). `player_birthdates.csv` is committed — a fresh clone needs zero
+      API calls.
+- [x] **Season rollover is one edit.** `src/season.py` owns `CURRENT_SEASON`; split boundaries,
+      spot-check dates, season labels and headshot ids derive from it. Every derived value verified
+      to reproduce the literal it replaced; `tests/test_season.py` pins them.
+- [x] **Dependencies slimmed.** `ui/` deleted (Streamlit skeleton, superseded by the Next.js
+      frontend); torch moved to a `[lstm]` extra; 110 venv-freeze pins reduced to the 13 packages
+      actually imported. Duplicate `[tool.pytest.ini_options]` removed.
+- [x] **Parquet cache layer.** Game-log caches 628 MB → 54 MB (~11.5x), converted in place and
+      verified byte-identical across 5.2M rows. `data/**/*.parquet` gitignored in the same commit.
+- [x] **Both known test failures fixed — suite is green (97 passed).** `loadGameLogs` now serves a
+      valid cache before requiring the 2.6 GB sources (`fht-quality-gates` was right that the test
+      encoded the contract and the code broke it); the token-budget test had been asserting the
+      *smaller* budget, contradicting its own name.
+- [x] `latestGameState` + the 0.3/0.7 blend de-duplicated into `src/features/pickups.py`. Verified
+      behaviour-preserving: `main.py draft` output bit-identical across all 774 players.
+
+**Deferred from that pass (not started):**
+- [ ] **Advisor context scaling.** `_scenario_sets` materializes every C(n,4) keeper combination —
+      3,060 sets / 3.9 MB at 18 players, 12,650 at 25, 27,405 at 30. And
+      `loadAdvisorContext` re-reads and re-validates the whole file on *every* chat POST. Emit
+      only top-N sets and compute constrained ones on demand; memoize the load on file mtime.
+- [ ] **CI.** GitHub Actions: `pytest` + `npm run typecheck` + `npm run test:unit`. Now unblocked —
+      the suite is green, so a red build means something.
+- [ ] **Smoke tests for orchestration** (`main.py draft`/`keeper`, `api_export`) against small
+      fixtures. The Learning Log already records one signature-drift bug one smoke test would have
+      caught.
+- [ ] **Structured run logs** — append train metrics to `reports/metrics.jsonl`. Metrics currently
+      survive only in stdout and overwritable PNGs (the plot-collision incident destroyed the old
+      pickup AUC).
+
+**Open modelling questions raised 2026-07-20 (belong to Phase E / `fht-research-frontier`):**
+- [ ] **How long to wait after the season starts before running pickups?** There is already an
+      *implicit* gate — `latestGameState` filters to `gamesPlayed >= 20`, roughly mid-November — so
+      the tool is already quiet early, just not deliberately. Make it explicit and tunable, and
+      settle the value with `backtest.py`: replay Oct/Nov as-of dates and find where top-15 hit
+      rate crosses the ~32% baseline. Measure, don't guess.
+- [ ] **Is the 5-game label window right?** Short = fitting noise, long = missing the pickup
+      window. `next_5_avg` is set in one place (`mlFeatures.buildLabel`). Sweep 3/5/7/10 and
+      compare on the **product metric** (spot-check top-K hit rate), not just Spearman. This
+      changes the label, so it needs a full retrain and a pre-registered prediction per
+      `fht-quality-gates`.
 
 **Blocked on:** nothing. (C1 still needs my league's keeper-cost rules from Yahoo settings to
 validate the advisor's pick-cost assumptions; the advisor ships with `keeper_tenure: "unknown"`

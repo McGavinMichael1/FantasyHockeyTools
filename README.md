@@ -57,11 +57,6 @@ python main.py pickups
 
 **Note**: First run may take 30-60 seconds to process features. Subsequent runs use cached data (< 1 second).
 
-### Run Streamlit UI
-```bash
-streamlit run ui/app.py
-```
-
 ### Run the Frontend Dashboard (Next.js)
 
 The dashboard reads a JSON snapshot exported from the trained models, so it's a
@@ -104,11 +99,11 @@ To serve a production build instead of the dev server, use `npm run build` then
   - `dataProcessing.py` - NHL API data fetching and processing
   - `fantasyPoints.py` - Fantasy points calculations
   - `moneypuck.py` - MoneyPuck data handling
+  - `season.py` - Every season-derived constant (bump `CURRENT_SEASON` here only)
   - `yahooAPI.py` - Yahoo Fantasy API integration
   - `features/` - Feature engineering for ML models
   - `models/` - ML model training and prediction
-- `ui/` - Streamlit web interface
-- `frontend/` - Next.js dashboard (reads `frontend_data.json`)
+- `frontend/` - Next.js dashboard (reads `frontend_data.json`) — the only UI
 - `tests/` - Unit tests
 - `data/` - Local data cache (gitignored)
 - `models/` - Saved trained models

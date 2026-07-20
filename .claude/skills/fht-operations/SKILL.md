@@ -1,6 +1,6 @@
 ---
 name: fht-operations
-description: Use when setting up this repo's environment from scratch, running or retraining the pickup/cooling/draft models, hitting a missing-file or FileNotFoundError for model.pkl or a MoneyPuck CSV, dealing with stale-data warnings or cache confusion, rolling the season constants over each year, or launching the Streamlit UI or Next.js frontend.
+description: Use when setting up this repo's environment from scratch, running or retraining the pickup/cooling/draft models, hitting a missing-file or FileNotFoundError for model.pkl or a MoneyPuck CSV, dealing with stale-data warnings or cache confusion, rolling the season constants over each year, or launching the Next.js frontend.
 ---
 
 # fht-operations
@@ -28,26 +28,27 @@ bare `python`/`py`:
 .\.venv\Scripts\python.exe main.py --help
 ```
 
-Key pins from `pyproject.toml` (`[project].dependencies`, fully pinned, not ranges):
-`pandas==3.0.2`, `numpy==2.4.3`, `xgboost==3.2.0`, `scikit-learn==1.8.0`,
-`pytest==9.1.1`, `streamlit==1.58.0`, `torch==2.11.0` (CPU wheel by default),
-`rapidfuzz==3.14.3`, `yahoo-oauth==2.1.1`, `yahoo-fantasy-api==2.12.2`. GPU torch is
-opt-in via a `[tool.uv]` comment in `pyproject.toml`:
+`pyproject.toml` lists **direct dependencies only, as floors** (July 2026): `pandas`,
+`numpy`, `xgboost`, `scikit-learn`, `scipy`, `matplotlib`, `pyarrow`, `rapidfuzz`,
+`requests`, `objectpath`, `anthropic`, `yahoo-oauth`, `yahoo-fantasy-api`, plus
+`pytest` in the `dev` extra. It used to be a flat 110-pin venv freeze; the resolver
+now handles transitives.
+
+**`torch` is NOT installed by default.** The LSTM is parked, torch is ~3 GB, and
+nothing on the shipped path imports it, so it lives in an optional extra:
 
 ```powershell
+uv pip install -e ".[lstm]"
+# GPU (CUDA 12.8):
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
-**Discipline rule (Learning Log incident 3, PROJECT-PLAN.md):** freeze after every
-`uv add`/manual install —
+`streamlit` is gone entirely — `ui/` was deleted July 2026; the Next.js `frontend/`
+is the only UI.
 
-```powershell
-uv pip compile pyproject.toml -o requirements.txt
-uv pip sync requirements.txt
-```
-
-`requirements.txt` drifted once and `streamlit` was silently never installed for
-months (the UI skeleton had never actually been run). Don't repeat that.
+**Discipline rule (Learning Log incident 3, PROJECT-PLAN.md):** when you add a real
+new import, add it to `pyproject.toml` AND `requirements.txt` in the same commit.
+Do not re-freeze the venv into either file — that is what created the 110-pin list.
 
 ## 2. Data acquisition runbook
 
@@ -95,14 +96,14 @@ All commands are repo-root relative, run from the venv interpreter.
 | `.\.venv\Scripts\python.exe main.py train-goalies` | Trains the goalie draft ranker `src/models/goalieDraft.py` (baselines A/B → Ridge → XGBoost, ships whichever passes GATE G3; as of 2026-07-16 it ships **Baseline B `fp_w3`** — `{'kind': 'baseline_b'}`) | `data/processed/goalie_seasons.csv` present (build it first) | `models/goalieDraft/model.pkl` | **VERIFIED** 2026-07-16: GATE G3 failed → Baseline B shipped; test-2024 untouched |
 | `$env:PYTHONUTF8='1'; .\.venv\Scripts\python.exe scripts/build_goalie_seasons.py` | Merges `data/raw/goalies/*.csv` (MoneyPuck goalie skill stats) with NHL API goalie season records into `goalie_seasons.csv`; fetches NHL records threaded (minutes); prints GATE G1 acceptance checks | The two goalie CSVs in `data/raw/goalies/`; network; **`PYTHONUTF8=1` required** (`getPlayerStats` prints non-ASCII names) | `data/processed/goalie_seasons.csv` (1,702 rows) + permanent cache `data/raw/goalie_nhl_seasons.csv` | **VERIFIED** 2026-07-16: 1,702 rows / 18 seasons (2008–2025), 100% MoneyPuck↔NHL-API merge, Hellebuyck 2023-24 exact |
 | `.\.venv\Scripts\python.exe scripts/build_player_seasons.py` | Aggregates game logs to one row per (playerId, season) via `loadGameLogs(min_season=2008)` → `buildPlayerSeasons`; prints GATE B1 acceptance checks | Both MoneyPuck CSVs present | `data/processed/player_seasons.csv` (16,237 rows) + `moneypuck_games_2008.csv` game cache as a side effect | **VERIFIED** July 6 2026: 16,237 rows / 18 seasons (2008–2025), McDavid 2023-24 = 32G/100A. First run reads the full 2.6 GB history (minutes) |
-| `.\.venv\Scripts\python.exe scripts/build_birthdates.py` | Fetches `birthDate` for every playerId in `player_seasons` from the NHL API landing endpoint (threaded via `dataProcessing.fetchAllPlayers`, 5 workers) | `player_seasons.csv` built; network; run with `PYTHONUTF8=1` (prints non-ASCII names) | `data/raw/player_birthdates.csv` (one row per player) | **VERIFIED** July 6 2026: 3038/3038 players, 100% birthDate coverage. One-time — birthDates are immutable, so `getAllBirthDatesWithCache` never refetches once the file exists |
+| `.\.venv\Scripts\python.exe scripts/build_birthdates.py` | Fetches `birthDate` for playerIds in `player_seasons` + `goalie_seasons` that the cache lacks (threaded via `dataProcessing.fetchAllPlayers`, 5 workers) | `player_seasons.csv` built; network only if ids are missing | `data/raw/player_birthdates.csv` | **VERIFIED** July 6 2026: 3038/3038, 100% coverage. Since July 2026 it uses `appendMissingBirthDates` (so rookies get picked up on a re-run) and is **resumable** — progress flushes to `.partial` every 100 players, so an interrupted run continues instead of restarting. `player_birthdates.csv` is now committed, so a fresh clone needs zero API calls. `PYTHONUTF8=1` no longer required (per-request prints are `logger.debug` now) |
 | `.\.venv\Scripts\python.exe -m pytest -v` | Runs test suite | none | `.pytest_cache/` | **VERIFIED 2026-07-16**: 48 passed, 2 failed in ~2.3s. Both failures are pre-existing known issues (see `fht-debugging-playbook`): `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` (guard-ordering) and `tests/test_draft_summaries.py::test_all_summary_calls_allow_the_larger_token_budget` (token budget). Config quirk verified: pytest reports `configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)` — `pytest.ini` wins over `pyproject.toml`'s `[tool.pytest.ini_options]`. README's `uv run pytest` is equivalent when `uv` is on PATH |
-| `streamlit run ui\app.py` | Launches Streamlit skeleton | streamlit installed (it is, pinned) | nothing | **UNVERIFIED** — interactive; `ui/pages/{pickups,draft}.py` are TODO stubs per dossier, only the title page in `ui/app.py` renders anything |
 | `.\.venv\Scripts\python.exe api_export.py` | Exports `data/processed/frontend_data.json` for the Next.js dashboard | Same as `pickups` (models + MoneyPuck data + network) | `data/processed/frontend_data.json` | **UNVERIFIED** — needs trained models + network |
 | `npm install` then `npm run dev` (in `frontend\`) | Installs deps, runs Next.js dev server reading `frontend_data.json` | Node/npm; `api_export.py` already run | `frontend/node_modules/`, `frontend/.next/` | **UNVERIFIED** — verified `frontend/node_modules` does not currently exist (`Glob frontend/node_modules` → no match) |
 
-Verified today: `.\.venv\Scripts\python.exe -c "import main"` succeeds (imports the
-whole pipeline including `torch`; noticeably slow on first import, that's normal).
+Verified today: `.\.venv\Scripts\python.exe -c "import main"` succeeds. Since the
+July 2026 dependency slim it no longer imports `torch`, so first import is much
+faster.
 Verified `Get-ChildItem -Recurse models` → only `models\draft\.gitkeep` and
 `models\pickups\.gitkeep`, zero `.pkl` files, and **no `models\cooling\` directory
 at all** (it's created on first `train-pickups` run via `save()`'s `os.makedirs`).
@@ -120,7 +121,7 @@ config file layer. Force-refresh always means "delete the cache file."
 | `data/processed/current_players_features.csv` | 24h, checked independently in **two places** with duplicated logic: `main.py:latestGameState` and `api_export.py:latestGameState` | Delete the file |
 | `data/processed/moneypuck_games_2020.csv` (pickup pipeline) / `moneypuck_games_2008.csv` (draft pipeline) | Reused whenever its mtime is newer than `moneypuck_current.csv`'s mtime (`src/moneypuck.py:80-83`, `loadGameLogs`) — i.e. it survives until you replace the current-season download with a newer one. The `_2008` variant is a superset of `_2020`; the filename number is `min_season`, a floor, not a single year | Delete the file, or just replace `moneypuck_current.csv` with a fresher download (rebuild re-reads the 2.6 GB history file — minutes) |
 | `data/processed/player_seasons.csv` (draft) | No auto-expiry — `buildPlayerSeasons` does not self-cache; the `.to_csv` lives in `scripts/build_player_seasons.py`, run on demand | Delete + re-run the script (re-reads the 2.6 GB history) |
-| `data/raw/player_birthdates.csv` (draft age feature) | **Permanent — never expires.** `dataProcessing.getAllBirthDatesWithCache` returns it whenever the file exists (birthDates are immutable), bypassing `getWithCache`'s 24h logic | Delete the file to refetch — only needed if a rebuilt `player_seasons.csv` introduces new playerIds |
+| `data/raw/player_birthdates.csv` (draft age feature) | **Permanent — never expires**, and now **committed to git**, so a fresh clone needs no API calls. birthDates are immutable | Re-run `scripts/build_birthdates.py`: it appends only ids the cache lacks (rookies, goalies). Deleting the file forces a full ~3000-player refetch — rarely what you want |
 | `data/raw/goalie_nhl_seasons.csv` (goalie NHL API season records) | **Permanent — never expires.** `dataProcessing` returns it whenever the file exists, so a new season's records are NOT fetched until you delete it (see the goalie rollover step in section 4's checklist) | Delete the file, then rerun `scripts/build_goalie_seasons.py` |
 | `data/processed/goalie_seasons.csv` (goalie ranker input) | No auto-expiry — `scripts/build_goalie_seasons.py` writes it on demand | Delete + rerun the build script |
 | Yahoo roster lookups | Uncached — hits the API every call | n/a |
@@ -129,22 +130,35 @@ Constants catalog (all read from source today):
 
 | Constant | Value | Location |
 |---|---|---|
-| `CURRENT_SEASON` | 2025 (MoneyPuck season convention — see `fht-domain-reference` §2) | `main.py:16`, `api_export.py:19` (duplicated) |
-| `SEASON`, `DEFAULT_DATES` | 2025; `[20251101, 20251201, 20260101, 20260201, 20260301]` | `src/backtest.py:24-25` |
+| `CURRENT_SEASON` | 2025 (MoneyPuck season convention — see `fht-domain-reference` §2) | **`src/season.py` — the only definition.** `main.py` and `api_export.py` re-export it |
+| `LAST_COMPLETED_SEASON`, split boundaries | 2024; draft train ≤2021 / val (2022, 2023) / test 2024; pickup train ≤2022 / val 2023 | `src/season.py`, derived as offsets; the models import them |
+| `SEASON`, `DEFAULT_DATES` | 2025; `[20251101, 20251201, 20260101, 20260201, 20260301]` | `src/backtest.py`, derived via `season.spot_check_dates()` |
 | Roster/draft proxy cutoffs | `ROSTER_PROXY_CUTOFF=150`, `DRAFT_PROXY_CUTOFF=150`, `PRIOR_MIN_GAMES=40`, `HOT_PERCENTILE=0.75` | `src/backtest.py:31-34` |
-| Hardcoded `20252026` season id | Known debt (Phase E) | `api_export.py:25` (headshot URL) |
+| `20252026` season id (headshot URLs) | Derived — no longer hardcoded | `season.nhl_season_id()`, used by `api_export.get_headshot_url` |
 | `STALE_DAYS` | 3 | `src/moneypuck.py:22` |
 | Fuzzy-match `score_cutoff` | 85 | `src/yahooAPI.py:31`, `src/keepers.py:53` |
 | Pickup blend weights | `0.3 * heuristic + 0.7 * ml_score` | `main.py:112` (`runPickups`), `api_export.py:110` |
 | Label quantiles | `hot_quantile=0.75`, `cold_quantile=0.25` | `src/features/mlFeatures.py:44` (`buildLabel`) |
 | Model paths | `models/pickups/model.pkl`, `models/cooling/model.pkl`, `models/draft/model.pkl` | `src/models/{pickups,cooling,draft}.py` `MODEL_PATH` |
 
-**Annual rollover checklist** (nothing automated does this — a human/agent must
-edit source each new season): bump `CURRENT_SEASON` in *both* `main.py:16` and
-`api_export.py:19`; bump `SEASON`/`DEFAULT_DATES` in `src/backtest.py`; update the
-headshot-URL season string in `api_export.py`; create a fresh
-`data/raw/keepers.csv` (doesn't exist yet — see below); download a fresh
-`moneypuck_current.csv` for the new season.
+**Annual rollover checklist** (July 2026: the season constants are no longer
+scattered — `src/season.py` owns them):
+
+1. Bump `CURRENT_SEASON` in **`src/season.py`**. That is the only source edit —
+   split boundaries, spot-check dates, headshot URLs and season labels all derive
+   from it.
+2. Run `pytest tests/test_season.py`. It pins the derived boundaries against the
+   values the shipped models trained with, so a rollover that silently shifts a
+   train/val split fails loudly. **Update those pinned values deliberately** as
+   part of the rollover — they are meant to change once a year and never
+   otherwise.
+3. Re-curate `backtest.KNOWN_PICKUPS` for the new season. It is hand-written from
+   that season's waiver results and cannot be derived; a stale list makes the
+   "known gems" report meaningless.
+4. Create a fresh `data/raw/keepers.csv` (see below).
+5. Download a fresh `moneypuck_current.csv`.
+6. Re-run `scripts/build_birthdates.py` to pick up the new season's rookies (it
+   appends only missing ids, so this is cheap).
 
 **Goalie rollover (added 2026-07-16):** re-download the two *current-season* goalie CSVs into
 `data/raw/goalies/` (`goalies_current_seasons.csv` + `goalies_current_gamedata.csv`) from
@@ -196,8 +210,7 @@ Re-verify these before trusting this file on a later date:
 .\.venv\Scripts\python.exe -m pytest -v
 Get-ChildItem -Recurse models
 Get-ChildItem data\raw, data\processed
-Select-String -Path main.py,api_export.py -Pattern "CURRENT_SEASON ="
-Select-String -Path src\backtest.py -Pattern "^SEASON|DEFAULT_DATES"
+Select-String -Path src\season.py -Pattern "CURRENT_SEASON ="
 .\.venv\Scripts\python.exe -c "from src import moneypuck; moneypuck.checkCurrentFreshness()"
 Get-Item frontend\node_modules -ErrorAction SilentlyContinue
 ```

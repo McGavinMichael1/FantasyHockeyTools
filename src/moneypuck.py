@@ -52,41 +52,81 @@ def checkCurrentFreshness(current_file=CURRENT_FILE):
     return True
 
 
+def readCache(path):
+    """Read a processed cache, dispatching on extension.
+
+    Parquet for anything this module writes: the game-log cache was a 161 MB
+    CSV (and a stale 466 MB one), which is ~10-20x larger and slower than the
+    Parquet equivalent and loses every dtype, so each consumer re-inferred
+    them. CSV is still honoured when a caller passes an explicit .csv path.
+    """
+    if str(path).endswith('.parquet'):
+        return pd.read_parquet(path)
+    return pd.read_csv(path)
+
+
+def writeCache(df, path):
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    if str(path).endswith('.parquet'):
+        df.to_parquet(path, index=False)
+    else:
+        df.to_csv(path, index=False)
+
+
+def _missingSourceError(history_file, current_file):
+    missing = []
+    if not os.path.exists(history_file):
+        missing.append(f"Historical data: {history_file}")
+    if not os.path.exists(current_file):
+        missing.append(f"Current season: {current_file}")
+    if not missing:
+        return None
+    print("\n" + "=" * 70)
+    print("ERROR: Missing MoneyPuck data files")
+    print("=" * 70)
+    for f in missing:
+        print(f"  [X] {f}")
+    print("\nTo download:")
+    print("  1. Visit https://moneypuck.com/data.htm")
+    print("  2. Download 'All Situations, 2008-2024' -> save as:")
+    print(f"     {history_file}")
+    print("  3. Download 'All Situations, Current Season' -> save as:")
+    print(f"     {current_file}")
+    print("=" * 70 + "\n")
+    return FileNotFoundError(
+        f"Missing required MoneyPuck data files: {', '.join(missing)}")
+
+
 def loadGameLogs(min_season=2020, history_file=HISTORY_FILE,
                  current_file=CURRENT_FILE, cache_file=None):
     """Game logs with ALL situation rows, history + current season combined.
 
     Caches the filtered concat to data/processed/ — the cache is reused until
     the current-season file is replaced with a newer download.
+
+    A usable cache is served BEFORE the source files are required: the raw
+    inputs are a 2.6 GB manual download, and demanding they be present to read
+    a cache that was already built from them makes the repo needlessly
+    unportable (that guard order was also a known test failure).
     """
-    # Check for required files first
-    missing_files = []
-    if not os.path.exists(history_file):
-        missing_files.append(f"Historical data: {history_file}")
-    if not os.path.exists(current_file):
-        missing_files.append(f"Current season: {current_file}")
-
-    if missing_files:
-        print("\n" + "="*70)
-        print("ERROR: Missing MoneyPuck data files")
-        print("="*70)
-        for f in missing_files:
-            print(f"  ❌ {f}")
-        print("\nTo download:")
-        print("  1. Visit https://moneypuck.com/data.htm")
-        print("  2. Download 'All Situations, 2008-2024' → save as:")
-        print(f"     {history_file}")
-        print("  3. Download 'All Situations, Current Season' → save as:")
-        print(f"     {current_file}")
-        print("="*70 + "\n")
-        raise FileNotFoundError(f"Missing required MoneyPuck data files: {', '.join(missing_files)}")
-
     if cache_file is None:
-        cache_file = os.path.join(PROCESSED_DIR, f'moneypuck_games_{min_season}.csv')
+        cache_file = os.path.join(PROCESSED_DIR, f'moneypuck_games_{min_season}.parquet')
+
     if os.path.exists(cache_file):
-        current_missing = not os.path.exists(current_file)
-        if current_missing or os.path.getmtime(cache_file) > os.path.getmtime(current_file):
-            return pd.read_csv(cache_file)
+        # No current-season file to compare against => the cache is all we
+        # have, and it is better than an error. Otherwise it must be newer.
+        if (not os.path.exists(current_file)
+                or os.path.getmtime(cache_file) > os.path.getmtime(current_file)):
+            try:
+                return readCache(cache_file)
+            except Exception as error:
+                # Caches are disposable and rebuildable; a truncated or
+                # half-written one must not be fatal.
+                print(f"Could not read cache {cache_file} ({error}); rebuilding")
+
+    error = _missingSourceError(history_file, current_file)
+    if error:
+        raise error
 
     print(f"Loading MoneyPuck data from {history_file} and {current_file}...")
     history = pd.read_csv(history_file, usecols=GAME_COLUMNS)
@@ -94,7 +134,7 @@ def loadGameLogs(min_season=2020, history_file=HISTORY_FILE,
     current = pd.read_csv(current_file, usecols=GAME_COLUMNS)
     df = pd.concat([history, current], ignore_index=True)
     df.sort_values(['playerId', 'gameDate'], inplace=True)
-    df.to_csv(cache_file, index=False)
+    writeCache(df, cache_file)
     print(f"Cached to {cache_file}")
     return df
 

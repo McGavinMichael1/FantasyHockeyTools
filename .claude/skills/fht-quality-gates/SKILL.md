@@ -45,12 +45,13 @@ update.
 
 ## 3. Certified / golden inventory (verified 2026-07-05)
 
-- `pytest -v` today: **6 passed, 1 failed** in `tests/` (July 6, 2026: added
-  `tests/test_mlFeatures.py` — 2 tests pinning `buildLabel`'s `next_5_avg` target). The failure is
-  `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` — a live,
-  known issue (Incident 6 below). **Do not "fix" this test to match the code** without reading
-  the analysis in `fht-debugging-playbook` first — the test encodes the intended cache contract,
-  and the code is what broke it.
+- `pytest -v` as of July 2026 (sustainability pass): **92 passed, 0 failed**. Both
+  long-standing failures are resolved, and both were resolved the way this skill said to:
+  by fixing the *code*, not the test. `loadGameLogs` now serves a valid cache before
+  requiring the 2.6 GB source files (the test encoded the intended cache contract all
+  along), and the token-budget test had been asserting the *smaller* budget in
+  contradiction of its own name and of the deliberate `MAX_TOKENS = 16000` change.
+  **A green suite is now the baseline — a new failure is a real regression, not noise.**
 - Recorded model numbers (July 6, 2026 regression conversion — E-ML item 3, PROJECT-PLAN.md
   Learning Log): both models are now `XGBRegressor` on `next_5_avg`. Pickup val Spearman
   **0.6214**, AUC-equivalent vs `is_heating_up` **0.8465**; cooling val Spearman 0.6063,

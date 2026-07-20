@@ -1,3 +1,6 @@
+import os
+import time
+
 import pandas as pd
 import pytest
 
@@ -47,6 +50,60 @@ def test_load_game_logs_filters_season_and_keeps_situations(tmp_path):
     df2 = moneypuck.loadGameLogs(min_season=2020, history_file=history_file,
                                  current_file=current_file, cache_file=cache_file)
     assert len(df2) == 4
+
+
+def test_cache_round_trips_through_parquet(tmp_path):
+    """Parquet is the cache format; it must preserve dtypes and values."""
+    df = pd.DataFrame([_game_row(1, 2020, 20), _game_row(2, 2020, 21, '5on4')])
+    path = tmp_path / 'cache.parquet'
+
+    moneypuck.writeCache(df, path)
+    result = moneypuck.readCache(path)
+
+    pd.testing.assert_frame_equal(df, result)
+
+
+def test_load_game_logs_defaults_to_a_parquet_cache(tmp_path):
+    history = pd.DataFrame([_game_row(1, 2020, 20)])
+    current = pd.DataFrame([_game_row(1, 2025, 30)])
+    history_file = tmp_path / 'history.csv'
+    current_file = tmp_path / 'current.csv'
+    history.to_csv(history_file, index=False)
+    current.to_csv(current_file, index=False)
+    cache_file = tmp_path / 'cache.parquet'
+
+    moneypuck.loadGameLogs(min_season=2020, history_file=history_file,
+                           current_file=current_file, cache_file=cache_file)
+
+    assert cache_file.exists()
+    assert len(pd.read_parquet(cache_file)) == 2
+
+
+def test_corrupt_cache_rebuilds_instead_of_crashing(tmp_path):
+    """Caches are disposable; a truncated one must not be fatal."""
+    history = pd.DataFrame([_game_row(1, 2020, 20)])
+    current = pd.DataFrame([_game_row(1, 2025, 30)])
+    history_file = tmp_path / 'history.csv'
+    current_file = tmp_path / 'current.csv'
+    history.to_csv(history_file, index=False)
+    current.to_csv(current_file, index=False)
+    cache_file = tmp_path / 'cache.parquet'
+    cache_file.write_bytes(b'not a parquet file')
+    os.utime(cache_file, (time.time() + 60, time.time() + 60))  # look "fresh"
+
+    df = moneypuck.loadGameLogs(min_season=2020, history_file=history_file,
+                                current_file=current_file, cache_file=cache_file)
+
+    assert len(df) == 2
+    assert len(pd.read_parquet(cache_file)) == 2, "corrupt cache should be replaced"
+
+
+def test_missing_sources_still_error_when_there_is_no_cache(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        moneypuck.loadGameLogs(min_season=2020,
+                               history_file=tmp_path / 'nope.csv',
+                               current_file=tmp_path / 'nope2.csv',
+                               cache_file=tmp_path / 'nocache.parquet')
 
 
 def _pickup_row(playerId, gameId, gameDate, situation='all', season=2025,

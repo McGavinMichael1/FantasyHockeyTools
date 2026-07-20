@@ -14,11 +14,11 @@ October 2026 draft** (Phases B and C of PROJECT-PLAN.md). Evidence: PROJECT-PLAN
 Phase" says Phase B as of July 3, 2026; PR #2 (baa1ab1, July 5) landed draft-ranker groundwork.
 Confidence: high — this is nearly stated outright in the plan.
 
-Secondary live problem, discovered during this build (fact, not assumption): the test suite
-fails on `main`. `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations`
-fails because commit bb9bf9d (PR #1) added a missing-file guard to `src/moneypuck.py::loadGameLogs`
-that runs *before* the cache check, breaking the documented cache contract. See
-fht-debugging-playbook for the full analysis.
+~~Secondary live problem: the test suite fails on `main`.~~ **RESOLVED July 2026.**
+`tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` failed
+because commit bb9bf9d (PR #1) added a missing-file guard to `src/moneypuck.py::loadGameLogs`
+that ran *before* the cache check, breaking the documented cache contract. The guard now runs
+after the cache lookup. The suite is fully green (92 passed).
 
 ## 2. What unwritten discipline rules exist?
 
