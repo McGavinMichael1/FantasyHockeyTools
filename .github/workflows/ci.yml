@@ -1,0 +1,60 @@
+# CI for FantasyHockeyTools.
+#
+# Scope note: this runs only what a fresh clone can actually run. Trained models
+# (models/**/*.pkl) and the MoneyPuck source CSVs (data/**/*.csv) are gitignored,
+# so CI has neither. All 97 tests pass without them by design -- do NOT add a
+# training step here to "fix" a test that starts needing a model. A test that
+# needs a trained model belongs behind a fixture, not behind a 20-minute CI train.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: |
+          uv venv --python 3.12
+          uv pip install -e ".[dev]"
+
+      # pytest.ini (not pyproject) is the config pytest reads -- see the note at
+      # the bottom of pyproject.toml.
+      - name: pytest
+        run: uv run pytest -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # test:unit passes a *directory* to `node --test`, not a glob. Node only
+      # learned to expand globs there in v22; on v20 a quoted glob fails with
+      # "Could not find". The directory form works on both -- Node's runner
+      # discovers *.test.js recursively. Don't "fix" it back to a glob.
+      - name: Unit tests
+        run: npm run test:unit
