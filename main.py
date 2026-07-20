@@ -10,6 +10,7 @@ from src import draft_explain
 from src import keeper
 from src import keeper_advisor
 from src import keepers
+from src import mockDraft
 from src import moneypuck
 from src import season
 from src import yahooAPI
@@ -141,10 +142,22 @@ def trainGoalies():
     goalieDraftModel.train(loadGoalieSeasonFeatures())
 
 
-def buildCurrentDraftProjections():
-    """Build every current-season skater projection used by draft and keeper tools."""
+def buildCurrentDraftProjections(feature_season=None):
+    """Build every skater projection used by draft and keeper tools.
+
+    `feature_season` is the season whose stats feed the model; the projection is
+    for the season AFTER it. Defaults to CURRENT_SEASON, which is what the live
+    draft board wants. The mock-draft backtest passes an earlier season to
+    rebuild the board as it would have looked on a past draft day -- hence the
+    parameter rather than mutating the season constant, which tests pin.
+    """
+    feature_season = CURRENT_SEASON if feature_season is None else feature_season
     df = loadPlayerSeasonFeatures()
-    current = df[df['season'] == CURRENT_SEASON].copy()
+    current = df[df['season'] == feature_season].copy()
+    if current.empty:
+        raise ValueError(
+            f"No player-season rows for season {feature_season}. "
+            f"Available: {sorted(df['season'].unique())}")
     current['projected_fpPerGame'] = draftModel.predict(current)
 
     rankings = current[['playerId', 'full_name', 'position', 'gamesPlayed',
@@ -160,7 +173,7 @@ def buildCurrentDraftProjections():
     # along with their rows. Display-only: nothing below feeds the model.
     # Seasons of prior history feeds confidence: distinct seasons each player
     # appears in, up to and including the feature season.
-    seasons_of_history = (df[df['season'] <= CURRENT_SEASON]
+    seasons_of_history = (df[df['season'] <= feature_season]
                           .groupby('playerId')['season'].nunique())
     rankings['confidence'] = [
         draft_explain.compute_confidence(
@@ -196,7 +209,7 @@ GOALIE_GP_CAP = 65        # a goalie season tops out around 65 starts
 GOALIE_DISPLAY_MIN_GP = 15  # display floor, mirrors goalieDraft.MIN_GP
 
 
-def buildCurrentGoalieProjections():
+def buildCurrentGoalieProjections(feature_season=None):
     """Current-season goalie projections shaped like the skater board.
 
     projected_total = projected FP/GP x projected GP, where projected GP is
@@ -204,8 +217,13 @@ def buildCurrentGoalieProjections():
     skater assumption is wrong for goalies, where workload IS the value.
     No confidence/factor columns in v1 (the ranker may be Baseline B).
     """
+    feature_season = CURRENT_SEASON if feature_season is None else feature_season
     df = loadGoalieSeasonFeatures()
-    current = df[df['season'] == CURRENT_SEASON].copy()
+    current = df[df['season'] == feature_season].copy()
+    if current.empty:
+        raise ValueError(
+            f"No goalie-season rows for season {feature_season}. "
+            f"Available: {sorted(df['season'].unique())}")
     current['projected_fpPerGame'] = goalieDraftModel.predict(current)
 
     rankings = current[['playerId', 'full_name', 'position', 'gamesPlayed',
@@ -219,15 +237,15 @@ def buildCurrentGoalieProjections():
     return rankings
 
 
-def buildFullProjections():
+def buildFullProjections(feature_season=None):
     """Skater + goalie projection board. Goalie prerequisites missing (no
     goalie_seasons.csv or no trained goalie model) degrades to skaters-only
     with a loud warning -- never silently, never fatally."""
-    projections = buildCurrentDraftProjections()
+    projections = buildCurrentDraftProjections(feature_season)
     projections['projected_gp'] = 78
     try:
         projections = pd.concat(
-            [projections, buildCurrentGoalieProjections()], ignore_index=True)
+            [projections, buildCurrentGoalieProjections(feature_season)], ignore_index=True)
     except FileNotFoundError as e:
         print(f"⚠️  Goalie projections unavailable ({e})")
         print("   Board is SKATERS-ONLY. Run scripts/build_goalie_seasons.py and")
@@ -335,6 +353,59 @@ def runKeeper():
     ]].to_string(index=False))
 
 
+def runMockDraft(year, refresh=False):
+    """Replay a past draft with the board making the owner's picks.
+
+    The board is rebuilt from the season BEFORE the draft -- the only data that
+    existed on draft day -- and graded on what players actually scored in the
+    season they were drafted for.
+    """
+    warning = mockDraft.leakage_warning(year)
+    if warning:
+        print(f"\n⚠️  {warning}\n")
+
+    draft_df = yahooAPI.loadDraftResults(year, refresh=refresh)
+    my_team_key = mockDraft.owner_team_key(draft_df)
+    print(f"Loaded {len(draft_df)} picks from the {year} draft; owner is {my_team_key}")
+
+    # Features from the season before the draft; outcomes from the season after.
+    board = buildFullProjections(feature_season=year - 1)
+    board['vorp'] = keeper.vorp_column(board)
+    board = board.dropna(subset=['vorp'])
+    print(f"Board rebuilt from season {year - 1}: {len(board)} players")
+
+    resolved = mockDraft.resolve_picks(draft_df, board)
+    unmatched = int(resolved['playerId'].isna().sum())
+    print(f"Name matching: {len(resolved) - unmatched} of {len(resolved)} picks resolved")
+
+    replayed = mockDraft.replay(resolved, board, my_team_key)
+    outcomes = mockDraft.load_outcomes(year)
+    result = mockDraft.compare(replayed, outcomes)
+    result['meta'] = {
+        'draft_year': year,
+        'feature_season': year - 1,
+        'outcome_season': year,
+        'unmatched_picks': unmatched,
+        'leakage_warning': warning,
+    }
+
+    verdict = result['verdict']
+    print(f"\n=== {year} mock draft ===")
+    print(f"Actual roster: {verdict['actual_total_fp']:.1f} FP")
+    print(f"Board roster:  {verdict['board_total_fp']:.1f} FP")
+    print(f"Margin:        {verdict['board_minus_actual']:+.1f} FP "
+          f"({'board wins' if verdict['board_wins'] else 'actual draft wins'})")
+    print(f"Opponent substitutions forced by the board: {len(result['substitutions'])}")
+
+    print("\n=== Pick by pick ===")
+    print(pd.DataFrame(result['head_to_head']).to_string(index=False))
+
+    path = mockDraft.write_report(result, year)
+    print(f"\nWrote {path}")
+    if warning:
+        print("Remember: this run is contaminated. Harness check only.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fantasy hockey tools")
     sub = parser.add_subparsers(dest='command', required=True)
@@ -347,6 +418,10 @@ def main():
     spot = sub.add_parser('spot-check', help='replay the pickup ranking at historical dates and grade it')
     spot.add_argument('--date', type=int, help='single as-of date as YYYYMMDD (default: several across the season)')
     spot.add_argument('--top', type=int, default=15, help='size of the ranked list to grade')
+    mock = sub.add_parser('mock-draft', help='replay a past draft with the board making your picks')
+    mock.add_argument('--year', type=int, required=True, help='draft year (Oct 2025 draft = 2025)')
+    mock.add_argument('--refresh', action='store_true',
+                      help='re-fetch draft results from Yahoo instead of using the cache')
 
     args = parser.parse_args()
     if args.command == 'train-pickups':
@@ -363,6 +438,8 @@ def main():
         runKeeper()
     elif args.command == 'spot-check':
         backtest.runSpotChecks(dates=[args.date] if args.date else None, top_n=args.top)
+    elif args.command == 'mock-draft':
+        runMockDraft(args.year, refresh=args.refresh)
 
 
 if __name__ == "__main__":

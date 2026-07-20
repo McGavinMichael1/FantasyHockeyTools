@@ -31,9 +31,8 @@ def _team_key_for_league(team_keys, league_key):
     return next((key for key in team_keys if key and key.startswith(prefix)), None)
 
 
-def getMyRoster(lg=None):
-    """Return the authenticated Yahoo manager's current roster."""
-    league = lg or getLeague()
+def getMyTeamKey(league):
+    """The authenticated account's team key within one league."""
     league_key = league.settings().get('league_key')
     team_rows = objectpath.Tree(league.yhandler.get_teams_raw()).execute('$..(team_key)')
     team_key = _team_key_for_league(
@@ -44,7 +43,12 @@ def getMyRoster(lg=None):
         raise RuntimeError(
             f"Yahoo did not return a team for the authenticated account in {league_key}"
         )
-    return league.to_team(team_key).roster(league.current_week())
+    return team_key
+
+def getMyRoster(lg=None):
+    """Return the authenticated Yahoo manager's current roster."""
+    league = lg or getLeague()
+    return league.to_team(getMyTeamKey(league)).roster(league.current_week())
 
 def getRosteredNHLIds(rostered_names, players_df):
     players_df = dataProcessing.flattenPlayerNames(players_df)
@@ -102,9 +106,13 @@ def getLeagueForYear(year):
 def getDraftResults(year, lg=None):
     """Every pick of one season's draft, newest-first order preserved.
 
-    Returns a list of dicts: pick, round, team_key, yahoo_player_id, player_name.
-    Yahoo returns player IDs only, so names are resolved in one batched
+    Returns a list of dicts: pick, round, team_key, yahoo_player_id, player_name,
+    is_mine. Yahoo returns player IDs only, so names are resolved in one batched
     player_details() call rather than one request per pick.
+
+    `is_mine` is resolved here rather than at grading time so the cached CSV
+    carries everything the replay needs -- otherwise every mock-draft run would
+    have to re-authenticate just to learn which team was the owner's.
     """
     league = lg or getLeagueForYear(year)
     picks = league.draft_results()
@@ -121,6 +129,8 @@ def getDraftResults(year, lg=None):
         name = detail.get('name') or {}
         names[int(detail['player_id'])] = name.get('full')
 
+    my_team_key = getMyTeamKey(league)
+
     rows = []
     for pick in picks:
         player_id = int(pick['player_id'])
@@ -130,7 +140,14 @@ def getDraftResults(year, lg=None):
             'team_key': pick['team_key'],
             'yahoo_player_id': player_id,
             'player_name': names.get(player_id),
+            'is_mine': pick['team_key'] == my_team_key,
         })
+
+    if not any(row['is_mine'] for row in rows):
+        raise RuntimeError(
+            f"No {year} picks belong to team {my_team_key}. Grading would compare "
+            f"the board against an empty roster and 'win' meaninglessly."
+        )
 
     missing = [row['pick'] for row in rows if not row['player_name']]
     if missing:

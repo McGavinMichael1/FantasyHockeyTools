@@ -1,0 +1,197 @@
+import pandas as pd
+import pytest
+
+from src import mockDraft, season
+
+
+MINE = '465.l.33072.t.1'
+THEIRS = '465.l.33072.t.2'
+
+
+def make_board(rows):
+    """rows: (playerId, full_name, position, vorp)"""
+    return pd.DataFrame(
+        [{'playerId': p, 'full_name': n, 'position': pos, 'vorp': v}
+         for p, n, pos, v in rows]
+    )
+
+
+def make_draft(rows):
+    """rows: (pick, team_key, player_name)"""
+    return pd.DataFrame(
+        [{'pick': pick, 'round': 1, 'team_key': team, 'player_name': name,
+          'yahoo_player_id': 1000 + pick}
+         for pick, team, name in rows]
+    )
+
+
+def make_outcomes(rows):
+    """rows: (playerId, totalFP)"""
+    return pd.DataFrame(
+        [{'playerId': p, 'season': 2025, 'totalFP': fp} for p, fp in rows]
+    ).set_index('playerId')
+
+
+# --- name resolution ------------------------------------------------------
+
+def test_resolve_picks_matches_names_that_are_not_byte_identical():
+    board = make_board([(1, 'Tim Stutzle', 'C', 10.0)])
+    draft = make_draft([(1, MINE, 'Tim Stützle')])
+
+    resolved = mockDraft.resolve_picks(draft, board)
+
+    assert resolved.loc[0, 'playerId'] == 1
+    assert resolved.loc[0, 'board_name'] == 'Tim Stutzle'
+
+
+def test_resolve_picks_keeps_unmatched_rows_so_pick_order_is_preserved():
+    # Dropping a row would shift every later pick's position in the replay.
+    board = make_board([(1, 'Connor McDavid', 'C', 10.0)])
+    draft = make_draft([(1, MINE, 'Connor McDavid'),
+                        (2, THEIRS, 'Some Undrafted Junior')])
+
+    resolved = mockDraft.resolve_picks(draft, board)
+
+    assert len(resolved) == 2
+    # pandas stores the unmatched marker as NaN in a numeric column; replay()
+    # reads it with pd.isna, so NaN is the contract, not None.
+    assert pd.isna(resolved.loc[1, 'playerId'])
+
+
+def test_resolve_picks_refuses_to_claim_one_board_row_twice():
+    # Two Yahoo names collapsing onto one row would double-count his season.
+    board = make_board([(1, 'Sebastian Aho', 'C', 10.0)])
+    draft = make_draft([(1, MINE, 'Sebastian Aho'), (2, THEIRS, 'Sebastian Aho')])
+
+    resolved = mockDraft.resolve_picks(draft, board)
+
+    assert resolved.loc[0, 'playerId'] == 1
+    assert pd.isna(resolved.loc[1, 'playerId'])
+
+
+# --- replay ---------------------------------------------------------------
+
+def test_board_takes_highest_vorp_available_at_the_owners_pick():
+    board = make_board([(1, 'Best Guy', 'C', 30.0),
+                        (2, 'Good Guy', 'L', 20.0),
+                        (3, 'Okay Guy', 'R', 10.0)])
+    # The owner really took the worst of the three.
+    draft = make_draft([(1, MINE, 'Okay Guy')])
+
+    replayed = mockDraft.replay(mockDraft.resolve_picks(draft, board), board, MINE)
+
+    assert [p['name'] for p in replayed['board_roster']] == ['Best Guy']
+    assert [p['name'] for p in replayed['my_actual']] == ['Okay Guy']
+
+
+def test_opponents_keep_their_real_picks():
+    board = make_board([(1, 'Best Guy', 'C', 30.0),
+                        (2, 'Second Guy', 'L', 20.0),
+                        (3, 'Third Guy', 'R', 10.0)])
+    draft = make_draft([(1, THEIRS, 'Best Guy'), (2, MINE, 'Third Guy')])
+
+    replayed = mockDraft.replay(mockDraft.resolve_picks(draft, board), board, MINE)
+
+    # Best Guy went to the opponent before the owner's turn, so the board
+    # cannot have him -- it takes the best of what is left.
+    assert [p['name'] for p in replayed['board_roster']] == ['Second Guy']
+
+
+def test_opponent_falls_back_when_the_board_stole_their_player():
+    board = make_board([(1, 'Best Guy', 'C', 30.0),
+                        (2, 'Second Guy', 'L', 20.0),
+                        (3, 'Third Guy', 'R', 10.0)])
+    # Owner picks first and really took Third Guy; the board takes Best Guy,
+    # which is who the opponent really drafted at pick 2.
+    draft = make_draft([(1, MINE, 'Third Guy'), (2, THEIRS, 'Best Guy')])
+
+    replayed = mockDraft.replay(mockDraft.resolve_picks(draft, board), board, MINE)
+
+    assert len(replayed['substitutions']) == 1
+    assert replayed['substitutions'][0]['wanted'] == 'Best Guy'
+    assert replayed['substitutions'][0]['got'] == 'Second Guy'
+
+
+def test_positional_caps_stop_the_board_drafting_only_centers():
+    # A pure best-available board would take five centers and post a fake win.
+    board = make_board([(i, f'Center {i}', 'C', 100.0 - i) for i in range(1, 7)]
+                       + [(99, 'A Defenseman', 'D', 1.0)])
+    draft = make_draft([(pick, MINE, 'A Defenseman') for pick in range(1, 6)])
+
+    replayed = mockDraft.replay(mockDraft.resolve_picks(draft, board), board, MINE)
+
+    positions = [p['position'] for p in replayed['board_roster']]
+    assert positions.count('C') == mockDraft.MAX_BY_POSITION['C']
+
+
+def test_a_player_is_never_drafted_twice():
+    board = make_board([(1, 'Best Guy', 'C', 30.0), (2, 'Second Guy', 'L', 20.0)])
+    draft = make_draft([(1, MINE, 'Best Guy'), (2, MINE, 'Second Guy')])
+
+    replayed = mockDraft.replay(mockDraft.resolve_picks(draft, board), board, MINE)
+
+    ids = [p['playerId'] for p in replayed['board_roster']]
+    assert len(ids) == len(set(ids))
+
+
+# --- grading --------------------------------------------------------------
+
+def test_grade_sums_actual_points():
+    outcomes = make_outcomes([(1, 500.0), (2, 300.0)])
+
+    graded = mockDraft.grade([{'playerId': 1, 'name': 'A'},
+                              {'playerId': 2, 'name': 'B'}], outcomes)
+
+    assert graded['total_fp'] == 800.0
+
+
+def test_a_pick_who_never_played_scores_zero_rather_than_being_skipped():
+    # Skipping would flatter whichever roster whiffed more.
+    outcomes = make_outcomes([(1, 500.0)])
+
+    graded = mockDraft.grade([{'playerId': 1, 'name': 'A'},
+                              {'playerId': 404, 'name': 'Injured All Year'}], outcomes)
+
+    assert graded['total_fp'] == 500.0
+    assert graded['players'] == 2
+    assert graded['no_outcome_rows'] == 1
+
+
+def test_compare_reports_the_margin_and_who_won():
+    outcomes = make_outcomes([(1, 500.0), (2, 100.0)])
+    replayed = {
+        'my_actual': [{'pick': 1, 'playerId': 2, 'name': 'Okay Guy'}],
+        'board_roster': [{'pick': 1, 'playerId': 1, 'name': 'Best Guy'}],
+        'substitutions': [],
+        'unmatched_opponent_picks': 0,
+    }
+
+    result = mockDraft.compare(replayed, outcomes)
+
+    assert result['verdict']['board_wins'] is True
+    assert result['verdict']['board_minus_actual'] == 400.0
+    assert result['head_to_head'][0]['delta'] == 400.0
+
+
+def test_load_outcomes_rejects_duplicate_player_rows(tmp_path):
+    # A duplicate would make .loc return a Series and inflate the total.
+    path = tmp_path / 'player_seasons.csv'
+    pd.DataFrame([{'playerId': 1, 'season': 2025, 'totalFP': 10.0},
+                  {'playerId': 1, 'season': 2025, 'totalFP': 20.0}]).to_csv(path, index=False)
+
+    with pytest.raises(ValueError, match='duplicate playerIds'):
+        mockDraft.load_outcomes(2025, path=str(path))
+
+
+# --- leakage guard --------------------------------------------------------
+
+def test_a_draft_year_the_model_trained_through_is_flagged_contaminated():
+    contaminated_year = max(season.DRAFT_VAL_SEASONS) + 1
+
+    assert 'CONTAMINATED' in mockDraft.leakage_warning(contaminated_year)
+
+
+def test_the_first_clean_draft_year_is_not_flagged():
+    clean_year = max(season.DRAFT_VAL_SEASONS) + 2
+
+    assert mockDraft.leakage_warning(clean_year) is None
