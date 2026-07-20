@@ -699,8 +699,13 @@ exactly the misleading regularity that made a round-based rule look correct. `de
 implements the real rule and reproduces the owner's stated keepers exactly (Swayman p70, Michkov
 p71, Johnston p78, Stützle p90), plus all eight kept stars including Matthews at round 10.
 
-Note this sits uneasily with `keeper.KEEPER_ROUNDS = (18, 17, 16, 15)`, which the keeper
-*analyzer* uses to price keepers — see `.claude/skills/OPEN-QUESTIONS.md` #1b. Unresolved.
+**Keeper COST, settled 2026-07-20 (owner):** *"keepers are always final 4 picks you hold."* Not a
+fixed round — rounds 15-18 are just what that resolves to when nobody has traded picks. This makes
+`keeper.KEEPER_ROUNDS = (18, 17, 16, 15)` a **default rather than the rule**, and it understates
+cost whenever late picks were traded away: the owner held only rounds 1-9 in 2025, so his final
+four picks were overall 70/71/78/90, worth **898.3 projected FP against the 722.4 the constant
+assumes — a 24% understatement, ~44 FP per keeper**, enough to flip a marginal keep decision.
+Not yet fixed; see `.claude/skills/OPEN-QUESTIONS.md` #1b for what a fix needs.
 
 Lessons:
 - **My predictions were wrong twice, in the same direction.** Predicted +15%, first run said

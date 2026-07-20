@@ -87,7 +87,15 @@ Full rationale and file:line citations: `fht-architecture-contract`.
 - ~~No CI configured~~ — added July 2026: `.github/workflows/ci.yml` runs pytest plus the
   frontend typecheck and unit tests. It must never train a model: `.pkl` files and the
   MoneyPuck CSVs are gitignored, so CI has neither.
-- `train-draft` / `draft` / `keeper` / `train-goalies` CLI commands are implemented (draft board shipped Phase B4; goalie ranker shipped 2026-07-16). Remaining Phase B/C/D work is tracked in `fht-draft-campaign` and PROJECT-PLAN's Current Phase.
+- `train-draft` / `draft` / `keeper` / `train-goalies` / `mock-draft` CLI commands are implemented (draft board shipped Phase B4; goalie ranker shipped 2026-07-16; mock-draft backtest 2026-07-20). Remaining Phase B/C/D work is tracked in `fht-draft-campaign` and PROJECT-PLAN's Current Phase.
+- **Keeper cost is understated when picks are traded.** The league rule is "keeping a player costs
+  your final 4 picks — whichever picks those happen to be" (owner, 2026-07-20), but
+  `keeper.KEEPER_ROUNDS = (18, 17, 16, 15)` assumes an untraded draft. Measured 24% understatement
+  (~44 FP per keeper) against the 2025 draft, enough to flip a marginal keep decision. See
+  `.claude/skills/OPEN-QUESTIONS.md` #1b.
+- **The draft board does not beat hand-drafting.** The 2025 mock draft (the one held-out look,
+  now spent) came out at −1.75% over 14 picks — inconclusive. Treat the board as a consistent
+  second opinion, not an authority. See `docs/superpowers/plans/2026-07-20-draft-validation-handoff.md`.
 - ~~Season constants duplicated across files~~ — fixed July 2026: `src/season.py` owns `CURRENT_SEASON` and derives every split boundary, spot-check date, season label and headshot season id from it. Rollover is a one-line edit there, and `tests/test_season.py` pins the derived values so a silent shift fails loudly. `backtest.KNOWN_PICKUPS` still needs hand re-curation each season — it cannot be derived.
 
 ## Testing

@@ -139,25 +139,39 @@ pickup-focused and its items 1-4 are about the pickup/cooling models, not the dr
 
 ---
 
-## Open questions for the owner
+## Known bug: keeper cost is understated when picks are traded
 
-**`.claude/skills/OPEN-QUESTIONS.md` #1b — do keepers really cost a fixed round 15-18?**
-This affects a *shipped* tool, not just docs. `src/keeper.py` hardcodes
-`KEEPER_ROUNDS = (18, 17, 16, 15)` and `round_pick_costs()` prices keepers off those rounds. But
-the owner's stated rule is "the final 4 picks," and 2025 has keepers as early as round 10
-(Matthews, t.5). If cost is not a fixed round, `net_keeper_value` on the shipped keeper board is
-off. **Do not "fix" `KEEPER_ROUNDS` without the owner stating the actual rule** — it is equally
-possible the rule changed between seasons or that Yahoo records cost differently from the league.
+**Rule (owner, 2026-07-20, settled):** keeping a player costs **your final 4 picks — whichever
+picks those happen to be.** Not a fixed round. `.claude/skills/OPEN-QUESTIONS.md` #1b is resolved.
+
+**But the shipped keeper analyzer still assumes rounds 15-18.** `src/keeper.py`'s
+`round_pick_costs()` prices a keeper as the mean projected value of picks 141-180, which is right
+only if you hold those picks. The owner held only rounds 1-9 in 2025, so his real final four were
+overall 70/71/78/90:
+
+| | Modelled (rounds 15-18) | Real (picks 70/71/78/90) |
+|---|---|---|
+| Cost of four keepers | 722.4 FP | 898.3 FP |
+
+**24% understatement, ~44 FP per keeper**, which inflates `net_keeper_value` and can flip a
+marginal keep/don't-keep call. `KEEPER_ROUNDS` now carries this caveat in a comment.
+
+**The fix** prices against picks actually held. The blocker is that pre-draft pick ownership is
+not fetched from Yahoo, so the practical shape is a configurable "my final four pick numbers",
+defaulting to rounds 15-18 for an untraded draft. Keeper math is `fht-quality-gates` class (a) —
+highest bar, tests first, and re-run the keeper board before and after to see which
+recommendations move.
 
 ---
 
 ## Next up, unblocked
 
-1. **Keepers → summaries.** When the 2026 keepers are announced: fill `data/raw/keepers.csv` →
+1. **Fix keeper cost** (above) — it is a known, quantified error in a shipped recommendation, and
+   the rule needed to fix it is now settled.
+2. **Keepers → summaries.** When the 2026 keepers are announced: fill `data/raw/keepers.csv` →
    `main.py draft` (the filter applies automatically, `main.py:253`) → generate summaries for the
    top ~200 *of the filtered pool* → re-run `api_export.py`. Owner's decision: do not spend API
    credits on the ~40 players who won't be in the pool. Currently 50 of 774 have summaries.
-2. **Resolve OPEN-QUESTIONS #1b** before leaning on keeper recommendations.
 3. **Skater `projected_gp`**, if you want a model change with a clear rationale.
 4. Deferred from the previous handoff and still deferred: advisor context scaling (fine at 18
    roster players), `reports/metrics.jsonl`, Phase E-ML tuning — all post-draft.

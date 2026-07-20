@@ -20,7 +20,50 @@ because commit bb9bf9d (PR #1) added a missing-file guard to `src/moneypuck.py::
 that ran *before* the cache check, breaking the documented cache contract. The guard now runs
 after the cache lookup. The suite is fully green (92 passed).
 
-## 1b. Do keepers really cost a FIXED round 15-18? (raised 2026-07-20, UNRESOLVED)
+## 1b. What do keepers cost? — RESOLVED 2026-07-20 (owner)
+
+**The rule: keeping a player costs you your final 4 picks — whichever picks those happen to be.**
+Owner-stated twice on 2026-07-20: *"The final 4 picks of every team are always the kept players"*
+and *"keepers are always final 4 picks you hold."*
+
+It is **not** a fixed round. Rounds 15-18 are only what "your last four picks" resolves to in a
+draft where nobody has traded picks.
+
+Verified against the 2025 record: `derive_keepers()` in `src/mockDraft.py` implements the rule as
+each team's last four picks by **pick number** and reproduces the owner's stated keepers exactly
+(Swayman p70, Michkov p71, Johnston p78, Stützle p90), plus all 40 league-wide — including Auston
+Matthews at round 10, which no round-based rule would have found.
+
+### Consequence for the shipped keeper analyzer — NOT yet fixed
+
+`src/keeper.py` hardcodes `KEEPER_ROUNDS = (18, 17, 16, 15)` and `round_pick_costs()` prices a
+keeper as the mean projected value of the board slice in those rounds (picks 141-180). That is
+correct **only when you actually hold your rounds 15-18 picks.**
+
+The owner traded late picks away in 2025 and held only rounds 1-9, so his final four picks were
+overall **70, 71, 78 and 90** — far more valuable slots than 141-180. Measured against the
+current 774-player board:
+
+| | Modelled cost (rounds 15-18) | Real cost (picks 70/71/78/90) |
+|---|---|---|
+| Four keepers | 722.4 projected FP | 898.3 projected FP |
+
+**A 175.9 FP understatement — 24%, or ~44 FP per keeper.** `net_keeper_value` is overstated by
+that much whenever late picks have been traded away, which can flip a marginal keep/don't-keep
+call.
+
+### What a fix needs
+
+Keeper cost should come from the picks the owner **actually holds**, not an assumed round range.
+Pick ownership before draft day is not currently fetched from Yahoo, so the practical shape is
+probably a configurable "my final four pick numbers" input, defaulting to rounds 15-18 for an
+untraded draft.
+
+`KEEPER_ROUNDS` is a fine *default*; the bug is that it is an assumption presented as a rule. Any
+fix touches keeper math — `fht-quality-gates` class (a), highest bar.
+
+<details>
+<summary>Original investigation (superseded by the owner's answer)</summary>
 
 **This one affects a shipped tool, not just docs.** `src/keeper.py` hardcodes
 `KEEPER_ROUNDS = (18, 17, 16, 15)`, and `round_pick_costs()` prices a keeper by averaging the
@@ -48,6 +91,12 @@ per-season keeper list (`data/raw/keepers_{year}.csv`), but the keeper analyzer 
 **Do not "fix" `KEEPER_ROUNDS` on the strength of this.** It needs the owner to state the actual
 rule. It is equally possible the rule changed between seasons, or that Yahoo's recording differs
 from the league's stated cost.
+
+*Resolution: the owner stated the rule — final 4 picks you hold. The "keeper cost varies by
+player" reading above was wrong; it varies by which picks you hold, which is why traded picks
+made it look irregular.*
+
+</details>
 
 ## 2. What unwritten discipline rules exist?
 
