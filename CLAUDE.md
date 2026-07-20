@@ -41,7 +41,7 @@ https://moneypuck.com/data.htm. See `fht-operations` for the full runbook.
 ## Architecture at a glance
 
 ```
-MoneyPuck CSVs  -> src/moneypuck.py (all MoneyPuck IO)
+MoneyPuck CSVs  -> src/moneypuck.py (all MoneyPuck IO; processed caches are Parquet)
 NHL API         -> src/nhlAPI.py, src/dataProcessing.py (identity/birthDate/roster only)
 Yahoo API       -> src/yahooAPI.py (optional roster filtering)
                 -> src/fantasyPoints.py (SKATER_WEIGHTS + GOALIE_WEIGHTS — scoring source of truth)
@@ -79,7 +79,10 @@ Full rationale and file:line citations: `fht-architecture-contract`.
 
 - ~~`UnicodeEncodeError` (cp1252) from `src/nhlAPI.py` response previews~~ — fixed July 2026:
   per-request prints are `logger.debug` now, so `PYTHONUTF8=1` is no longer required.
-- Test suite currently has 2 known pre-existing failures: `tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations` (guard-ordering bug in `src/moneypuck.py::loadGameLogs`) and `tests/test_draft_summaries.py::test_all_summary_calls_allow_the_larger_token_budget` (token-budget assertion; discovered 2026-07-16 during the goalie campaign — it predates the branch and is unrelated to goalie work). See `fht-debugging-playbook`.
+- ~~2 known pre-existing test failures~~ — both fixed July 2026, suite is fully green.
+  `loadGameLogs` now serves a valid cache *before* requiring the 2.6 GB source files
+  (the guard-ordering bug), and the token-budget test asserted the *smaller* budget in
+  contradiction of its own name and of the deliberate `MAX_TOKENS = 16000` change.
 - No CI configured.
 - `train-draft` / `draft` / `keeper` / `train-goalies` CLI commands are implemented (draft board shipped Phase B4; goalie ranker shipped 2026-07-16). Remaining Phase B/C/D work is tracked in `fht-draft-campaign` and PROJECT-PLAN's Current Phase.
 - ~~Season constants duplicated across files~~ — fixed July 2026: `src/season.py` owns `CURRENT_SEASON` and derives every split boundary, spot-check date, season label and headshot season id from it. Rollover is a one-line edit there, and `tests/test_season.py` pins the derived values so a silent shift fails loudly. `backtest.KNOWN_PICKUPS` still needs hand re-curation each season — it cannot be derived.

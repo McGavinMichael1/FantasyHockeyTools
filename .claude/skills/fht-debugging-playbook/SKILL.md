@@ -13,7 +13,13 @@ settled incidents. Read the lead item first — it is an open, verified regressi
 ```
 .\.venv\Scripts\python.exe -m pytest -v
 ```
-Actual result: **1 failed, 4 passed in 0.57s.**
+**RESOLVED July 2026** — kept for the reasoning, not as a live issue. `loadGameLogs`
+now checks for a usable cache *before* requiring the source files, which is both what
+the test encoded and better behaviour: the raw inputs are a 2.6 GB manual download, so
+demanding they be present to read a cache already built from them made the repo
+needlessly unportable. Suite is green.
+
+Historical symptom: **1 failed, 4 passed in 0.57s.**
 `FAILED tests/test_moneypuck.py::test_load_game_logs_filters_season_and_keeps_situations`
 
 Traceback bottom line:
@@ -125,7 +131,8 @@ file-only task); reproduce by filtering `buildPlayerSeasons` output to McDavid/M
 |---|---|---|---|---|---|
 | 1 | ML label ≠ league scoring | Models trained for months on the wrong target | Label used raw G/A/SOG only, not full weighted scoring | `83e9fc1` (canonical scoring), `2c23433` (moneypuck.py owns IO); pinned by `tests/` today | SETTLED |
 | 2 | Plot collision destroyed old pickup AUC record | `roc_curve.png` labeled "Pickup Model AUC 0.64" was actually the cooling curve — same filename, overwritten | `94c59ce` gives each model its own `reports/{pickup,cooling}_*.png`; old pickup AUC is unrecoverable per Learning Log | SETTLED — metrics belong in diffable text, not overwritable images |
-| 3 | `requirements.txt` drift, streamlit never installed | UI skeleton (`ui/app.py`) had never actually run against its own venv | Fixed by freezing from the working venv, `94c59ce` | SETTLED |
+| 3 | `requirements.txt` drift, streamlit never installed | UI skeleton (`ui/app.py`) had never actually run against its own venv | Fixed by freezing from the working venv, `94c59ce`. Superseded July 2026: `ui/` deleted and streamlit dropped — the Next.js frontend is the only UI, and the freeze was replaced by a direct-dependency list | SETTLED |
+| 4 | Birthdate build hung 12+ hours near player ~2400 | No `requests` timeout anywhere (there is no default), so a half-open socket blocked forever; `executor.map` then waited on that one worker. Nothing was written until the whole build finished, so the ~2400 fetched players were lost | Fixed July 2026: `nhlAPI._get` sets a (5, 30) timeout and caps every retry; `fetchAllPlayers` uses `as_completed` and checkpoints to `.partial` every 100 players | SETTLED |
 | 4 | LSTM `save()` signature rot | `save(model)` call crashed after the signature changed to `save(model, hidden_size, num_layers)` | One-line fix in `8ac3e09` while parking the model; `lstmPickups.py` header confirms PARKED July 2026 | SETTLED / PARKED — do not un-park before the October draft; `lstmFeatures.py` header notes it still scores G/A/SOG only, not `SKATER_WEIGHTS` |
 | 5 | Plan-doc drift, three phases behind code | `PROJECT-PLAN.md` "Current Phase" stale | Learning Log "July 2026": "update Current Phase every session" | SETTLED as process fix; ASSUMED as standing rule per `OPEN-QUESTIONS.md` #2 |
 | 6 | Cache-guard regression (lead item) | Test fails on `main` | `bb9bf9d`'s guard runs before the cache-hit check (`src/moneypuck.py:57-76` vs. `80-83`) | Verified 2026-07-05: `1 failed, 4 passed` | **OPEN** |

@@ -27,6 +27,9 @@ uv.lock
 # Data files
 data/**/*.csv
 data/processed/*.json
+# Processed caches are Parquet since July 2026. Without this rule they are
+# untracked commit bait -- a stray `git add -A` would try to commit 100+ MB.
+data/**/*.parquet
 # Interrupted-fetch scratch files (src/dataProcessing.py checkpointing)
 data/**/*.partial
 

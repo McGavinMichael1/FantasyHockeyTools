@@ -131,7 +131,7 @@ comment documenting an incident. Do not relitigate without new evidence.
 ## Provenance and maintenance
 
 Facts here drift. Re-verify with:
-- `pytest`: `.\.venv\Scripts\python.exe -m pytest -v` (repo root) — confirm pass/fail counts still match "48 passed, 2 failed" (both failures pre-existing: `test_moneypuck` guard-ordering + `test_draft_summaries` token-budget).
+- `pytest`: `.\.venv\Scripts\python.exe -m pytest -v` (repo root) — the suite is **fully green** as of the July 2026 sustainability pass (92 passed). Any failure is a real regression.
 - `CURRENT_SEASON`/season-string duplication: `grep -rn "CURRENT_SEASON = 2025\|20252026" main.py api_export.py src/backtest.py src/dataProcessing.py`.
 - `.gitignore` model-binary line: `grep -n "models" .gitignore` — confirm `models/**/*.pkl` still present and still contradicts `PROJECT-PLAN.md`'s decision 9.
 - Stub status: `grep -rn "NotImplementedError" src/features/shared.py src/features/pickups.py` — confirm `build_shared_features`/`build_pickup_features` still raise (draft, keeper, and goalie paths are now implemented and no longer raise).
