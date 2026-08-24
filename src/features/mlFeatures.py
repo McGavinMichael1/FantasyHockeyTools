@@ -23,6 +23,66 @@ def loadMoneyPuckData():
     moneyPuckData['position_encoded'] = moneyPuckData['position'].map(position_mapping)
     return moneyPuckData
 
+ONICE_COUNT_COLS = ['ev_onIce_goalsFor', 'ev_onIce_shotsFor', 'ev_onIce_xGoalsFor',
+                    'ev_onIce_goalsAgainst', 'ev_onIce_shotsAgainst']
+# 5 games is ~60 on-ice shots -- too few for a percentage to mean anything.
+ONICE_WINDOWS = [10, 20]
+# Minimum on-ice shots behind an estimate before it is worth reporting.
+MIN_ONICE_SHOTS = 60
+
+
+def buildOnIceLuckFeatures(df, windows=ONICE_WINDOWS):
+    """On-ice shooting and save percentages over rolling windows -- PDO, split.
+
+    Computed as a RATIO OF ROLLING SUMS, never a rolling mean of per-game
+    ratios: a player is on the ice for ~10-25 shots a game, so a per-game
+    on-ice shooting % is mostly denominator noise, and averaging those ratios
+    would weight a 6-shot game the same as a 25-shot game. That is why this
+    cannot ride along in buildRollingFeatures' .rolling().mean() loop.
+
+    The two halves stay SEPARATE features. On-ice shooting % is real signal --
+    a player's assists depend on teammates converting shots while he is out
+    there, and a hot rate regresses. On-ice save % reaches fantasy points only
+    through plus/minus, which moneypuckGamePoints does not compute, so summing
+    them into one PDO number would dilute the half that can move the label.
+    pdo_{window} is still produced for the eyeball gate and the draft board,
+    named outside the rolling_ prefix so pickupFeatureCols does not enrol it.
+
+    Below MIN_ONICE_SHOTS the estimate is NaN rather than a number nobody
+    should trust; XGBoost handles NaN natively.
+    """
+    for window in windows:
+        # Regrouped per window rather than hoisted: df gains columns inside
+        # this loop, and a GroupBy captured before those assignments is a
+        # stale view of the frame.
+        grouped = df.groupby('playerId')
+        sums = {col: grouped[col].transform(
+                    lambda x: x.rolling(window, min_periods=window).sum())
+                for col in ONICE_COUNT_COLS}
+        enough_for = sums['ev_onIce_shotsFor'] >= MIN_ONICE_SHOTS
+        enough_against = sums['ev_onIce_shotsAgainst'] >= MIN_ONICE_SHOTS
+
+        shooting = (sums['ev_onIce_goalsFor']
+                    / sums['ev_onIce_shotsFor']).where(enough_for)
+        saving = (1 - sums['ev_onIce_goalsAgainst']
+                  / sums['ev_onIce_shotsAgainst']).where(enough_against)
+
+        df[f'rolling_{window}_onice_shooting_pct'] = shooting
+        df[f'rolling_{window}_onice_save_pct'] = saving
+        # Shot-quality-adjusted shooting half: on-ice goals above expected, per
+        # game. Regresses like on-ice SH% but does not punish a player whose
+        # line generates low-percentage looks.
+        df[f'rolling_{window}_onice_gax'] = (
+            (sums['ev_onIce_goalsFor'] - sums['ev_onIce_xGoalsFor']) / window
+        ).where(enough_for)
+        df[f'pdo_{window}'] = shooting + saving
+
+    if {10, 20} <= set(windows):
+        df['rolling_delta_10_20_onice_shooting_pct'] = (
+            df['rolling_10_onice_shooting_pct'] - df['rolling_20_onice_shooting_pct'])
+    return df
+
+
 # Stats whose 5-vs-20-game gap is itself a signal. A rolling level cannot tell
 # "has always been a PP1 guy" apart from "was promoted three games ago", and
 # only the second is a breakout signal -- the Raddysh case in
@@ -62,6 +122,8 @@ def buildRollingFeatures(df, windows=[5, 10, 20]):
         df.groupby(['playerId', 'season'])['game_fantasy_points']
         .transform(lambda x: x.shift(1).expanding().mean())
     )
+
+    df = buildOnIceLuckFeatures(df)
 
     return df
 

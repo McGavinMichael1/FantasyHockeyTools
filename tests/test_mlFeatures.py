@@ -38,9 +38,11 @@ def test_build_label_never_includes_current_game_in_target():
     assert list(out['next_5_avg']) == [0.0]
 
 
-def _rolling_frame(pp_icetimes, total_icetime=1200):
+def _rolling_frame(pp_icetimes, total_icetime=1200, onice_gf=None,
+                   onice_sf=None, onice_ga=None, onice_sa=None, onice_xgf=None):
     """One player, ascending gameDates, constant total ice time."""
     n = len(pp_icetimes)
+    zeros = [0] * n
     return pd.DataFrame({
         'playerId': [1] * n,
         'season': [2023] * n,
@@ -50,15 +52,17 @@ def _rolling_frame(pp_icetimes, total_icetime=1200):
         'icetime': [total_icetime] * n,
         'powerPlayIcetime': pp_icetimes,
         'pp_toi_share': [pp / total_icetime for pp in pp_icetimes],
-        'I_F_goals': [0] * n, 'I_F_primaryAssists': [0] * n,
-        'I_F_secondaryAssists': [0] * n, 'I_F_xGoals': [0.0] * n,
-        'I_F_shotsOnGoal': [0] * n, 'ozone_start_pct': [0.5] * n,
+        'I_F_goals': zeros, 'I_F_primaryAssists': zeros,
+        'I_F_secondaryAssists': zeros, 'I_F_xGoals': [0.0] * n,
+        'I_F_shotsOnGoal': zeros, 'ozone_start_pct': [0.5] * n,
         'xgoals_surplus': [0.0] * n, 'high_danger_rate': [0.0] * n,
         'onIce_corsiPercentage': [50.0] * n,
         'onIce_fenwickPercentage': [50.0] * n,
-        'ev_onIce_goalsFor': [0] * n, 'ev_onIce_shotsFor': [0] * n,
-        'ev_onIce_xGoalsFor': [0.0] * n, 'ev_onIce_goalsAgainst': [0] * n,
-        'ev_onIce_shotsAgainst': [0] * n,
+        'ev_onIce_goalsFor': onice_gf if onice_gf is not None else zeros,
+        'ev_onIce_shotsFor': onice_sf if onice_sf is not None else zeros,
+        'ev_onIce_xGoalsFor': onice_xgf if onice_xgf is not None else [0.0] * n,
+        'ev_onIce_goalsAgainst': onice_ga if onice_ga is not None else zeros,
+        'ev_onIce_shotsAgainst': onice_sa if onice_sa is not None else zeros,
     })
 
 
@@ -102,3 +106,76 @@ def test_icetime_is_rolled_at_20_games_so_its_delta_exists():
     for col in ['rolling_5_icetime', 'rolling_10_icetime', 'rolling_20_icetime',
                 'rolling_delta_5_20_icetime']:
         assert col in out.columns
+
+
+def test_onice_shooting_pct_is_a_ratio_of_sums_not_a_mean_of_ratios():
+    # 10 games. Nine quiet games: 1 goal on 5 on-ice shots (20%). One busy
+    # game: 1 goal on 55 on-ice shots (1.8%).
+    #   ratio of sums   = (9*1 + 1) / (9*5 + 55) = 10 / 100 = 0.10   <- correct
+    #   mean of ratios  = (9*0.20 + 0.018) / 10  = 0.1818            <- wrong
+    # The busy game must pull the estimate down in proportion to its shots.
+    df = _rolling_frame([0] * 10,
+                        onice_gf=[1] * 9 + [1],
+                        onice_sf=[5] * 9 + [55],
+                        onice_ga=[0] * 10,
+                        onice_sa=[10] * 10)
+    out = mlFeatures.buildRollingFeatures(df)
+    assert out['rolling_10_onice_shooting_pct'].iloc[-1] == pytest.approx(0.10)
+
+
+def test_onice_save_pct_is_one_minus_goals_against_over_shots_against():
+    # 10 games x (1 GA on 10 SA) = 10 GA / 100 SA -> save % = 1 - 0.10 = 0.90
+    df = _rolling_frame([0] * 10,
+                        onice_gf=[0] * 10, onice_sf=[10] * 10,
+                        onice_ga=[1] * 10, onice_sa=[10] * 10)
+    out = mlFeatures.buildRollingFeatures(df)
+    assert out['rolling_10_onice_save_pct'].iloc[-1] == pytest.approx(0.90)
+
+
+def test_pdo_is_display_only_and_not_enrolled_as_a_model_feature():
+    # PDO is the sum of two columns already present. It ships for the eyeball
+    # gate and the board, but naming it outside the rolling_ prefix keeps
+    # pickupFeatureCols' allowlist from feeding a collinear column to the model.
+    df = _rolling_frame([0] * 10,
+                        onice_gf=[1] * 10, onice_sf=[10] * 10,
+                        onice_ga=[1] * 10, onice_sa=[10] * 10)
+    out = mlFeatures.buildRollingFeatures(df)
+    # SH% = 10/100 = 0.10; SV% = 1 - 10/100 = 0.90; PDO = 1.00
+    assert out['pdo_10'].iloc[-1] == pytest.approx(1.00)
+    assert 'pdo_10' not in mlFeatures.pickupFeatureCols(out)
+    assert 'rolling_10_onice_shooting_pct' in mlFeatures.pickupFeatureCols(out)
+
+
+def test_onice_percentages_are_nan_below_the_shot_floor():
+    # 10 games x 4 on-ice shots = 40 shots, under the 60-shot floor. A
+    # percentage off that few shots is denominator noise; NaN is the honest
+    # answer and XGBoost handles it natively.
+    df = _rolling_frame([0] * 10,
+                        onice_gf=[1] * 10, onice_sf=[4] * 10,
+                        onice_ga=[1] * 10, onice_sa=[4] * 10)
+    out = mlFeatures.buildRollingFeatures(df)
+    assert pd.isna(out['rolling_10_onice_shooting_pct'].iloc[-1])
+    assert pd.isna(out['rolling_10_onice_save_pct'].iloc[-1])
+
+
+def test_onice_features_need_a_full_window():
+    # Partial windows have even smaller denominators than the floor allows,
+    # so min_periods is the full window: the first 9 rows of a 10-game window
+    # are NaN regardless of shot volume.
+    df = _rolling_frame([0] * 12,
+                        onice_gf=[1] * 12, onice_sf=[20] * 12,
+                        onice_ga=[1] * 12, onice_sa=[20] * 12)
+    out = mlFeatures.buildRollingFeatures(df)
+    assert out['rolling_10_onice_shooting_pct'].iloc[:9].isna().all()
+    assert out['rolling_10_onice_shooting_pct'].iloc[9] == pytest.approx(0.05)
+
+
+def test_onice_gax_is_goals_above_expected_per_game():
+    # 10 games x (2 on-ice goals, 1.0 on-ice xG, 20 shots):
+    # (20 goals - 10.0 xG) / 10 games = +1.0 goals above expected per game.
+    df = _rolling_frame([0] * 10,
+                        onice_gf=[2] * 10, onice_sf=[20] * 10,
+                        onice_xgf=[1.0] * 10,
+                        onice_ga=[0] * 10, onice_sa=[20] * 10)
+    out = mlFeatures.buildRollingFeatures(df)
+    assert out['rolling_10_onice_gax'].iloc[-1] == pytest.approx(1.0)
