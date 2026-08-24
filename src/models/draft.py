@@ -40,13 +40,28 @@ BASE_FEATURE_COLS = [
     'fpPerGame', 'fp_delta', 'fp_w3', 'PP_share', 'hitblock_share',
     'xGoalsSurplus', 'avgIcetime', 'career_games', 'age_at_season_start',
     'highDangerShare', 'avgGameScore',
-    # Deployment (opportunity) and luck (sustainability). onice_sh_luck is a
-    # residual against the player's own baseline -- its standardized Ridge
-    # coefficient MUST come out negative. A positive one means it is acting as
-    # a talent proxy, not a luck proxy, and the feature is wrong.
-    'ppToiShare', 'avgPPIcetime', 'pp_toi_share_delta',
-    'onice_sh_luck', 'oniceGaxPerGame',
 ]
+# DELIBERATELY ABSENT (2026-08-24 gate, both families tested and rejected here):
+#   ppToiShare, avgPPIcetime, pp_toi_share_delta  -- deployment
+#   onice_sh_luck, oniceGaxPerGame                -- luck
+# All five are still COMPUTED (moneypuck.buildPlayerSeasons and
+# features/draft.build_draft_features emit them) so the board and any future
+# experiment can read them. They are not model features because they did not
+# earn it:
+#   * Adding all five moved val Spearman 0.8259 -> 0.8256; deployment alone
+#     moved it 0.8259 -> 0.8244. Ridge Spearman was flat across all three
+#     (0.8213 / 0.8213 / 0.8211) while Ridge MAE improved (0.3287 / 0.3269 /
+#     0.3260) -- they sharpen magnitude, not rank order, and this board ranks.
+#   * onice_sh_luck's standardized Ridge coefficient came out POSITIVE
+#     (+0.0045) when a luck residual must be negative: luck above your own
+#     baseline has to predict a DROP in next-season FP/g. It correlates +0.12
+#     with this-season FP/g and +0.29 with fp_delta, i.e. it cannot separate
+#     "got lucky" from "got better linemates" and acts as a talent proxy.
+#   * PP ice time is largely redundant here: ppToiShare vs avgPPIcetime
+#     Pearson +0.97, vs PP_share +0.88, against features already in the list.
+# PP TOI DID pay off on the pickup/cooling models -- see mlFeatures. The two
+# results are not in conflict; game-level deployment carries information that
+# season-level deployment does not. See PROJECT-PLAN's 2026-08-24 entry.
 
 TRAIN_MAX_SEASON = season.DRAFT_TRAIN_MAX_SEASON
 VAL_SEASONS = season.DRAFT_VAL_SEASONS

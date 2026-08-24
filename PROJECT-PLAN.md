@@ -967,6 +967,78 @@ The draft-side luck residual (`onice_sh_luck`, Tasks 8-10) is a different model
 on a different target with its own gate, and still gets its independent look.
 
 
+**Draft result (2026-08-24): REVERTED (model wiring only; the columns stay computed).**
+
+| Model config | Ridge Spearman | Ridge MAE | XGB Spearman | XGB MAE |
+|---|---|---|---|---|
+| Baseline (11 features) | 0.8213 | 0.3287 | **0.8259** | 0.3277 |
+| + deployment + luck (16) | 0.8213 | 0.3269 | 0.8256 | 0.3270 |
+| + deployment only (14) | 0.8211 | 0.3260 | 0.8244 | **0.3246** |
+| after revert (11) | 0.8213 | 0.3287 | **0.8259** | 0.3277 |
+
+Gate rule (pre-registered): adopt if onice_sh_luck's Ridge coefficient is
+NEGATIVE **and** val Spearman >= 0.8259. Both failed. Baselines A/B unchanged at
+0.7963 / 0.7965; GATE B3 still PASS throughout. The search is fully seeded
+(random_state=42, n_iter=20), so these deltas are real, not search noise.
+
+Prediction 5 (onice_sh_luck negative): **WRONG.** Actual **+0.004450**.
+Prediction 6 (draft val Spearman moves < +0.01): **HELD** (-0.0003).
+
+**Diagnosis: onice_sh_luck is a talent proxy, not a luck residual.** On 8,472
+qualifying rows its raw Spearman is **+0.1195** vs this-season FP/g and
+**+0.0326** vs the next-season target, and it correlates **+0.2893** with
+fp_delta. A luck residual must predict a DROP in next-season FP/g holding this
+season constant. It cannot separate "got lucky" from "got better linemates" --
+and the PP TOI result above showed role changes are real and persistent, so the
+residual absorbs the persistent part. Coverage 88.9%.
+
+**ppToiShare's negative coefficient (-0.0424) was a collinearity artifact, not a
+feature bug.** ppToiShare vs avgPPIcetime Pearson **+0.9661**; in isolation
+ppToiShare's raw Spearman vs target is **+0.6576**, correctly positive. Ridge
+split the near-duplicate pair, giving avgPPIcetime +0.1650 and ppToiShare the
+negative correction. PP_share flipped +0.0151 -> -0.0523 for the same reason
+(correlation +0.8835), which the plan anticipated. fpPerGame stayed strongly
+positive (+0.2071) throughout, so the pre-existing sanity check held.
+
+**Why deployment failed here after passing on pickups.** Ridge Spearman is flat
+across all three configs (0.8213 / 0.8213 / 0.8211) while Ridge MAE improves
+steadily (0.3287 / 0.3269 / 0.3260): the features sharpen MAGNITUDE, not RANK
+ORDER, and this board ranks. At season level PP ice time is largely redundant
+with avgIcetime, PP_share and fpPerGame. Game-level deployment carries
+information season-level deployment does not; the two results do not conflict.
+
+**Eyeball gate -- the decisive finding.** First comparison run was CONFOUNDED and
+is discarded: Task 8 rebuilt player_seasons.csv, and the old Jul-7 file had been
+built from a staler moneypuck_current.csv, so 605 of 733 players gained up to 9
+games. (The val numbers above are unaffected -- the model trains on seasons
+<=2023 and the refresh only touched 2025 rows, confirmed by the post-revert
+retrain reproducing 0.8259 / 0.3277 exactly.) Re-run cleanly, features on vs off
+on identical data, the largest top-30 move was:
+
+  **Brad Marchand, age 38.4, 52 GP at 3.59 FP/g: PROMOTED 21 places, 46 -> 25.**
+
+That is verbatim the case Task 10 Step 4 named as a bug -- "a 38-year-old riding
+one lucky season sitting near the top... onice_sh_luck is specifically supposed
+to DEMOTE that player." It did the opposite on its own canonical example. Other
+notable moves: Dylan Guenther +9, Cutter Gauthier +6, Weegar +6 promoted;
+Heiskanen -9, Holloway -8, Faber -7 demoted. 18 players moved >5 ranks in the
+top 50.
+
+**Resolution.** BASE_FEATURE_COLS restored to the original 11; retrained and
+confirmed the shipped ranker is byte-identical in metrics to the Task 1 baseline
+(0.8213/0.3287 Ridge, 0.8259/0.3277 XGBoost). All five columns are still
+COMPUTED by buildPlayerSeasons and build_draft_features, so the board and any
+future experiment can read them -- a regression test in tests/test_draft_features.py
+pins that they are not model features. season.DRAFT_TEST_SEASON (2024) was never
+touched.
+
+**Net verdict for the whole 2026-08-24 experiment:** deployment features help the
+GAME-LEVEL pickup/cooling models (adopted) and nothing else. The luck family
+(PDO split, on-ice SH% residual) failed independently on both the pickup models
+and the draft ranker, and is rejected. Both negative results are recorded rather
+than re-cut, per methodology (e).
+
+
 ## Resources & References
 - NHLE API (no auth): `https://api-web.nhle.com/v1/` — roster: `/v1/roster/{team}/current`,
   player landing: `/v1/player/{id}/landing`; community docs: https://gitlab.com/dword4/nhlapi

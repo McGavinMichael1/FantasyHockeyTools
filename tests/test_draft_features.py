@@ -72,8 +72,14 @@ def test_luck_residual_keeps_players_separate():
     assert row['onice_sh_luck'] == pytest.approx(0.02)
 
 
-def test_new_draft_features_are_in_the_model_feature_list():
+def test_deployment_and_luck_are_computed_but_not_model_features():
+    # Both families were tested at the 2026-08-24 gate and neither earned a
+    # place: all five moved val Spearman 0.8259 -> 0.8256, deployment alone
+    # 0.8259 -> 0.8244, and onice_sh_luck's Ridge coefficient came out POSITIVE
+    # when a luck residual must be negative. They stay COMPUTED so the board
+    # and future experiments can read them; this test is the tripwire against
+    # wiring them back into the model by reflex.
     from src.models.draft import BASE_FEATURE_COLS
     for col in ['ppToiShare', 'avgPPIcetime', 'pp_toi_share_delta',
                 'onice_sh_luck', 'oniceGaxPerGame']:
-        assert col in BASE_FEATURE_COLS
+        assert col not in BASE_FEATURE_COLS
