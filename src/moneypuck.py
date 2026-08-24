@@ -191,6 +191,13 @@ def buildPlayerSeasons(game_df):
         totalPPAssists=('powerPlayAssists', 'sum'),
         totalSHP=('shorthandedPoints', 'sum'),
         totalFP=('fantasyPoints', 'sum'),
+        totalIcetime=('icetime', 'sum'),
+        totalPPIcetime=('powerPlayIcetime', 'sum'),
+        totalOnIceGoalsFor=('ev_onIce_goalsFor', 'sum'),
+        totalOnIceShotsFor=('ev_onIce_shotsFor', 'sum'),
+        totalOnIceXGoalsFor=('ev_onIce_xGoalsFor', 'sum'),
+        totalOnIceGoalsAgainst=('ev_onIce_goalsAgainst', 'sum'),
+        totalOnIceShotsAgainst=('ev_onIce_shotsAgainst', 'sum'),
     ).reset_index()
 
     summary['fpPerGame'] = summary['totalFP'] / summary['gamesPlayed']
@@ -198,6 +205,30 @@ def buildPlayerSeasons(game_df):
     summary['highDangerShare'] = (
         summary['totalHighDangerShots'] / summary['totalShotsOnGoal'].replace(0, 1)
     )
+
+    # Deployment. ppToiShare is the rate the draft model wants; avgPPIcetime is
+    # the level, kept because a share hides whether 20% of 12 minutes or 20% of
+    # 22 is behind it.
+    summary['ppToiShare'] = (
+        summary['totalPPIcetime'] / summary['totalIcetime'].replace(0, 1))
+    summary['avgPPIcetime'] = (
+        summary['totalPPIcetime'] / summary['gamesPlayed'].replace(0, 1))
+
+    # Luck, at 5on5. Sums over sums, never a mean of per-game rates — see
+    # features/mlFeatures.buildOnIceLuckFeatures for the full argument. A
+    # player with no 5on5 shots gets NaN, not a divide-by-zero.
+    summary['oniceShootingPct'] = (
+        summary['totalOnIceGoalsFor']
+        / summary['totalOnIceShotsFor'].where(summary['totalOnIceShotsFor'] > 0))
+    summary['oniceSavePct'] = 1 - (
+        summary['totalOnIceGoalsAgainst']
+        / summary['totalOnIceShotsAgainst'].where(summary['totalOnIceShotsAgainst'] > 0))
+    # Display/diagnostic only, same as pdo_{window} on the game-log side: the
+    # two halves are what the model sees.
+    summary['pdo'] = summary['oniceShootingPct'] + summary['oniceSavePct']
+    summary['oniceGaxPerGame'] = (
+        (summary['totalOnIceGoalsFor'] - summary['totalOnIceXGoalsFor'])
+        / summary['gamesPlayed'].replace(0, 1))
 
     return summary
 

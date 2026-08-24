@@ -226,3 +226,64 @@ def test_cache_path_is_versioned_so_column_changes_invalidate_it():
     assert moneypuck.GAME_CACHE_VERSION in os.path.basename(path)
     assert path.endswith('.parquet')
     assert moneypuck.gameCachePath(2008) != moneypuck.gameCachePath(2020)
+
+
+def test_build_player_seasons_aggregates_pp_icetime_as_a_share():
+    # 2 games, 1200s total ice time each, 180s of PP each:
+    #   totalPPIcetime = 360, totalIcetime = 2400 -> ppToiShare = 0.15
+    #   avgPPIcetime = 360 / 2 games = 180
+    df = pd.DataFrame([
+        _pickup_row(1, 100, 20251015, icetime=1200),
+        _pickup_row(1, 100, 20251015, situation='5on4', icetime=180),
+        _pickup_row(1, 101, 20251017, icetime=1200),
+        _pickup_row(1, 101, 20251017, situation='5on4', icetime=180),
+    ])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert row['totalPPIcetime'] == 360
+    assert row['totalIcetime'] == 2400
+    assert row['ppToiShare'] == pytest.approx(0.15)
+    assert row['avgPPIcetime'] == pytest.approx(180)
+
+
+def test_build_player_seasons_onice_rates_are_sums_over_sums():
+    # 2 games of 5on5 on-ice counts:
+    #   game 1: 1 GF on 10 SF, 2 GA on 20 SA
+    #   game 2: 3 GF on 30 SF, 1 GA on 20 SA
+    #   SH% = (1+3)/(10+30) = 4/40 = 0.10
+    #   SV% = 1 - (2+1)/(20+20) = 1 - 3/40 = 0.925
+    #   PDO = 1.025
+    df = pd.DataFrame([
+        _pickup_row(1, 100, 20251015),
+        _pickup_row(1, 100, 20251015, situation='5on5', onice_gf=1, onice_sf=10,
+                    onice_ga=2, onice_sa=20),
+        _pickup_row(1, 101, 20251017),
+        _pickup_row(1, 101, 20251017, situation='5on5', onice_gf=3, onice_sf=30,
+                    onice_ga=1, onice_sa=20),
+    ])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert row['oniceShootingPct'] == pytest.approx(0.10)
+    assert row['oniceSavePct'] == pytest.approx(0.925)
+    assert row['pdo'] == pytest.approx(1.025)
+
+
+def test_build_player_seasons_onice_gax_is_per_game():
+    # 2 games, 4 on-ice goals total on 3.0 total on-ice xG:
+    # (4 - 3.0) / 2 games = +0.5 goals above expected per game.
+    df = pd.DataFrame([
+        _pickup_row(1, 100, 20251015),
+        _pickup_row(1, 100, 20251015, situation='5on5', onice_gf=1, onice_sf=10,
+                    onice_xgf=1.5),
+        _pickup_row(1, 101, 20251017),
+        _pickup_row(1, 101, 20251017, situation='5on5', onice_gf=3, onice_sf=10,
+                    onice_xgf=1.5),
+    ])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert row['oniceGaxPerGame'] == pytest.approx(0.5)
+
+
+def test_build_player_seasons_zero_onice_shots_is_nan_not_infinity():
+    # A player with no 5on5 rows must not produce a divide-by-zero rate.
+    df = pd.DataFrame([_pickup_row(1, 100, 20251015)])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert pd.isna(row['oniceShootingPct'])
+    assert pd.isna(row['oniceSavePct'])
