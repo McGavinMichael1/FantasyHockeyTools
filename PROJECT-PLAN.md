@@ -847,6 +847,65 @@ metric.
 
 ---
 
+**PP TOI result (2026-08-24): ADOPTED.**
+
+| Metric | Baseline | With PP TOI |
+|---|---|---|
+| Pickup val Spearman | 0.6214 | **0.6249** |
+| Pickup val AUC vs is_heating_up | 0.8465 | **0.8494** |
+| Cooling val Spearman | 0.6063 | **0.6072** |
+| Cooling val AUC-equiv | 0.7673 | 0.7667 |
+| Spot-check top-15 per date | 67/60/47/53/47 (mean 54.8%) | **73/67/47/47/47 (mean 56.2%)** |
+| Simulated adds (25) | 60% hit, 2.83 FP/g | 60% hit, **2.96 FP/g** |
+
+Gate rule (pre-registered): spot-check top-15 mean >= 55% AND simulated-adds hit
+rate >= 60%. Both met (56.2%, 60%). Chaser baseline unchanged at 40% / 2.35.
+
+The baseline row was RECONSTRUCTED, not assumed: the plan's Task 1 captured only
+the draft numbers, so mlFeatures.py was checked out at the pre-feature commit,
+retrained and spot-checked. It reproduced fht-quality-gates' documented figures
+to four decimals (0.6214/0.8465, 0.6063/0.7673, 67/60/47/53/47, 60%/2.83), which
+is what makes the comparison above attributable.
+
+Prediction 1 said pickup spot-check top-15 mean 58-63%, cooling flat. Actual
+56.2% and cooling flat: **direction right, magnitude short.** Two dates gained
+(+6, +7), one lost (-6), two unchanged. Recorded as-is.
+
+Prediction 4 (rolling_delta_5_20_pp_toi_share outranks rolling_5_powerPlayIcetime)
+is **WRONG, and informatively so.** Of 49 features:
+
+- rolling_20_powerPlayIcetime  rank **3**  (0.0960) -- 3rd most important overall
+- rolling_10_powerPlayIcetime  rank 4   (0.0460)
+- rolling_5_powerPlayIcetime   rank 7   (0.0215)
+- rolling_20_pp_toi_share      rank 9   (0.0136)
+- rolling_delta_5_20_pp_toi_share      rank **44** (0.0029)
+- rolling_delta_5_20_powerPlayIcetime  rank **46** (0.0026)
+
+The PP-TOI **level** carries the signal; the 5-vs-20 trend delta is near the
+bottom of the list. The spec's core argument for the delta ("only rolling_5 minus
+rolling_20 expresses a promotion") is not supported by the fitted model. The
+deltas are kept -- they cost nothing and the gate passed -- but the deployment
+gain is a level effect, and any future work should not assume otherwise.
+
+Eyeball gate, Darren Raddysh (the PP1-promotion case PP TOI was built for):
+
+| Date | Baseline | With PP TOI |
+|---|---|---|
+| 2025-11-01 | FA rank **238**/449, ml 1.467 | FA rank **285**/449, ml 1.370 |
+| 2025-12-01 | proxy #132, ml 2.679 | proxy #132, ml 2.679 |
+| 2026-01-01 | proxy #60, ml 3.248 | proxy #60, ml 3.261 |
+| 2026-02-01 | proxy #35, ml 3.245 | proxy #35, ml **3.391** |
+| 2026-03-01 | proxy #25, ml 3.628 | proxy #25, ml **3.914** |
+
+**The one date where it mattered got worse.** Nov 1 is the only date Raddysh is
+actually in the free-agent pool, and PP TOI moved him DOWN 47 places. The score
+gains all land from January on, once the 20-game window has accumulated PP1
+minutes he was already converting into points -- i.e. the feature confirms a
+breakout after the fact rather than catching it early. That is the opposite of
+the mechanism the spec argued for, and it is consistent with prediction 4 failing.
+Recorded, not re-cut. Aggregate gate passed on its pre-registered terms.
+
+
 ## Resources & References
 - NHLE API (no auth): `https://api-web.nhle.com/v1/` — roster: `/v1/roster/{team}/current`,
   player landing: `/v1/player/{id}/landing`; community docs: https://gitlab.com/dword4/nhlapi
