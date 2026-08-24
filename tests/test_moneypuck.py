@@ -196,3 +196,21 @@ def test_build_pickup_stats_keeps_players_separate():
     assert result.loc[2, 'position'] == 'D'
     # FP: player 2 = 0.15*4 + 0.35*3 = 1.65
     assert result.loc[2, 'fantasyPoints'] == pytest.approx(1.65)
+
+
+def test_game_columns_include_the_on_ice_pdo_ingredients():
+    # PDO needs on-ice goals and shots, for and against, plus the xGoals
+    # denominator for the shot-quality-adjusted version.
+    for col in ['OnIce_F_goals', 'OnIce_F_shotsOnGoal', 'OnIce_F_xGoals',
+                'OnIce_A_goals', 'OnIce_A_shotsOnGoal']:
+        assert col in moneypuck.GAME_COLUMNS
+
+
+def test_cache_path_is_versioned_so_column_changes_invalidate_it():
+    # A cache written with an older GAME_COLUMNS must not be served to code
+    # expecting the newer set. The version tag in the filename is what makes
+    # that impossible rather than merely unlikely.
+    path = moneypuck.gameCachePath(2020)
+    assert moneypuck.GAME_CACHE_VERSION in os.path.basename(path)
+    assert path.endswith('.parquet')
+    assert moneypuck.gameCachePath(2008) != moneypuck.gameCachePath(2020)
