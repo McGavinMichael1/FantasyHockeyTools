@@ -803,6 +803,50 @@ the net values, from −78…−115 to +60…+85. Suite: 174 pytest, 59 frontend
 
 ---
 
+### 2026-08-24 — Deployment and luck features (pre-registration)
+
+Predictions written BEFORE training, per fht-research-frontier methodology (a).
+Plan: docs/superpowers/plans/2026-08-24-deployment-and-luck-features.md
+Spec: docs/superpowers/specs/2026-08-24-deployment-and-luck-features-design.md
+
+Baselines to beat:
+- Pickup val Spearman 0.6214 / AUC-equiv 0.8465
+- Cooling val Spearman 0.6063 / AUC-equiv 0.7673
+- Spot-check top-15 per date 67/60/47/53/47 (mean 55%); 25 sim adds 60% hit,
+  2.83 FP/g vs chaser 40% / 2.35 FP/g
+- Draft Baseline A val Spearman 0.7963 (MAE 0.3686), Baseline B 0.7965
+  (MAE 0.3537), Ridge 0.8213 (MAE 0.3287), current XGBoost 0.8259
+  (MAE 0.3277), gate verdict GATE B3 PASS (XGBoost beats both baselines).
+  Captured 2026-08-24 on 7723 train rows (<=2021) / 1206 val rows (2022-2023).
+  Baseline Ridge coefficient order, for the Task 10 sign comparison:
+  age -0.1432, pos_D -0.0613, highDangerShare -0.0288, xGoalsSurplus -0.0174,
+  fp_delta -0.0079, PP_share +0.0151, pos_C +0.0218, pos_R +0.0243,
+  pos_L +0.0254, career_games +0.0344, hitblock_share +0.0502,
+  avgIcetime +0.0884, avgGameScore +0.1534, fpPerGame +0.1854, fp_w3 +0.2874.
+
+Predictions:
+1. PP TOI helps the PICKUP model more than cooling. Expect pickup spot-check
+   top-15 mean +3 to +8 points (55% -> 58-63%); cooling roughly flat.
+2. PDO helps the COOLING model more than pickups. Cooling is the weaker model
+   and "running hot, due to regress" is exactly what an on-ice shooting-%
+   residual measures. Expect cooling val Spearman +0.01 to +0.03; pickup
+   spot-check within noise of whatever PP TOI leaves it at.
+3. On-ice SAVE % lands in the bottom half of reports/pickup_feature_importance.png.
+   It reaches fantasy points only through plus/minus, which moneypuckGamePoints
+   does not compute.
+4. rolling_delta_5_20_pp_toi_share outranks rolling_5_powerPlayIcetime in
+   feature importance -- the promotion is the signal, not the level.
+5. Draft: onice_sh_luck's standardized Ridge coefficient is NEGATIVE. A positive
+   one means the residual is acting as a talent proxy and the feature is wrong.
+6. Draft val Spearman moves by less than +0.01. Season-level luck residuals are
+   a small correction to a target already dominated by fpPerGame; a large jump
+   would be more suspicious than encouraging.
+
+If a prediction is wrong, that is a recorded result, not a reason to re-cut the
+metric.
+
+---
+
 ## Resources & References
 - NHLE API (no auth): `https://api-web.nhle.com/v1/` — roster: `/v1/roster/{team}/current`,
   player landing: `/v1/player/{id}/landing`; community docs: https://gitlab.com/dword4/nhlapi
