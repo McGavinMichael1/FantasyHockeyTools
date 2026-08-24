@@ -108,8 +108,14 @@ def test_missing_sources_still_error_when_there_is_no_cache(tmp_path):
 
 def _pickup_row(playerId, gameId, gameDate, situation='all', season=2025,
                 name='Player One', position='C', icetime=1200,
-                goals=0, pA=0, sA=0, sog=0, hits=0, blocks=0, points=0):
-    """Minimal full-situation game-log row for buildPickupStats tests."""
+                goals=0, pA=0, sA=0, sog=0, hits=0, blocks=0, points=0,
+                onice_gf=0, onice_sf=0, onice_xgf=0.0,
+                onice_ga=0, onice_sa=0, gameScore=0.0, xGoals=0.0,
+                highDangerShots=0, corsi=50.0, fenwick=50.0):
+    """Minimal full-situation game-log row for buildPickupStats and
+    buildPlayerSeasons tests. Carries every column those two aggregate --
+    buildPlayerSeasons reads more of GAME_COLUMNS than buildPickupStats does.
+    """
     return {
         'playerId': playerId, 'gameId': gameId, 'gameDate': gameDate,
         'season': season, 'name': name, 'position': position,
@@ -118,6 +124,12 @@ def _pickup_row(playerId, gameId, gameDate, situation='all', season=2025,
         'I_F_secondaryAssists': sA, 'I_F_shotsOnGoal': sog,
         'I_F_hits': hits, 'shotsBlockedByPlayer': blocks,
         'I_F_points': points,
+        'gameScore': gameScore, 'I_F_xGoals': xGoals,
+        'I_F_highDangerShots': highDangerShots,
+        'onIce_corsiPercentage': corsi, 'onIce_fenwickPercentage': fenwick,
+        'OnIce_F_goals': onice_gf, 'OnIce_F_shotsOnGoal': onice_sf,
+        'OnIce_F_xGoals': onice_xgf, 'OnIce_A_goals': onice_ga,
+        'OnIce_A_shotsOnGoal': onice_sa,
     }
 
 
