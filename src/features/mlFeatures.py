@@ -14,16 +14,33 @@ def loadMoneyPuckData():
     moneyPuckData['ozone_start_pct'] = moneyPuckData['I_F_oZoneShiftStarts'] / ((moneyPuckData['I_F_oZoneShiftStarts'] + moneyPuckData['I_F_dZoneShiftStarts']).replace(0, 1))
     moneyPuckData['xgoals_surplus'] = moneyPuckData['I_F_goals'] - moneyPuckData['I_F_xGoals']
     moneyPuckData['high_danger_rate'] = moneyPuckData['I_F_highDangerShots'] / moneyPuckData['I_F_shotsOnGoal'].replace(0, 1)
+    # Share of total ice time spent on the power play. A rate, not a level: a
+    # 4th-liner with 1:30 of PP time is a different signal from a 1st-liner
+    # with the same 1:30. Both are kept as features; the model picks.
+    moneyPuckData['pp_toi_share'] = (
+        moneyPuckData['powerPlayIcetime'] / moneyPuckData['icetime'].replace(0, 1))
     position_mapping = {'C': 0, 'L': 1, 'R': 2, 'D': 3}
     moneyPuckData['position_encoded'] = moneyPuckData['position'].map(position_mapping)
     return moneyPuckData
 
+# Stats whose 5-vs-20-game gap is itself a signal. A rolling level cannot tell
+# "has always been a PP1 guy" apart from "was promoted three games ago", and
+# only the second is a breakout signal -- the Raddysh case in
+# backtest.KNOWN_PICKUPS is exactly this.
+TREND_DELTA_STATS = ['game_fantasy_points', 'icetime',
+                     'powerPlayIcetime', 'pp_toi_share']
+
+
 def buildRollingFeatures(df, windows=[5, 10, 20]):
-    all_window_stats = ['I_F_goals', 'I_F_primaryAssists', 'I_F_secondaryAssists', 'I_F_xGoals', 'I_F_shotsOnGoal', 'game_fantasy_points', 'gameScore', 'ozone_start_pct', 'xgoals_surplus', 'high_danger_rate'] # all windows
+    # icetime moved here from role_stats so its 20-game window exists for the
+    # trend delta; the 5- and 10-game columns are unchanged.
+    all_window_stats = ['I_F_goals', 'I_F_primaryAssists', 'I_F_secondaryAssists',
+                        'I_F_xGoals', 'I_F_shotsOnGoal', 'game_fantasy_points',
+                        'gameScore', 'ozone_start_pct', 'xgoals_surplus',
+                        'high_danger_rate', 'icetime',
+                        'powerPlayIcetime', 'pp_toi_share'] # all windows
 
     possession_stats = ['onIce_corsiPercentage', 'onIce_fenwickPercentage'] #10, 20 only
-
-    role_stats = ['icetime'] # 5, 10 only
 
     for window in windows:
         for stat in all_window_stats:
@@ -31,9 +48,15 @@ def buildRollingFeatures(df, windows=[5, 10, 20]):
         if window >= 10:
             for stat in possession_stats:
                 df[f'rolling_{window}_{stat}'] = (df.groupby('playerId')[stat].transform(lambda x: x.rolling(window, min_periods=1).mean()))
-        if window <= 10:
-            for stat in role_stats:
-                df[f'rolling_{window}_{stat}'] = (df.groupby('playerId')[stat].transform(lambda x: x.rolling(window, min_periods=1).mean()))
+
+    # Trend deltas: recent form minus the longer baseline. Only computed when
+    # both windows were actually built -- a silent per-stat skip would hide a
+    # missing feature, so this guards once, explicitly.
+    if {5, 20} <= set(windows):
+        for stat in TREND_DELTA_STATS:
+            df[f'rolling_delta_5_20_{stat}'] = (
+                df[f'rolling_5_{stat}'] - df[f'rolling_20_{stat}'])
+
     # After the rolling windows loop
     df['season_avg_so_far'] = (
         df.groupby(['playerId', 'season'])['game_fantasy_points']
