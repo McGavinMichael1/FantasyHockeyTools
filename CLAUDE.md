@@ -41,7 +41,8 @@ https://moneypuck.com/data.htm. See `fht-operations` for the full runbook.
 ## Architecture at a glance
 
 ```
-MoneyPuck CSVs  -> src/moneypuck.py (all MoneyPuck IO; processed caches are Parquet)
+MoneyPuck CSVs  -> src/moneypuck.py (all MoneyPuck IO; processed caches are
+                   version-tagged Parquet: moneypuck_games_v2_{season}.parquet)
 NHL API         -> src/nhlAPI.py, src/dataProcessing.py (identity/birthDate/roster only)
 Yahoo API       -> src/yahooAPI.py (optional roster filtering)
                 -> src/fantasyPoints.py (SKATER_WEIGHTS + GOALIE_WEIGHTS — scoring source of truth)
@@ -110,6 +111,28 @@ Full rationale and file:line citations: `fht-architecture-contract`.
   caps) and reports `lineup_fp` alongside `total_fp`. Replacement ranks are also demand-aware
   (`10 × slots − keepers at that position`). 2025 sweep went −6.48% → −2.84% (all-picks) with all
   10 rosters legal, up from 0 of 10 — directional only, the held-out look was already spent.
+- **Deployment features shipped for pickups; the luck family was tested and rejected**
+  (2026-08-24). PP ice time (`powerPlayIcetime` from the `5on4` row, plus `pp_toi_share`) is
+  now a pickup/cooling feature: val Spearman 0.6214 → 0.6249, spot-check top-15 mean 54.8% →
+  56.2%, gate passed. Two recorded surprises: the **level** carries the signal, not the
+  5-vs-20 delta (`rolling_20_powerPlayIcetime` ranks 3rd of 49 features,
+  `rolling_delta_5_20_pp_toi_share` ranks 44th), and on the canonical Raddysh case it helps
+  only *after* the breakout — at the one date he is a real free agent it moved him DOWN 47
+  places. Split PDO (on-ice SH%/SV%/gax) **failed its gate and was reverted** (spot-check
+  56.2% → 53.4%, simulated adds 60% → 56%), and **both** families were rejected for the draft
+  ranker (val Spearman 0.8259 → 0.8244/0.8256); `onice_sh_luck`'s Ridge coefficient came out
+  positive when a luck residual must be negative, and it promoted 38-year-old Brad Marchand 21
+  places — the player class it was designed to demote. The statistics were verified correct
+  first (league mean PDO 0.9995), so these are real negative results. Season-level columns
+  (`ppToiShare`, `avgPPIcetime`, `oniceShootingPct`, `oniceSavePct`, `pdo`, `oniceGaxPerGame`)
+  are still **computed** in `player_seasons.csv` for the board and future work — a test pins
+  that they are not draft model features. Full numbers: PROJECT-PLAN Learning Log 2026-08-24.
+- **The game-log cache filename is versioned** (`moneypuck.GAME_CACHE_VERSION`, now `v2`).
+  `loadGameLogs` prefers a fresh-looking cache over the raw CSVs, so widening `GAME_COLUMNS`
+  without bumping the tag would serve a stale-schema cache and fail downstream with a
+  `KeyError` that looks like a code bug. A fresh clone now builds
+  `data/processed/moneypuck_games_v2_{min_season}.parquet`; bump the tag whenever
+  `GAME_COLUMNS` changes.
 - ~~Season constants duplicated across files~~ — fixed July 2026: `src/season.py` owns `CURRENT_SEASON` and derives every split boundary, spot-check date, season label and headshot season id from it. Rollover is a one-line edit there, and `tests/test_season.py` pins the derived values so a silent shift fails loudly. `backtest.KNOWN_PICKUPS` still needs hand re-curation each season — it cannot be derived.
 
 ## Testing

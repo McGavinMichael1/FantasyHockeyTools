@@ -1054,7 +1054,28 @@ shipped July 15–20, 2026). The draft board, keeper analyzer, goalie ranker, li
 and mock-draft backtest are all in. What is left before the October 2026 draft is correctness work
 on what shipped, not new surface area.
 
-**Last session (2026-07-20, branch `feat/mock-draft-multi-team`, PR #14):** swept the mock draft
+**Last session (2026-08-24, branch `feat/deployment-luck-features`):** ran the deployment and
+luck feature experiment end to end, three pre-registered gates, one adopted and two rejected.
+**PP ice time is now a pickup/cooling feature** (val Spearman 0.6214 -> 0.6249, spot-check top-15
+mean 54.8% -> 56.2%). **Split PDO failed its gate and was reverted**, and **both families were
+rejected for the draft ranker** (val Spearman 0.8259 -> 0.8244/0.8256, and `onice_sh_luck`'s Ridge
+coefficient came out positive when a luck residual must be negative). Also landed as
+infrastructure: five `OnIce_*` columns in `GAME_COLUMNS`, a version-tagged game-log cache
+(`moneypuck_games_v2_*.parquet`) so a widened column set can never be served a stale-schema cache,
+and season-level deployment/luck aggregates in `player_seasons.csv` (rebuilt — it had been built
+Jul 7 from a staler current-season CSV, so 605 of 733 players gained up to 9 games). Two findings
+worth carrying forward: the PP-TOI **level** carries the signal, not the 5-vs-20 delta (ranks 3rd
+vs 44th of 49 features), and the feature confirms a breakout late rather than catching it early
+(Raddysh moved DOWN 47 places at the one date he is a real free agent). Full numbers in the
+Learning Log; `fht-research-frontier` item 2 marked SHIPPED (PARTIAL).
+
+**Frontend export is STALE and needs a manual run:** `api_export.py` was deliberately not run this
+session (it can block on Yahoo OAuth waiting on stdin, which a non-interactive session cannot
+answer). `data/processed/frontend_data.json` therefore predates the retrained pickup model and the
+rebuilt `player_seasons.csv`. Run `.\.venv\Scripts\python.exe api_export.py` interactively
+before trusting the Next.js board.
+
+**Prior session (2026-07-20, branch `feat/mock-draft-multi-team`, PR #14):** swept the mock draft
 across all ten managers, which exposed that the board drafted **zero centers in 140 picks** and
 produced rosters that could not be legally fielded. Fixed with positional floors, keeper-aware
 floors and caps, demand-aware replacement ranks, and startable-lineup grading. Also fixed a unit
