@@ -906,6 +906,67 @@ the mechanism the spec argued for, and it is consistent with prediction 4 failin
 Recorded, not re-cut. Aggregate gate passed on its pre-registered terms.
 
 
+**PDO result (2026-08-24): REVERTED.** Commit 82257b4 reverted by 07594ce.
+
+| Metric | Original | PP TOI (adopted) | + PDO | Gate needs |
+|---|---|---|---|---|
+| Pickup val Spearman | 0.6214 | 0.6249 | 0.6233 | -- |
+| Pickup val AUC | 0.8465 | 0.8494 | 0.8488 | -- |
+| Cooling val Spearman | 0.6063 | 0.6072 | 0.6066 | +0.01 to +0.03 predicted |
+| Cooling val AUC-equiv | 0.7673 | 0.7667 | 0.7662 | -- |
+| Spot-check per date | 67/60/47/53/47 (54.8%) | 73/67/47/47/47 (56.2%) | 73/67/47/**33**/47 (**53.4%**) | >= 56.2% FAIL |
+| Simulated adds hit | 60% | 60% | **56%** | >= 60% FAIL |
+| Simulated adds FP/g | 2.83 | 2.96 | 2.87 | -- |
+
+Gate failed on BOTH pre-registered criteria. PDO made every metric worse than PP
+TOI alone; the spot-check loss is concentrated on 2026-02-01 (47% -> 33%).
+
+**This is a real negative result, not a computation bug.** Verified against
+hockey reality on 238,938 player-games before reverting:
+league mean on-ice SH% 0.0869 (expected 0.07-0.09), on-ice SV% 0.9127 (expected
+0.91-0.93), and **mean PDO 0.9995** -- PDO's defining property is 1.00 by
+construction, so the halves are computed correctly. Mean on-ice gax -0.0039.
+The sums-over-sums rule (spec 3.1) was followed; the statistic is right and it
+simply does not help these models on the product metric.
+
+Prediction 2 (cooling val Spearman +0.01 to +0.03): **WRONG.** Actual -0.0006.
+The pre-registered expectation that cooling was where this would pay -- "running
+hot, due to regress is literally what an on-ice shooting-percentage residual
+measures" -- did not survive contact with the data.
+
+Prediction 3 (on-ice SAVE % lands in the bottom half of feature importance):
+**WRONG, and wrong in the direction the plan flagged as suspicious.** Of 56
+features, on-ice save % was the TOP-ranked luck feature in both models:
+
+| Feature | Pickup rank | Cooling rank |
+|---|---|---|
+| rolling_20_onice_save_pct | **13/56** | **15/56** |
+| rolling_10_onice_save_pct | 24/56 | 18/56 |
+| rolling_10_onice_gax | 21/56 | 20/56 |
+| rolling_20_onice_shooting_pct | 31/56 | 29/56 |
+| rolling_10_onice_shooting_pct | **48/56** | 30/56 |
+
+On-ice shooting % -- which the spec called "the genuinely new information" --
+sat in the bottom half of both models, while on-ice save % -- which the spec
+called "near-dead weight" -- outranked it. Save % has no path to fantasy points
+in this league's scoring (`moneypuckGamePoints` does not compute plus/minus), so
+a model leaning on it is learning **team quality**, not luck. That is precisely
+the confound the split was designed to avoid, and it argues the luck family as
+specified is not measuring what the spec claims.
+
+Secondary finding: coverage is thin at the short window. The 60-shot floor plus
+`min_periods=window` left `rolling_10_onice_shooting_pct` non-null on only
+**56.8%** of rows (89.4% at window 20). Nearly half that column was NaN.
+
+Per the pre-registered rule, NO hyperparameter tuning was attempted in response
+(that is research-frontier item 1, a separate experiment). Retrained after the
+revert and confirmed the models return exactly to the PP TOI state: pickup
+0.6249 / 0.8494, cooling 0.6072 / 0.7667, 49 features.
+
+The draft-side luck residual (`onice_sh_luck`, Tasks 8-10) is a different model
+on a different target with its own gate, and still gets its independent look.
+
+
 ## Resources & References
 - NHLE API (no auth): `https://api-web.nhle.com/v1/` — roster: `/v1/roster/{team}/current`,
   player landing: `/v1/player/{id}/landing`; community docs: https://gitlab.com/dword4/nhlapi
