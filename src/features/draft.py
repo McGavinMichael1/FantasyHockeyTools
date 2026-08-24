@@ -43,6 +43,26 @@ def build_draft_features(player_seasons) -> pd.DataFrame:
                g['fpPerGame'].shift(2) * 0.2], axis=1)
     weights_present = w.notna().mul([0.5, 0.3, 0.2]).sum(axis=1)
     sorted_player_seasons['fp_w3'] = w.sum(axis=1) / weights_present
+
+    # Deployment: PP ice-time share is the strongest role signal available.
+    # ppToiShare rides through from player_seasons as-is (this row's own
+    # concluded season); the delta is the backward-looking role change.
+    # Note this is deliberately distinct from PP_share above: that is PP
+    # OUTPUT (fantasy points earned on the PP), this is PP OPPORTUNITY (time).
+    # They will correlate; check the Ridge coefficients for one flipping sign.
+    sorted_player_seasons['pp_toi_share_delta'] = g['ppToiShare'].diff()
+
+    # Luck as a RESIDUAL, not a level. The model's strongest input is this
+    # season's fpPerGame; on-ice shooting %'s entire marginal contribution is
+    # telling the model that number was inflated, which a raw rate cannot say.
+    # Deviation from the player's own prior 3 seasons rather than the league
+    # mean: on-ice SH% has a real talent component and only the transient part
+    # regresses. First season -> NaN, same as fp_delta, and correct.
+    prior_onice_sh = g['oniceShootingPct'].transform(
+        lambda s: s.shift(1).rolling(3, min_periods=1).mean())
+    sorted_player_seasons['onice_sh_luck'] = (
+        sorted_player_seasons['oniceShootingPct'] - prior_onice_sh)
+
     # target only (training rows only)
     next_season = g['season'].shift(-1)
     sorted_player_seasons['target_fpPerGame'] = g['fpPerGame'].shift(-1).where(

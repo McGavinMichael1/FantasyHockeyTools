@@ -40,6 +40,12 @@ BASE_FEATURE_COLS = [
     'fpPerGame', 'fp_delta', 'fp_w3', 'PP_share', 'hitblock_share',
     'xGoalsSurplus', 'avgIcetime', 'career_games', 'age_at_season_start',
     'highDangerShare', 'avgGameScore',
+    # Deployment (opportunity) and luck (sustainability). onice_sh_luck is a
+    # residual against the player's own baseline -- its standardized Ridge
+    # coefficient MUST come out negative. A positive one means it is acting as
+    # a talent proxy, not a luck proxy, and the feature is wrong.
+    'ppToiShare', 'avgPPIcetime', 'pp_toi_share_delta',
+    'onice_sh_luck', 'oniceGaxPerGame',
 ]
 
 TRAIN_MAX_SEASON = season.DRAFT_TRAIN_MAX_SEASON
