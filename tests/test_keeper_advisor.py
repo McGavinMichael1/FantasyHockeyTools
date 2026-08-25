@@ -128,7 +128,12 @@ def test_context_serializes_only_stable_yahoo_settings():
     yahoo = context["league"]["yahoo_snapshot"]
     assert yahoo["league_key"] == "nhl.l.33072"
     assert "current_week" not in yahoo
-    assert context["league"]["keeper_tenure"] == "unknown"
+    # Answered 2026-08-24: keepers may be held in consecutive seasons, paying
+    # your final four picks each year. The horizon constants ride along so the
+    # advisor never hardcodes its own 5 and 0.88.
+    assert context["league"]["keeper_tenure"] == "multi_year_annual_cost"
+    assert context["league"]["horizon_years"] == 5
+    assert context["league"]["discount_rate"] == 0.88
 
 
 def test_write_context_is_json_and_creates_parent(tmp_path):
@@ -187,3 +192,73 @@ def test_write_context_atomically_replaces_an_existing_target(tmp_path):
 
     assert json.loads(target.read_text(encoding="utf-8")) == context
     assert not target.with_suffix(target.suffix + ".tmp").exists()
+
+
+# --- keeper horizon: the advisor must not argue against its own board -----
+
+_FLAT_AGE = {age: 1.0 for age in range(20, 41)}
+_STEP_SURVIVAL = {age: (1.0 if age <= 28 else 0.5) for age in range(20, 41)}
+_CURVES = {
+    "skater": {"age": _FLAT_AGE, "survival": _STEP_SURVIVAL},
+    "goalie": {"age": _FLAT_AGE, "survival": _STEP_SURVIVAL},
+}
+
+
+def _horizon_context():
+    board, _, skaters, goalies = _rankings_and_histories()
+    roster = [
+        {"name": "D Player 1", "player_id": "y1", "eligible_positions": ["D"]},
+        {"name": "C Player 1", "player_id": "y2", "eligible_positions": ["C"]},
+        {"name": "L Player 1", "player_id": "y3", "eligible_positions": ["LW"]},
+        {"name": "R Player 1", "player_id": "y4", "eligible_positions": ["RW"]},
+        {"name": "G Player 1", "player_id": "y5", "eligible_positions": ["G"]},
+    ]
+    rankings = keeper.analyze_keepers(roster, board, horizon_curves=_CURVES)
+    rankings["target_season"] = "2026-27"
+    context = keeper_advisor.build_context(
+        rankings, board, skater_history=skaters, goalie_history=goalies,
+        yahoo_settings={"league_key": "nhl.l.33072"},
+        generated_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+    )
+    return rankings, context
+
+
+def test_advisor_carries_the_horizon_columns_for_every_matched_player():
+    _, context = _horizon_context()
+    matched = [player for player in context["roster"]
+               if player["match_status"] == "matched"]
+
+    assert matched
+    for player in matched:
+        assert player["horizon_keeper_value"] is not None
+        assert player["horizon_multiplier"] is not None
+
+
+def test_scenario_order_matches_the_boards_recommendation_order():
+    # keeper_advisor._scenario_sets is a SECOND implementation of the board's
+    # ranking rule. If it drifts, the scenario table contradicts the official
+    # four -- the advisor arguing against the board it is summarizing.
+    rankings, context = _horizon_context()
+    # scenario players are keyed by the board's playerId, not the Yahoo id.
+    official = (rankings[rankings["is_recommended"]]
+                .sort_values("keeper_rank")["playerId"].tolist())
+
+    full_set = [scenario for scenario in context["scenario_data"]["sets"]
+                if sorted(scenario["player_ids"]) == sorted(official)]
+    assert full_set, "the recommended four should appear as a scenario"
+    assert [player["player_id"] for player in full_set[0]["players"]] == official
+
+
+def test_scenario_horizon_value_is_not_cost_charged_twice():
+    # keeperHorizon already subtracts the annual pick cost inside every year of
+    # the sum. Re-subtracting pick_cost here would be the "keep nobody" unit bug
+    # a second time, in a second module.
+    rankings, context = _horizon_context()
+    by_id = rankings.set_index("playerId")["horizon_keeper_value"]
+
+    for scenario in context["scenario_data"]["sets"]:
+        for player in scenario["players"]:
+            assert player["horizon_keeper_value"] == pytest.approx(
+                float(by_id.loc[player["player_id"]]))
+        assert scenario["total_horizon_keeper_value"] == pytest.approx(
+            sum(player["horizon_keeper_value"] for player in scenario["players"]))

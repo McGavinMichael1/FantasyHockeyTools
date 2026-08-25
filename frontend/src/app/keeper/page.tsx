@@ -5,6 +5,13 @@ import Link from 'next/link';
 import type { KeeperRecommendation, KeeperSection } from '@/types/player';
 import { Headshot, PositionChip, ScoreMeter } from '@/components/rink/bits';
 import { KeeperAdvisor } from '@/components/keeper/KeeperAdvisor';
+import {
+  HORIZON_LABEL,
+  fadeSummary,
+  formatHorizonValue,
+  horizonSummary,
+  yearWeights,
+} from '@/lib/keeperHorizon';
 import styles from './page.module.css';
 
 interface ApiResponse {
@@ -13,6 +20,8 @@ interface ApiResponse {
 }
 
 function KeeperCard({ player }: { player: KeeperRecommendation }) {
+  const horizon = horizonSummary(player);
+  const weights = horizon ? yearWeights(horizon.years) : [];
   return (
     <article className={styles.card}>
       <div className={styles.cardTopline}>
@@ -31,11 +40,48 @@ function KeeperCard({ player }: { player: KeeperRecommendation }) {
         </div>
       </div>
 
-      <div className={styles.valueBlock}>
-        <span>Net keeper value</span>
-        <strong>+{player.net_keeper_value.toFixed(1)}</strong>
-        <small>{player.raw_keeper_value.toFixed(1)} above replacement &minus; {player.pick_cost.toFixed(1)} pick cost</small>
-      </div>
+      {horizon ? (
+        <>
+          <div className={styles.valueBlock}>
+            <span>{HORIZON_LABEL}</span>
+            <strong>{formatHorizonValue(horizon.value)}</strong>
+            <small>{horizon.caption}</small>
+          </div>
+
+          {horizon.years.length > 0 && (
+            <div className={styles.horizon}>
+              <div className={styles.horizonBars}>
+                {horizon.years.map((entry, index) => (
+                  <div key={entry.year} className={styles.horizonYear}>
+                    <div
+                      className={styles.horizonBar}
+                      style={{ height: `${Math.round(weights[index] * 100)}%` }}
+                      title={`Year ${entry.year}: ${entry.value.toFixed(1)} (${Math.round(entry.survival * 100)}% still playing)`}
+                    />
+                    <span>{entry.year}</span>
+                  </div>
+                ))}
+              </div>
+              <small>{fadeSummary(horizon.years)}</small>
+            </div>
+          )}
+
+          <div className={styles.nextSeason}>
+            <span>Next season only</span>
+            <strong>+{player.net_keeper_value.toFixed(1)}</strong>
+            <small>
+              {player.raw_keeper_value.toFixed(1)} above replacement &minus;{' '}
+              {player.pick_cost.toFixed(1)} pick cost
+            </small>
+          </div>
+        </>
+      ) : (
+        <div className={styles.valueBlock}>
+          <span>Net keeper value</span>
+          <strong>+{player.net_keeper_value.toFixed(1)}</strong>
+          <small>{player.raw_keeper_value.toFixed(1)} above replacement &minus; {player.pick_cost.toFixed(1)} pick cost</small>
+        </div>
+      )}
 
       <dl className={styles.stats}>
         <div>

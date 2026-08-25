@@ -1038,6 +1038,319 @@ GAME-LEVEL pickup/cooling models (adopted) and nothing else. The luck family
 and the draft ranker, and is rejected. Both negative results are recorded rather
 than re-cut, per methodology (e).
 
+---
+
+### 2026-08-24 — Keeper horizon (pre-registration)
+
+Predictions and expected effects written BEFORE any curve code exists, per
+fht-research-frontier methodology (a).
+Plan: docs/superpowers/plans/2026-08-24-keeper-horizon.md
+Spec: docs/superpowers/specs/2026-08-24-keeper-horizon-design.md
+
+**The problem.** `keeper.analyze_keepers` ranks by `net_keeper_value`, a
+single-season number, while the league rule is multi-year — you may keep the
+same player in consecutive seasons, paying your final four picks each year. The
+symptom: the board prefers Panarin (34) to Johnston / Guenther (23), which is
+correct for next season alone and plausibly wrong for a five-year hold.
+
+**Baseline to move (2026-08-24):** pytest 213 passed / 0 failed; frontend 133
+unit tests. Current keeper recommendation on the live board is Fox /
+Hellebuyck / Panarin / Shesterkin (recorded 2026-07-20; re-capture before
+G-FLIP, since the pickup model and player_seasons.csv have both been rebuilt
+since).
+
+**Measured inputs (verified 2026-08-24, read-only, recorded in the spec).**
+player_seasons.csv: 16,271 rows, seasons 2008–2025, 9,525 age-curve pairs
+(≥20 GP in both seasons). goalie_seasons.csv: 1,702 rows, 738 pairs. Skater
+ratio crosses 1.0 at age ~24 and declines after; survival sits flat near 0.85
+through 31 then falls off a cliff (0.778 at 34, 0.688 at 35, 0.529 at 38).
+**The survival term, not the production term, is what separates a 34-year-old
+from a 23-year-old.**
+
+**Pre-registered multipliers.** At H=5, discount=0.88, applying the formula to
+the measured curves:
+
+| age | horizon multiplier |
+|---|---|
+| 23 | **2.32** |
+| 34 | **1.23** |
+
+A ratio of **1.88×** — a 23-year-old needs only ~53% of a 34-year-old's year-1
+VORP to be the better keep. Recorded here before implementation so G-MULT is a
+real test and not a rationalization of whatever the code emits. If the
+implementation produces materially different multipliers, the implementation is
+wrong, not the estimate.
+
+**Predictions:**
+1. G-AGE and G-SURV pass on first implementation. Both curves were measured
+   read-only before the design was committed to; the gate is that the module
+   reproduces them, not that the shape is a surprise.
+2. G-FLIP passes on direction. Guenther and Johnston move up, Panarin moves
+   down. Direction alone is NOT a pass — the magnitude has to be sane, and a
+   board that ranks every 22-year-old above every established star has
+   overshot.
+3. The goalie age curve comes out essentially flat (A ≈ 1.0 across 22–40).
+   That is an honest outcome, not a bug: survival carries the entire goalie
+   aging signal. Goalie curves need 3-year bands because per-age samples are
+   single-digit below 23 and above 35.
+4. The COVID transitions (2019, 2020 feature seasons) inflate survival but do
+   not change the curve's shape. Prediction: the effect is under 0.03 in
+   absolute survival at any age band, i.e. immaterial and not excluded.
+5. Cost has near-zero influence on the 2026 board. Rounds 15–18 all price at
+   0.0 VORP today, so G-FLIP will be driven entirely by the multiplier. This
+   is a consequence of the still-open traded-pick bug (OPEN-QUESTIONS #1b),
+   which this design propagates rather than fixes.
+
+**Two decisions taken with the owner before implementation:**
+
+- **Age alignment is spec-literal.** `A(age,1) = ratio[age]`, so year 1 is
+  age-adjusted. This reproduces 2.32 / 1.23. It does apply one year of decay to
+  a `vorp₁` that already reflects it (the draft target is `shift(-1)`), which
+  is a real ~1.88× vs ~1.67× difference. Recorded as a known caveat and a v1.1
+  follow-up, NOT silently changed — rewriting a pre-registration after seeing
+  the code is exactly what pre-registration exists to prevent.
+- **The residual audit refits train-only.** The shipped `models/draft/model.pkl`
+  is refit on train+val (`src/models/draft.py:194-195`), so residuals on
+  2022–23 scored from the pickle are in-sample and would understate the
+  young-player bias the audit exists to find. The audit reads the best params
+  off the fitted estimator, refits on ≤2021 in memory, and never calls `save()`.
+
+**Explicit non-goals (v1):** prediction intervals and therefore the walk-away
+option premium (v1 is a known lower bound for young, volatile players, and says
+so); a skater games-played model to replace the flat ×78; retraining the draft
+ranker on a multi-season target; the traded-pick keeper-cost fix; the skater
+F/D curve split.
+
+If a prediction is wrong, that is a recorded result, not a reason to re-cut the
+metric.
+
+---
+
+**Residual audit result (2026-08-24): PROCEED — no young-player bias correction needed.**
+
+Precursor task from the spec, run by `scripts/audit_draft_residuals.py`. Honest
+out-of-sample residuals: hyperparameters read off the shipped estimator, refit
+on ≤2021 only, scored on 2022–23. Row counts (7723 train / 1206 val) match the
+2026-08-24 draft baseline exactly, confirming the refit reproduces `train()`'s
+unpersisted `eval_model`. `DRAFT_TEST_SEASON` untouched.
+
+Signed residual = actual − predicted FP/g; **positive means the model
+UNDER-predicts** that group.
+
+| age band | n | mean | median | std |
+|---|---|---|---|---|
+| 0–22 | 96 | +0.0658 | +0.0112 | 0.5196 |
+| 22–24 | 169 | −0.0597 | −0.1277 | 0.4427 |
+| 24–27 | 313 | −0.0344 | −0.0740 | 0.3980 |
+| 27–30 | 305 | +0.0031 | −0.0262 | 0.4372 |
+| 30–33 | 210 | +0.0073 | −0.0220 | 0.3977 |
+| 33+ | 113 | −0.0525 | −0.0720 | 0.3505 |
+
+Under-24 mean **−0.0142** vs overall **−0.0149** over n=1206, residual std
+0.4218. The young cohort's skew is indistinguishable from the board-wide skew —
+about 0.03 SD — so the horizon design can be applied to the raw year-1 value.
+The two young bands even carry opposite signs (+0.066 at 0–22, −0.060 at 22–24,
+roughly 1.2 and 1.8 standard errors), which is noise, not a systematic
+under-prediction of youth.
+
+**The specific worry in the spec is not confirmed.** The concern was that the
+ranker under-predicts 22-year-olds and the multiplier would compound it. It does
+not under-predict them; if anything it mildly *over*-predicts the 22–24 band.
+
+**One caveat worth recording, in the opposite direction from the one predicted.**
+22–24 (−0.060) and 33+ (−0.053) are over-predicted by similar amounts, but the
+horizon amplifies the young band by 2.32× and the old band by only 1.23×. So a
+~0.06 FP/g over-projection becomes ~10.9 FP of horizon value for a 23-year-old
+against ~4.8 FP for a 34-year-old — a differential of roughly 6 FP, on horizon
+values expected in the low hundreds. That is a ~3–5% tailwind for young keepers
+on top of the intended effect. Not material enough to gate on, and it argues for
+reading G-FLIP's *magnitude* carefully rather than only its direction.
+
+
+---
+
+**Curve gates (2026-08-24): G-AGE PASS, G-SURV PASS, G-MULT PASS.**
+
+`src/keeperHorizon.py` shipped with 22 tests (`tests/test_keeper_horizon.py`),
+written red-first per class (a). Suite 213 → **235 passed, 0 failed**.
+
+**The off-by-one the spec predicted was real, and the data caught it.** The
+module first bucketed age with `floor(age_at_season_start)`, which produced
+multipliers of 2.25 / 1.11 (ratio 2.03×) against the pre-registered 2.32 / 1.23.
+Smoothing was ruled out as the cause (`smooth=1` gave the same answer). The
+actual cause was the bucketing convention: `round()` reproduces **all ten** of
+the spec's published `(ratio, n)` pairs and all ten survival `n` values exactly,
+and `floor()` reproduces none of them. Rounding is also the better convention on
+its own terms — `age_at_season_start` is the fractional age on Oct 1, so rounding
+places a player at the age he spends most of the season at. Fixed, and pinned by
+a test that states why.
+
+**G-AGE — PASS.** Skater ratio (band=1, smooth=3, n in the spec's own units):
+
+| age | 20 | 23 | 24 | 25 | 27 | 30 | 32 | 34 | 36 | 38 | 40 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| ratio | 1.097 | 1.024 | 1.005 | 0.994 | 0.972 | 0.952 | 0.934 | 0.904 | 0.885 | 0.846 | 0.809 |
+| n | 336 | 763 | 864 | 869 | 817 | 608 | 417 | 266 | 126 | 46 | 25 |
+
+Crosses 1.0 between 24 and 25 — production peaks at ~25 — and declines
+monotonically after, with no sign of the flat-or-rising-at-34 shape that would
+have meant survivorship bias won.
+
+**G-SURV — PASS.** Flat 0.845–0.877 through age 30, then a cliff: 0.802 (32),
+0.746 (34), 0.702 (35), 0.643 (36), 0.512 (38), 0.464 (40). Clearly below 1.0
+by the mid-30s, so the ≥20 GP threshold is tight enough to see the fall-off.
+**Survival, not production, is what separates a 34-year-old from a 23-year-old**
+— confirmed: production decays ~9%/yr at 34, availability roughly twice that.
+
+**G-MULT — PASS.** Measured horizon multipliers at H=5, discount=0.88:
+
+| | pre-registered | measured | delta |
+|---|---|---|---|
+| age 23 | 2.32 | **2.312** | −0.3% |
+| age 34 | 1.23 | **1.191** | −3.2% |
+| ratio | 1.88× | **1.941×** | +3.2% |
+
+Within tolerance. The residual 3% at age 34 is the `smooth=3` window blending 34
+into 35's steeper decline — a deliberate refinement the back-of-envelope
+pre-registration did not have, not a discrepancy.
+
+**Goalies — prediction 3 confirmed.** With 3-year bands the goalie age ratio
+comes out essentially flat (0.915–0.997 across 20–40) exactly as predicted, so
+**survival carries the entire goalie aging signal** (0.706 at 20–22, 0.841 at
+30, 0.729 at 34, 0.516 at 39–40). Every emitted goalie bucket clears
+`MIN_BUCKET_N = 25`; a test pins that no thin-tail estimate reaches the output.
+One genuinely new observation: the goalie multiplier **peaks at 24 (2.07) and is
+LOW at 21 (1.58)** — the opposite shape from skaters, because young goalies do
+not stick. A 21-year-old goalie is not the keeper asset the skater curve would
+imply.
+
+**COVID — prediction 4 confirmed, NOT excluded.** Excluding the 2019 and 2020
+feature-season transitions moves survival by at most 0.018 and the ratio by at
+most 0.028 at any age, and the headline multiplier ratio is unchanged (1.941×
+→ 1.944×). Immaterial, so the transitions stay in and `exclude_transitions`
+remains an available knob rather than a default.
+
+**Residual audit precursor: cleared** (see the entry above) — no young-player
+bias correction needed, so the curves apply to the raw year-1 VORP.
+
+Still to run: **G-FLIP** (owner's real 2026 roster, before/after) and
+**G-NOCHANGE**, both of which need the integration work in `keeper.py`,
+`keeper_advisor.py`, `main.py`, `api_export.py` and the keeper page.
+
+
+---
+
+**Integration shipped (2026-08-24): G-NOCHANGE PASS, G-FLIP proxy PASS, real
+G-FLIP still owed.**
+
+The horizon value is now the keeper board's ranking key. Wiring, in the order it
+has to stay consistent:
+
+- `keeper.analyze_keepers` gains `horizon_curves=None` and four columns
+  (`horizon_keeper_value`, `horizon_multiplier`, `horizon_pick_cost`,
+  `horizon_breakdown`). **Omitted curves means NA columns and today's exact
+  ordering**, which is what keeps a fresh clone working and every pre-existing
+  keeper test green unchanged.
+- `keeper.recommendation_order` is new and is the single ranking rule: horizon
+  when populated, `raw_keeper_value` otherwise. `keeper_advisor._scenario_sets`
+  now calls the same rule instead of re-deriving it — it was already a second
+  implementation of the board's ordering, and this is the drift it could have
+  produced.
+- `KEEPER_TENURE` is `"multi_year_annual_cost"`; `league_rules()` surfaces
+  `horizon_years` and `discount_rate` so the advisor and frontend stop being
+  able to hardcode 5 and 0.88.
+- `main.loadHorizonCurves()` builds both families once and hands the same frames
+  to the advisor, replacing a second read of the two season CSVs.
+- Frontend: `lib/keeperHorizon.ts` (+12 `node --test` cases) holds the display
+  logic per the standing src/lib rule; the card leads with **"5-yr keep value"**
+  over a per-year bar breakdown and demotes the single-season number to "Next
+  season only". Every new field is null-guarded — the export emits null on a
+  history-less board.
+
+**Pick-cost circularity, resolved.** Rounds are assigned *after* the sort, so a
+per-round cost cannot feed the sort. Every candidate is priced at the mean of
+the four keeper-round costs (`horizon_pick_cost`); the round assignment stays
+display-only. On the current board that mean is 0.0 — rounds 15–18 are all below
+replacement — so the flip below is driven entirely by the multiplier, and the
+cost-scaling test uses synthetic costs rather than a vacuous real one.
+
+**G-NOCHANGE — PASS.** `data/processed/draft_rankings.csv` md5
+`2a272fef7bfc6ad577f3145e8f29efa0` before and after re-running `main.py draft`.
+Byte-identical. `tests/fixtures/best_available_cases.json` untouched; the draft
+model was never retrained.
+
+**G-FLIP — PASS, on the owner's real 18-player 2026-27 roster.** Yahoo was down
+for unrelated reasons (see below), but Yahoo only ever supplies the roster, and
+that was already cached in `data/processed/keeper_rankings.csv` from the last
+good run. Projections, pool, `kept_counts` (40 league keepers removed) and both
+curve families are local, so this is the real gate rather than a proxy.
+
+**The recommended four change:**
+
+| | keepers |
+|---|---|
+| before | Fox, Hellebuyck, **Panarin**, Shesterkin |
+| after | Fox, Hellebuyck, **Guenther**, Shesterkin |
+
+| player | age | raw VORP | mult | before → after |
+|---|---|---|---|---|
+| Adam Fox | 28.6 | 85.9 | 1.93 | 1 → 1 |
+| Connor Hellebuyck | 33.4 | 84.8 | 1.49 | 2 → 2 |
+| **Dylan Guenther** | 23.5 | 46.0 | 2.31 | 5 → **3** |
+| Igor Shesterkin | 30.8 | 59.9 | 1.77 | 4 → 4 |
+| **Artemi Panarin** | 34.9 | 75.8 | 1.03 | 3 → **7** |
+| Wyatt Johnston | 23.4 | 16.3 | 2.31 | 12 → 11 |
+| Cole Hutson | 20.3 | 13.9 | 2.87 | 13 → 10 |
+| Sidney Crosby | 39.2 | 28.4 | 0.52 | 9 → 14 |
+| Matvei Michkov | 21.8 | −27.6 | 2.48 | 18 → 18 |
+
+Both halves of the pre-registration hold: Guenther **and** Johnston move up,
+Panarin moves down. (Johnston was static on the earlier eight-player proxy, which
+recorded a partially-wrong prediction; the full roster resolves it in the
+prediction's favour.)
+
+**The magnitude half — the half that actually mattered — passes clearly.** Fox,
+Hellebuyck and Shesterkin all hold their slots, so the horizon is not simply
+handing the board to youth. Two results are the proof: **Michkov carries the
+third-highest multiplier on the roster (2.48) and finishes dead last at −68.3**,
+because his year-1 VORP is −27.6 and the horizon amplifies a negative as
+faithfully as a positive; and **Hutson has the largest multiplier of anyone
+(2.87) and still only reaches 10th**. A multiplier that ranked every 22-year-old
+over every established star would have overshot, and it does not.
+
+Crosby (39.2, multiplier 0.52) takes the largest fall on the board, five places.
+That is the survival cliff doing exactly what it was built to do.
+
+**Caveat to carry:** this flips a real decision, not a display. Panarin leaving
+the keeper four is the recommendation change, and it rests on the year-1
+double-count caveat recorded above (spec-literal age alignment, worth ~1.94×
+versus ~1.67× under the alternative). Panarin at 77.75 and Guenther at 106.34 are
+far enough apart that the alternative alignment would not reverse it, but a
+marginal pair could be decided by that convention.
+
+Suite: **248 pytest passed** (213 at session start), **145 frontend** (133 at
+start), `tsc --noEmit` and `next build` clean.
+
+**Still owed:** `api_export.py --keeper-only` to push the new fields into
+`frontend_data.json`, which needs a fresh `keeper_rankings.csv` from
+`main.py keeper` — blocked on an unrelated Yahoo OAuth failure (below), not on
+this work.
+
+**Unrelated blocker, diagnosed the same session: Yahoo returns HTTP 403 on every
+API call.** Not a code, token or league-renewal problem. The token exchange and
+refresh both return 200 with a well-formed bearer token, but every endpoint
+403s — including `api.login.yahoo.com/openid/v1/userinfo`, which has nothing to
+do with Fantasy — and the grant response omits `xoauth_yahoo_guid`, the field
+Yahoo includes when a grant carries user-data scope. The developer console shows
+Fantasy Sports → Read saved and checked, and the setup worked weeks earlier with
+no change at this end, so the cause is on Yahoo's side and is **not explained**.
+Re-authorizing from scratch against a correctly-registered app did not fix it.
+Probe scripts used: raw HTTP status/header dump and a manual refresh-grant
+inspection. Worth knowing for next time: `yahoo_oauth` reads **`callback_uri`**,
+not `redirect_uri` — a `redirect_uri` key in `oauth2.json` is silently ignored
+and the callback defaults to `oob` (`yahoo_oauth/utils.py:18`), which will not
+match an app registered with an `https://localhost` redirect.
+
 
 ## Resources & References
 - NHLE API (no auth): `https://api-web.nhle.com/v1/` — roster: `/v1/roster/{team}/current`,
@@ -1054,7 +1367,31 @@ shipped July 15–20, 2026). The draft board, keeper analyzer, goalie ranker, li
 and mock-draft backtest are all in. What is left before the October 2026 draft is correctness work
 on what shipped, not new surface area.
 
-**Last session (2026-08-24, branch `feat/draft-day-ux`): draft-day UX — the board became
+**Last session (2026-08-24, branch `feat/keeper-horizon`): the keeper board now answers the
+multi-year question.** `net_keeper_value` is a single-season number while the league rule lets you
+hold a player for consecutive seasons, so the board preferred Panarin (34) to Guenther/Johnston (23)
+— right for next season, wrong for a five-year hold. New `src/keeperHorizon.py` applies an empirical
+age curve and survival curve, both measured off the 18 seasons already on disk, to the existing
+year-1 VORP. No retraining, no new data source, draft ranker untouched (`draft_rankings.csv`
+verified byte-identical).
+
+Gates: **all five PASS** — G-AGE, G-SURV, G-MULT, G-FLIP, G-NOCHANGE. Measured multipliers 2.312 at
+age 23 and 1.191 at 34 against a pre-registration of 2.32 / 1.23. G-FLIP ran on the real 18-player
+roster and **changes the recommendation**: Panarin (34.9) falls 3rd → 7th and Dylan Guenther (23.5)
+rises 5th → 3rd, so the keeper four goes Fox / Hellebuyck / **Guenther** / Shesterkin. Magnitude
+stayed sane — Michkov holds the third-highest multiplier (2.48) and still finishes last at −68.3,
+because the horizon amplifies a negative year-1 VORP just as faithfully as a positive one.
+
+Three things worth carrying forward. **The off-by-one the spec predicted was real:** bucketing age
+with `floor()` instead of `round()` moved the multiplier ratio from 1.94× to 2.03×, and `round()`
+was confirmed by reproducing all ten of the spec's published `(ratio, n)` pairs exactly. **Survival,
+not production, is the aging signal** — production decays ~9%/yr at 34, availability roughly twice
+that, and for goalies the production ratio is flat enough (0.92–1.00 across 20–40) that survival
+carries all of it. **Young goalies are not the keeper asset the skater curve implies:** the goalie
+multiplier peaks at 24 and is *low* at 21, the opposite shape from skaters, because they do not
+stick.
+
+**Prior session (2026-08-24, branch `feat/draft-day-ux`): draft-day UX — the board became
 roster-aware.** A UX review found the board answered "who is the best player left?" and never
 "what should *I* do with *this* pick?" — because picks were a flat `Set<number>` with no owner, so
 the board could not describe your roster. Picks are now a **pick log** (`{id, pick, mine}`,
@@ -1079,7 +1416,7 @@ new display-stat columns leave **every pre-existing `draft_rankings.csv` column 
 they are not model features. Also found: only **19** of 745 players have a scouting summary, not
 the 50 recorded below; the B5 top-200 batch is further from done than the plan says.
 
-**Prior session (2026-08-24, branch `feat/deployment-luck-features`):** ran the deployment and
+**Session before that (2026-08-24, branch `feat/deployment-luck-features`):** ran the deployment and
 luck feature experiment end to end, three pre-registered gates, one adopted and two rejected.
 **PP ice time is now a pickup/cooling feature** (val Spearman 0.6214 -> 0.6249, spot-check top-15
 mean 54.8% -> 56.2%). **Split PDO failed its gate and was reverted**, and **both families were

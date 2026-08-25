@@ -37,6 +37,11 @@ GOALIE_HISTORY_FIELDS = (
 DECISION_COLUMNS = (
     "raw_keeper_value", "net_keeper_value", "pick_cost", "replacement_level",
     "projected_total", "projected_fpPerGame",
+    # The horizon columns are decision data too: as of 2026-08-24 the board
+    # RANKS on horizon_keeper_value, so a non-finite one is not a display glitch.
+    # horizon_breakdown is deliberately absent -- it is a JSON string, not a
+    # number, and _ensure_finite_decision_data only speaks numbers.
+    "horizon_keeper_value", "horizon_multiplier", "horizon_pick_cost",
 )
 
 
@@ -176,6 +181,9 @@ def _roster_records(rankings: pd.DataFrame, projections: pd.DataFrame,
             "replacement_level": _number(row, "replacement_level"),
             "raw_keeper_value": _number(row, "raw_keeper_value"),
             "net_keeper_value": _number(row, "net_keeper_value"),
+            "horizon_keeper_value": _number(row, "horizon_keeper_value"),
+            "horizon_multiplier": _number(row, "horizon_multiplier"),
+            "horizon_pick_cost": _number(row, "horizon_pick_cost"),
             "games_played": _number(row, "gamesPlayed", integer=True),
             "last_fp_per_game": _number(row, "fpPerGame"),
             "projected_fp_per_game": _number(row, "projected_fpPerGame"),
@@ -205,12 +213,20 @@ def _scenario_sets(records: list[dict], pick_costs: dict[int, float]) -> list[di
         and record["player_id"] is not None
         and record["raw_keeper_value"] is not None
     ]
+    # Must match keeper.recommendation_order. This is a SECOND implementation of
+    # the board's ranking rule -- if the two drift, the advisor argues against
+    # the very four the board recommends.
+    rank_field = ("horizon_keeper_value"
+                  if any(record.get("horizon_keeper_value") is not None
+                         for record in candidates)
+                  else "raw_keeper_value")
+
     scenarios = []
     for combo in combinations(candidates, keeper.KEEPER_COUNT):
         ordered = sorted(
             combo,
             key=lambda player: (
-                -player["raw_keeper_value"],
+                -(player.get(rank_field) or 0),
                 -(player["projected_total"] or 0),
                 player["player_id"],
             ),
@@ -224,12 +240,21 @@ def _scenario_sets(records: list[dict], pick_costs: dict[int, float]) -> list[di
                 "pick_cost": pick_cost,
                 "raw_keeper_value": float(player["raw_keeper_value"]),
                 "net_keeper_value": float(player["raw_keeper_value"]) - pick_cost,
+                # Already cost-inclusive: keeperHorizon subtracts the annual
+                # pick cost inside every year of the sum. Subtracting pick_cost
+                # again here would be the "keep nobody" unit bug a second time.
+                "horizon_keeper_value": player.get("horizon_keeper_value"),
             })
+        horizon_values = [player["horizon_keeper_value"] for player in players]
         scenarios.append({
             "player_ids": sorted(player["player_id"] for player in ordered),
             "players": players,
             "total_model_value": sum(player["raw_keeper_value"] for player in players),
             "total_net_keeper_value": sum(player["net_keeper_value"] for player in players),
+            "total_horizon_keeper_value": (
+                sum(horizon_values) if all(value is not None for value in horizon_values)
+                else None
+            ),
         })
     return sorted(scenarios, key=lambda scenario: scenario["player_ids"])
 

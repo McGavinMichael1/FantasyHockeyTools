@@ -102,6 +102,20 @@ export interface KeeperRecommendation {
   projected_fpPerGame: number;
   projected_total: number;
   confidence: number | null;
+  // Multi-year keeper valuation. Null on a board built without season history
+  // (a fresh clone), so every read has to be guarded.
+  horizon_keeper_value: number | null;
+  horizon_multiplier: number | null;
+  horizon_pick_cost: number | null;
+  horizon_breakdown: HorizonYear[] | null;
+}
+
+export interface HorizonYear {
+  year: number;
+  discount: number;
+  survival: number;
+  aging: number;
+  value: number;
 }
 
 export interface KeeperSection {

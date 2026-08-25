@@ -141,6 +141,22 @@ Full rationale and file:line citations: `fht-architecture-contract`.
   (`ppToiShare`, `avgPPIcetime`, `oniceShootingPct`, `oniceSavePct`, `pdo`, `oniceGaxPerGame`)
   are still **computed** in `player_seasons.csv` for the board and future work — a test pins
   that they are not draft model features. Full numbers: PROJECT-PLAN Learning Log 2026-08-24.
+- **The keeper board ranks on a 5-year horizon as of 2026-08-24.** `src/keeperHorizon.py` applies
+  an empirical age curve and survival curve (measured off the 18 seasons already on disk) to the
+  existing year-1 VORP: `Σ discount^k · S(age,k) · [A(age,k)·vorp₁ − pick_cost]`, H=5,
+  discount=0.88. Four rules to keep. **Age buckets by `round()`, never `floor()`** — that is the
+  convention the design's measured table was built with, confirmed by reproducing all ten of its
+  published `(ratio, n)` pairs exactly, and the spec named this off-by-one as the module's most
+  likely bug. **Survival multiplies the cost as well as the benefit** (not playing means not
+  paying the picks) and **both sides scale with the horizon** — multiplying only the benefit is the
+  same unit error as the old "keep nobody" bug. **`horizon_keeper_value` is already cost-inclusive;
+  never subtract `pick_cost` from it again** — `keeper_advisor._scenario_sets` is a second
+  implementation of the ranking rule and now calls `keeper.recommendation_order` rather than
+  re-deriving it. Passing no `horizon_curves` degrades to the exact single-season behaviour.
+  Frontend display logic lives in `frontend/src/lib/keeperHorizon.ts`, per the src/lib rule.
+  Two measured results worth knowing: survival (not production) is what separates a 34-year-old
+  from a 23-year-old, and the **goalie multiplier peaks at 24 and is low at 21** — the opposite
+  shape from skaters, because young goalies do not stick.
 - **The game-log cache filename is versioned** (`moneypuck.GAME_CACHE_VERSION`, now `v2`).
   `loadGameLogs` prefers a fresh-looking cache over the raw CSVs, so widening `GAME_COLUMNS`
   without bumping the tag would serve a stale-schema cache and fail downstream with a

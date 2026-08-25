@@ -9,6 +9,7 @@ from src import backtest
 from src import dataProcessing
 from src import draft_explain
 from src import keeper
+from src import keeperHorizon
 from src import keeper_advisor
 from src import keepers
 from src import mockDraft
@@ -17,6 +18,7 @@ from src import season
 from src import yahooAPI
 from src.features import draft as draftFeatures
 from src.features import goalies as goalieFeatures
+from src.features import shared as sharedFeatures
 from src.features import mlFeatures
 from src.features import pickups
 from src.models import cooling as coolingModel
@@ -372,9 +374,56 @@ def runDraft():
               .to_string(index=False))
 
 
+def loadHorizonCurves():
+    """Empirical age and survival curves for the multi-year keeper valuation.
+
+    Built from the season tables already on disk -- 18 seasons of them -- so
+    this needs no new data source and no retraining. Goalies get their own
+    curves on wide age bands: their per-age samples are single-digit outside
+    23-35, and their production ratio is flat where skaters' declines, so
+    survival carries their entire aging signal.
+
+    Returns (None, None, None) loudly when the history is missing, which
+    degrades the keeper board to its single-season answer rather than failing.
+    """
+    if not os.path.exists(PLAYER_SEASONS_PATH):
+        print(f"WARNING: {PLAYER_SEASONS_PATH} missing -- keeper board falls")
+        print("   back to single-season values. Run")
+        print("   scripts/build_player_seasons.py to price the full horizon.")
+        return None, None, None
+
+    skater_history = sharedFeatures.add_age_at_season_start(
+        pd.read_csv(PLAYER_SEASONS_PATH))
+    curves = {'skater': {
+        'age': keeperHorizon.age_curve(skater_history),
+        'survival': keeperHorizon.survival_curve(skater_history),
+    }}
+
+    goalie_history = None
+    if os.path.exists(GOALIE_SEASONS_PATH):
+        goalie_history = sharedFeatures.add_age_at_season_start(
+            pd.read_csv(GOALIE_SEASONS_PATH))
+        curves['goalie'] = {
+            'age': keeperHorizon.age_curve(
+                goalie_history, band=keeperHorizon.GOALIE_BAND,
+                smooth=keeperHorizon.GOALIE_SMOOTH),
+            'survival': keeperHorizon.survival_curve(
+                goalie_history, band=keeperHorizon.GOALIE_BAND,
+                smooth=keeperHorizon.GOALIE_SMOOTH),
+        }
+    else:
+        print(f"WARNING: {GOALIE_SEASONS_PATH} missing -- goalies keep their "
+              "single-season keeper value")
+
+    return curves, skater_history, goalie_history
+
+
 def runKeeper():
     """Rank the authenticated Yahoo roster and build advisor context."""
     projections = buildFullProjections()
+    # Loaded before analyze_keepers so the curves can price the board, and
+    # reused as the advisor's history rather than reading both CSVs twice.
+    horizon_curves, skater_history, goalie_history = loadHorizonCurves()
     league = yahooAPI.getLeague()
     roster = yahooAPI.getMyRoster(league)
 
@@ -393,7 +442,8 @@ def runKeeper():
         print("   what your picks could fetch. Fill data/raw/keepers.csv and re-run.")
 
     rankings = keeper.analyze_keepers(roster, projections, pool=pool,
-                                      kept_counts=kept_counts)
+                                      kept_counts=kept_counts,
+                                      horizon_curves=horizon_curves)
     rankings['target_season'] = keeper.target_season_label(CURRENT_SEASON)
 
     os.makedirs(os.path.dirname(KEEPER_RANKINGS_PATH), exist_ok=True)
@@ -401,14 +451,6 @@ def runKeeper():
     print(f"\nWrote {len(rankings)} roster rows to {KEEPER_RANKINGS_PATH}")
 
     try:
-        skater_history = (
-            pd.read_csv(PLAYER_SEASONS_PATH)
-            if os.path.exists(PLAYER_SEASONS_PATH) else None
-        )
-        goalie_history = (
-            pd.read_csv(GOALIE_SEASONS_PATH)
-            if os.path.exists(GOALIE_SEASONS_PATH) else None
-        )
         context = keeper_advisor.build_context(
             rankings,
             projections,
@@ -429,12 +471,22 @@ def runKeeper():
         print("No keeper recommendations were matched to the projection board.")
         return
 
-    print("\n=== Recommended keepers ===")
-    print(recommended[[
-        'keeper_rank', 'full_name', 'position', 'projected_fpPerGame',
-        'projected_total', 'raw_keeper_value', 'assigned_round', 'pick_cost',
-        'net_keeper_value'
-    ]].to_string(index=False))
+    columns = ['keeper_rank', 'full_name', 'position', 'age',
+               'projected_fpPerGame', 'projected_total', 'raw_keeper_value',
+               'assigned_round', 'pick_cost', 'net_keeper_value']
+    if horizon_curves:
+        # The board RANKS on the horizon value now, so it has to be visible
+        # next to the single-season number it overrules.
+        columns += ['horizon_multiplier', 'horizon_keeper_value']
+        print(f"\n=== Recommended keepers ({keeperHorizon.HORIZON_YEARS}-yr "
+              f"horizon, discount {keeperHorizon.DISCOUNT_RATE}) ===")
+    else:
+        print("\n=== Recommended keepers (single season) ===")
+
+    print(recommended[columns].to_string(index=False))
+    if horizon_curves:
+        print("\nhorizon_keeper_value is a 5-YEAR discounted total, not a "
+              "season total.\nIt already nets out the annual pick cost.")
 
 
 def _mockDraftBoard(year, draft_df, exclude_unavailable, outcomes):
