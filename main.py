@@ -143,6 +143,31 @@ def trainGoalies():
     goalieDraftModel.train(loadGoalieSeasonFeatures())
 
 
+# Last season's actual production, carried onto the board for display only.
+#
+# These are NOT model features -- draftModel.FEATURES is that list, and a test
+# pins it. They ride along so the expanded row can show what a player actually
+# did, which is the only thing on screen a projection can be checked against.
+SKATER_DISPLAY_STATS = [
+    'totalGoals', 'totalShotsOnGoal', 'totalHits', 'totalShotsBlocked',
+    'totalPPP', 'avgIcetime', 'ppToiShare',
+]
+GOALIE_DISPLAY_STATS = [
+    'gamesStarted', 'wins', 'losses', 'shutouts', 'save_pct', 'gsax',
+]
+
+
+def _attach_display_stats(rankings, source, columns):
+    """Copy display-only stat columns across, skipping any the source lacks.
+
+    A source built before a column existed must still produce a board; the
+    export drops absent stats from the stat line rather than showing a zero.
+    """
+    for column in columns:
+        if column in source.columns:
+            rankings[column] = source[column].values
+
+
 def buildCurrentDraftProjections(feature_season=None):
     """Build every skater projection used by draft and keeper tools.
 
@@ -163,6 +188,12 @@ def buildCurrentDraftProjections(feature_season=None):
 
     rankings = current[['playerId', 'full_name', 'position', 'gamesPlayed',
                         'fpPerGame', 'projected_fpPerGame']].copy()
+    _attach_display_stats(rankings, current, SKATER_DISPLAY_STATS)
+    # Assists are one scoring category in this league, so the split MoneyPuck
+    # keeps is a distinction the board does not need.
+    if {'totalPrimaryAssists', 'totalSecondaryAssists'} <= set(current.columns):
+        rankings['totalAssists'] = (current['totalPrimaryAssists']
+                                    + current['totalSecondaryAssists'])
     # age at the UPCOMING season start (draft-day age), one year past the
     # feature season's age_at_season_start
     rankings['age'] = current['age_at_season_start'] + 1
@@ -229,6 +260,7 @@ def buildCurrentGoalieProjections(feature_season=None):
 
     rankings = current[['playerId', 'full_name', 'position', 'gamesPlayed',
                         'fpPerGame', 'projected_fpPerGame']].copy()
+    _attach_display_stats(rankings, current, GOALIE_DISPLAY_STATS)
     rankings['age'] = current['age_at_season_start'] + 1
     rankings['projected_gp'] = current['gp_w3'].clip(upper=GOALIE_GP_CAP)
     rankings['projected_total'] = (rankings['projected_fpPerGame']

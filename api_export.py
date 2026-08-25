@@ -9,6 +9,7 @@ import pandas as pd
 
 from src import dataProcessing
 from src import keeper
+from src import mockDraft
 from src import moneypuck
 from src import season
 from src import yahooAPI
@@ -44,6 +45,26 @@ def _draft_replacement_ranks() -> dict:
             return json.load(handle)
     except (FileNotFoundError, json.JSONDecodeError):
         return dict(keeper.REPLACEMENT_RANKS)
+
+
+def _draft_roster_rules() -> dict:
+    """The league's slot rules, for the frontend's roster panel.
+
+    keeper.py owns the slots and mockDraft caps against them. The board needs the
+    same numbers to say what a roster still needs, and hardcoding them in
+    TypeScript would make a third copy that silently drifts -- the hazard
+    liveDraft.ts already carries a comment about. Serializing them instead keeps
+    one source of truth.
+
+    Unlike the replacement ranks these are constants, not keeper-dependent, so
+    they are always correct to write.
+    """
+    return {
+        'starting_slots': dict(keeper.STARTING_SLOTS),
+        'max_by_position': dict(mockDraft.MAX_BY_POSITION),
+        'util_slots': keeper.ROSTER_SLOTS['UTIL'],
+        'roster_slots': dict(keeper.ROSTER_SLOTS),
+    }
 
 
 def _load_draft_summaries() -> dict:
@@ -131,9 +152,65 @@ def build_draft_list():
                              if 'projected_gp' in df.columns and not pd.isna(row['projected_gp']) else None),
             'confidence': confidence,
             'factors': _parse_factors(row),
+            'stats': _stat_line(row, df.columns),
             'summary': entry['summary'] if entry else None,
         })
     return draft_list
+
+
+def _pct(value) -> str:
+    return f"{round(float(value) * 100)}%"
+
+
+def _save_pct(value) -> str:
+    """.918, the way a save percentage is always written."""
+    return f"{float(value):.3f}".lstrip('0')
+
+
+# Last season's actual production, for the expanded row.
+#
+# Display only: none of this is a model input (draftModel.FEATURES is the list
+# that is, and a test pins it). It exists because the board otherwise shows
+# projections and SHAP factor labels and nothing else -- there is no way to
+# sanity-check a projection against what the player actually did.
+#
+# Skaters and goalies share no columns, so the export emits label/value pairs
+# and the board renders whatever it is handed rather than branching on position.
+SKATER_STAT_SPEC = [
+    ('G', 'totalGoals', lambda v: f"{int(round(float(v)))}"),
+    ('A', 'totalAssists', lambda v: f"{int(round(float(v)))}"),
+    ('SOG', 'totalShotsOnGoal', lambda v: f"{int(round(float(v)))}"),
+    ('HIT', 'totalHits', lambda v: f"{int(round(float(v)))}"),
+    ('BLK', 'totalShotsBlocked', lambda v: f"{int(round(float(v)))}"),
+    ('PPP', 'totalPPP', lambda v: f"{int(round(float(v)))}"),
+    ('TOI/G', 'avgIcetime', _format_toi),
+    ('PP%', 'ppToiShare', _pct),
+]
+
+GOALIE_STAT_SPEC = [
+    ('GS', 'gamesStarted', lambda v: f"{int(round(float(v)))}"),
+    ('W', 'wins', lambda v: f"{int(round(float(v)))}"),
+    ('L', 'losses', lambda v: f"{int(round(float(v)))}"),
+    ('SO', 'shutouts', lambda v: f"{int(round(float(v)))}"),
+    ('SV%', 'save_pct', _save_pct),
+    ('GSAx', 'gsax', lambda v: f"{float(v):+.1f}"),
+]
+
+
+def _stat_line(row, columns) -> list:
+    """Formatted stat pairs for one player, skipping anything absent.
+
+    A missing value is dropped rather than rendered as zero: a blank hit count
+    means "we do not have it", not "he threw none", and the board cannot tell
+    those apart once a zero is on screen.
+    """
+    spec = GOALIE_STAT_SPEC if row.get('position') == 'G' else SKATER_STAT_SPEC
+    line = []
+    for label, column, fmt in spec:
+        if column not in columns or pd.isna(row[column]):
+            continue
+        line.append({'label': label, 'value': fmt(row[column])})
+    return line
 
 
 def _load_keeper_advisor_metadata() -> dict:
@@ -244,6 +321,8 @@ def export_keeper_only():
     output.setdefault('pickups', [])
     output.setdefault('cooling', [])
     output.setdefault('draft', [])
+    # Constants, so a keeper-only refresh can safely refresh them too.
+    output['draft_roster_rules'] = _draft_roster_rules()
     output['keeper'] = build_keeper_section()
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
@@ -392,6 +471,8 @@ def export_data():
         # The ranks the exported vorp was computed with, so live draft-day
         # recomputation uses the same definition instead of the base constant.
         'draft_replacement_ranks': _draft_replacement_ranks(),
+        # League slot rules, so the roster panel does not hardcode its own copy.
+        'draft_roster_rules': _draft_roster_rules(),
         'generated_at': pd.Timestamp.now().isoformat(),
     }
 

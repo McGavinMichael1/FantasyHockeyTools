@@ -803,6 +803,242 @@ the net values, from −78…−115 to +60…+85. Suite: 174 pytest, 59 frontend
 
 ---
 
+### 2026-08-24 — Deployment and luck features (pre-registration)
+
+Predictions written BEFORE training, per fht-research-frontier methodology (a).
+Plan: docs/superpowers/plans/2026-08-24-deployment-and-luck-features.md
+Spec: docs/superpowers/specs/2026-08-24-deployment-and-luck-features-design.md
+
+Baselines to beat:
+- Pickup val Spearman 0.6214 / AUC-equiv 0.8465
+- Cooling val Spearman 0.6063 / AUC-equiv 0.7673
+- Spot-check top-15 per date 67/60/47/53/47 (mean 55%); 25 sim adds 60% hit,
+  2.83 FP/g vs chaser 40% / 2.35 FP/g
+- Draft Baseline A val Spearman 0.7963 (MAE 0.3686), Baseline B 0.7965
+  (MAE 0.3537), Ridge 0.8213 (MAE 0.3287), current XGBoost 0.8259
+  (MAE 0.3277), gate verdict GATE B3 PASS (XGBoost beats both baselines).
+  Captured 2026-08-24 on 7723 train rows (<=2021) / 1206 val rows (2022-2023).
+  Baseline Ridge coefficient order, for the Task 10 sign comparison:
+  age -0.1432, pos_D -0.0613, highDangerShare -0.0288, xGoalsSurplus -0.0174,
+  fp_delta -0.0079, PP_share +0.0151, pos_C +0.0218, pos_R +0.0243,
+  pos_L +0.0254, career_games +0.0344, hitblock_share +0.0502,
+  avgIcetime +0.0884, avgGameScore +0.1534, fpPerGame +0.1854, fp_w3 +0.2874.
+
+Predictions:
+1. PP TOI helps the PICKUP model more than cooling. Expect pickup spot-check
+   top-15 mean +3 to +8 points (55% -> 58-63%); cooling roughly flat.
+2. PDO helps the COOLING model more than pickups. Cooling is the weaker model
+   and "running hot, due to regress" is exactly what an on-ice shooting-%
+   residual measures. Expect cooling val Spearman +0.01 to +0.03; pickup
+   spot-check within noise of whatever PP TOI leaves it at.
+3. On-ice SAVE % lands in the bottom half of reports/pickup_feature_importance.png.
+   It reaches fantasy points only through plus/minus, which moneypuckGamePoints
+   does not compute.
+4. rolling_delta_5_20_pp_toi_share outranks rolling_5_powerPlayIcetime in
+   feature importance -- the promotion is the signal, not the level.
+5. Draft: onice_sh_luck's standardized Ridge coefficient is NEGATIVE. A positive
+   one means the residual is acting as a talent proxy and the feature is wrong.
+6. Draft val Spearman moves by less than +0.01. Season-level luck residuals are
+   a small correction to a target already dominated by fpPerGame; a large jump
+   would be more suspicious than encouraging.
+
+If a prediction is wrong, that is a recorded result, not a reason to re-cut the
+metric.
+
+---
+
+**PP TOI result (2026-08-24): ADOPTED.**
+
+| Metric | Baseline | With PP TOI |
+|---|---|---|
+| Pickup val Spearman | 0.6214 | **0.6249** |
+| Pickup val AUC vs is_heating_up | 0.8465 | **0.8494** |
+| Cooling val Spearman | 0.6063 | **0.6072** |
+| Cooling val AUC-equiv | 0.7673 | 0.7667 |
+| Spot-check top-15 per date | 67/60/47/53/47 (mean 54.8%) | **73/67/47/47/47 (mean 56.2%)** |
+| Simulated adds (25) | 60% hit, 2.83 FP/g | 60% hit, **2.96 FP/g** |
+
+Gate rule (pre-registered): spot-check top-15 mean >= 55% AND simulated-adds hit
+rate >= 60%. Both met (56.2%, 60%). Chaser baseline unchanged at 40% / 2.35.
+
+The baseline row was RECONSTRUCTED, not assumed: the plan's Task 1 captured only
+the draft numbers, so mlFeatures.py was checked out at the pre-feature commit,
+retrained and spot-checked. It reproduced fht-quality-gates' documented figures
+to four decimals (0.6214/0.8465, 0.6063/0.7673, 67/60/47/53/47, 60%/2.83), which
+is what makes the comparison above attributable.
+
+Prediction 1 said pickup spot-check top-15 mean 58-63%, cooling flat. Actual
+56.2% and cooling flat: **direction right, magnitude short.** Two dates gained
+(+6, +7), one lost (-6), two unchanged. Recorded as-is.
+
+Prediction 4 (rolling_delta_5_20_pp_toi_share outranks rolling_5_powerPlayIcetime)
+is **WRONG, and informatively so.** Of 49 features:
+
+- rolling_20_powerPlayIcetime  rank **3**  (0.0960) -- 3rd most important overall
+- rolling_10_powerPlayIcetime  rank 4   (0.0460)
+- rolling_5_powerPlayIcetime   rank 7   (0.0215)
+- rolling_20_pp_toi_share      rank 9   (0.0136)
+- rolling_delta_5_20_pp_toi_share      rank **44** (0.0029)
+- rolling_delta_5_20_powerPlayIcetime  rank **46** (0.0026)
+
+The PP-TOI **level** carries the signal; the 5-vs-20 trend delta is near the
+bottom of the list. The spec's core argument for the delta ("only rolling_5 minus
+rolling_20 expresses a promotion") is not supported by the fitted model. The
+deltas are kept -- they cost nothing and the gate passed -- but the deployment
+gain is a level effect, and any future work should not assume otherwise.
+
+Eyeball gate, Darren Raddysh (the PP1-promotion case PP TOI was built for):
+
+| Date | Baseline | With PP TOI |
+|---|---|---|
+| 2025-11-01 | FA rank **238**/449, ml 1.467 | FA rank **285**/449, ml 1.370 |
+| 2025-12-01 | proxy #132, ml 2.679 | proxy #132, ml 2.679 |
+| 2026-01-01 | proxy #60, ml 3.248 | proxy #60, ml 3.261 |
+| 2026-02-01 | proxy #35, ml 3.245 | proxy #35, ml **3.391** |
+| 2026-03-01 | proxy #25, ml 3.628 | proxy #25, ml **3.914** |
+
+**The one date where it mattered got worse.** Nov 1 is the only date Raddysh is
+actually in the free-agent pool, and PP TOI moved him DOWN 47 places. The score
+gains all land from January on, once the 20-game window has accumulated PP1
+minutes he was already converting into points -- i.e. the feature confirms a
+breakout after the fact rather than catching it early. That is the opposite of
+the mechanism the spec argued for, and it is consistent with prediction 4 failing.
+Recorded, not re-cut. Aggregate gate passed on its pre-registered terms.
+
+
+**PDO result (2026-08-24): REVERTED.** Commit 82257b4 reverted by 07594ce.
+
+| Metric | Original | PP TOI (adopted) | + PDO | Gate needs |
+|---|---|---|---|---|
+| Pickup val Spearman | 0.6214 | 0.6249 | 0.6233 | -- |
+| Pickup val AUC | 0.8465 | 0.8494 | 0.8488 | -- |
+| Cooling val Spearman | 0.6063 | 0.6072 | 0.6066 | +0.01 to +0.03 predicted |
+| Cooling val AUC-equiv | 0.7673 | 0.7667 | 0.7662 | -- |
+| Spot-check per date | 67/60/47/53/47 (54.8%) | 73/67/47/47/47 (56.2%) | 73/67/47/**33**/47 (**53.4%**) | >= 56.2% FAIL |
+| Simulated adds hit | 60% | 60% | **56%** | >= 60% FAIL |
+| Simulated adds FP/g | 2.83 | 2.96 | 2.87 | -- |
+
+Gate failed on BOTH pre-registered criteria. PDO made every metric worse than PP
+TOI alone; the spot-check loss is concentrated on 2026-02-01 (47% -> 33%).
+
+**This is a real negative result, not a computation bug.** Verified against
+hockey reality on 238,938 player-games before reverting:
+league mean on-ice SH% 0.0869 (expected 0.07-0.09), on-ice SV% 0.9127 (expected
+0.91-0.93), and **mean PDO 0.9995** -- PDO's defining property is 1.00 by
+construction, so the halves are computed correctly. Mean on-ice gax -0.0039.
+The sums-over-sums rule (spec 3.1) was followed; the statistic is right and it
+simply does not help these models on the product metric.
+
+Prediction 2 (cooling val Spearman +0.01 to +0.03): **WRONG.** Actual -0.0006.
+The pre-registered expectation that cooling was where this would pay -- "running
+hot, due to regress is literally what an on-ice shooting-percentage residual
+measures" -- did not survive contact with the data.
+
+Prediction 3 (on-ice SAVE % lands in the bottom half of feature importance):
+**WRONG, and wrong in the direction the plan flagged as suspicious.** Of 56
+features, on-ice save % was the TOP-ranked luck feature in both models:
+
+| Feature | Pickup rank | Cooling rank |
+|---|---|---|
+| rolling_20_onice_save_pct | **13/56** | **15/56** |
+| rolling_10_onice_save_pct | 24/56 | 18/56 |
+| rolling_10_onice_gax | 21/56 | 20/56 |
+| rolling_20_onice_shooting_pct | 31/56 | 29/56 |
+| rolling_10_onice_shooting_pct | **48/56** | 30/56 |
+
+On-ice shooting % -- which the spec called "the genuinely new information" --
+sat in the bottom half of both models, while on-ice save % -- which the spec
+called "near-dead weight" -- outranked it. Save % has no path to fantasy points
+in this league's scoring (`moneypuckGamePoints` does not compute plus/minus), so
+a model leaning on it is learning **team quality**, not luck. That is precisely
+the confound the split was designed to avoid, and it argues the luck family as
+specified is not measuring what the spec claims.
+
+Secondary finding: coverage is thin at the short window. The 60-shot floor plus
+`min_periods=window` left `rolling_10_onice_shooting_pct` non-null on only
+**56.8%** of rows (89.4% at window 20). Nearly half that column was NaN.
+
+Per the pre-registered rule, NO hyperparameter tuning was attempted in response
+(that is research-frontier item 1, a separate experiment). Retrained after the
+revert and confirmed the models return exactly to the PP TOI state: pickup
+0.6249 / 0.8494, cooling 0.6072 / 0.7667, 49 features.
+
+The draft-side luck residual (`onice_sh_luck`, Tasks 8-10) is a different model
+on a different target with its own gate, and still gets its independent look.
+
+
+**Draft result (2026-08-24): REVERTED (model wiring only; the columns stay computed).**
+
+| Model config | Ridge Spearman | Ridge MAE | XGB Spearman | XGB MAE |
+|---|---|---|---|---|
+| Baseline (11 features) | 0.8213 | 0.3287 | **0.8259** | 0.3277 |
+| + deployment + luck (16) | 0.8213 | 0.3269 | 0.8256 | 0.3270 |
+| + deployment only (14) | 0.8211 | 0.3260 | 0.8244 | **0.3246** |
+| after revert (11) | 0.8213 | 0.3287 | **0.8259** | 0.3277 |
+
+Gate rule (pre-registered): adopt if onice_sh_luck's Ridge coefficient is
+NEGATIVE **and** val Spearman >= 0.8259. Both failed. Baselines A/B unchanged at
+0.7963 / 0.7965; GATE B3 still PASS throughout. The search is fully seeded
+(random_state=42, n_iter=20), so these deltas are real, not search noise.
+
+Prediction 5 (onice_sh_luck negative): **WRONG.** Actual **+0.004450**.
+Prediction 6 (draft val Spearman moves < +0.01): **HELD** (-0.0003).
+
+**Diagnosis: onice_sh_luck is a talent proxy, not a luck residual.** On 8,472
+qualifying rows its raw Spearman is **+0.1195** vs this-season FP/g and
+**+0.0326** vs the next-season target, and it correlates **+0.2893** with
+fp_delta. A luck residual must predict a DROP in next-season FP/g holding this
+season constant. It cannot separate "got lucky" from "got better linemates" --
+and the PP TOI result above showed role changes are real and persistent, so the
+residual absorbs the persistent part. Coverage 88.9%.
+
+**ppToiShare's negative coefficient (-0.0424) was a collinearity artifact, not a
+feature bug.** ppToiShare vs avgPPIcetime Pearson **+0.9661**; in isolation
+ppToiShare's raw Spearman vs target is **+0.6576**, correctly positive. Ridge
+split the near-duplicate pair, giving avgPPIcetime +0.1650 and ppToiShare the
+negative correction. PP_share flipped +0.0151 -> -0.0523 for the same reason
+(correlation +0.8835), which the plan anticipated. fpPerGame stayed strongly
+positive (+0.2071) throughout, so the pre-existing sanity check held.
+
+**Why deployment failed here after passing on pickups.** Ridge Spearman is flat
+across all three configs (0.8213 / 0.8213 / 0.8211) while Ridge MAE improves
+steadily (0.3287 / 0.3269 / 0.3260): the features sharpen MAGNITUDE, not RANK
+ORDER, and this board ranks. At season level PP ice time is largely redundant
+with avgIcetime, PP_share and fpPerGame. Game-level deployment carries
+information season-level deployment does not; the two results do not conflict.
+
+**Eyeball gate -- the decisive finding.** First comparison run was CONFOUNDED and
+is discarded: Task 8 rebuilt player_seasons.csv, and the old Jul-7 file had been
+built from a staler moneypuck_current.csv, so 605 of 733 players gained up to 9
+games. (The val numbers above are unaffected -- the model trains on seasons
+<=2023 and the refresh only touched 2025 rows, confirmed by the post-revert
+retrain reproducing 0.8259 / 0.3277 exactly.) Re-run cleanly, features on vs off
+on identical data, the largest top-30 move was:
+
+  **Brad Marchand, age 38.4, 52 GP at 3.59 FP/g: PROMOTED 21 places, 46 -> 25.**
+
+That is verbatim the case Task 10 Step 4 named as a bug -- "a 38-year-old riding
+one lucky season sitting near the top... onice_sh_luck is specifically supposed
+to DEMOTE that player." It did the opposite on its own canonical example. Other
+notable moves: Dylan Guenther +9, Cutter Gauthier +6, Weegar +6 promoted;
+Heiskanen -9, Holloway -8, Faber -7 demoted. 18 players moved >5 ranks in the
+top 50.
+
+**Resolution.** BASE_FEATURE_COLS restored to the original 11; retrained and
+confirmed the shipped ranker is byte-identical in metrics to the Task 1 baseline
+(0.8213/0.3287 Ridge, 0.8259/0.3277 XGBoost). All five columns are still
+COMPUTED by buildPlayerSeasons and build_draft_features, so the board and any
+future experiment can read them -- a regression test in tests/test_draft_features.py
+pins that they are not model features. season.DRAFT_TEST_SEASON (2024) was never
+touched.
+
+**Net verdict for the whole 2026-08-24 experiment:** deployment features help the
+GAME-LEVEL pickup/cooling models (adopted) and nothing else. The luck family
+(PDO split, on-ice SH% residual) failed independently on both the pickup models
+and the draft ranker, and is rejected. Both negative results are recorded rather
+than re-cut, per methodology (e).
+
+
 ## Resources & References
 - NHLE API (no auth): `https://api-web.nhle.com/v1/` — roster: `/v1/roster/{team}/current`,
   player landing: `/v1/player/{id}/landing`; community docs: https://gitlab.com/dword4/nhlapi
@@ -818,7 +1054,53 @@ shipped July 15–20, 2026). The draft board, keeper analyzer, goalie ranker, li
 and mock-draft backtest are all in. What is left before the October 2026 draft is correctness work
 on what shipped, not new surface area.
 
-**Last session (2026-07-20, branch `feat/mock-draft-multi-team`, PR #14):** swept the mock draft
+**Last session (2026-08-24, branch `feat/draft-day-ux`): draft-day UX — the board became
+roster-aware.** A UX review found the board answered "who is the best player left?" and never
+"what should *I* do with *this* pick?" — because picks were a flat `Set<number>` with no owner, so
+the board could not describe your roster. Picks are now a **pick log** (`{id, pick, mine}`,
+`fht.draftLog.v2`, migrating v1), and everything else hangs off it: roster panel vs.
+`keeper.STARTING_SLOTS`, an on-the-clock top-3 shortlist with reasons, undo, a keyboard loop
+(`/` `⏎` `⇧⏎` `Ctrl+Z`), tier chips, a last-season stat line, `projected_gp` surfaced (invisible
+until now despite being exported), a summary-coverage dot, multi-select position filters, and
+3-way compare. `DraftBoard.tsx` split into board + `DraftTable.tsx`.
+
+Two things worth carrying forward. **The recommendation rule now lives in two languages on
+purpose** — `mockDraft.best_available` (promoted from private) and
+`frontend/src/lib/bestAvailable.ts`, because the board must work on draft day with no Python
+running — and `tests/fixtures/best_available_cases.json` runs against *both*, pinning the league
+slot constants as well as 13 behavioural cases. That is the fix for the drift hazard
+`liveDraft.ts` had been carrying as a bare comment. **Tiers are explicitly a display heuristic**
+(gap-based clustering, `TIER_GAP_MULTIPLIER = 1.6`), labelled as such in code and UI so a
+plausible-looking heuristic cannot quietly acquire the authority of a gated result.
+
+Gates: Python 213 passed; frontend 133 unit tests (up from 44) + `tsc --noEmit` + `next build`
+clean; `tsconfig.test.json` now compiles `src/components/rink` too. Verified on real data that the
+new display-stat columns leave **every pre-existing `draft_rankings.csv` column byte-identical** —
+they are not model features. Also found: only **19** of 745 players have a scouting summary, not
+the 50 recorded below; the B5 top-200 batch is further from done than the plan says.
+
+**Prior session (2026-08-24, branch `feat/deployment-luck-features`):** ran the deployment and
+luck feature experiment end to end, three pre-registered gates, one adopted and two rejected.
+**PP ice time is now a pickup/cooling feature** (val Spearman 0.6214 -> 0.6249, spot-check top-15
+mean 54.8% -> 56.2%). **Split PDO failed its gate and was reverted**, and **both families were
+rejected for the draft ranker** (val Spearman 0.8259 -> 0.8244/0.8256, and `onice_sh_luck`'s Ridge
+coefficient came out positive when a luck residual must be negative). Also landed as
+infrastructure: five `OnIce_*` columns in `GAME_COLUMNS`, a version-tagged game-log cache
+(`moneypuck_games_v2_*.parquet`) so a widened column set can never be served a stale-schema cache,
+and season-level deployment/luck aggregates in `player_seasons.csv` (rebuilt — it had been built
+Jul 7 from a staler current-season CSV, so 605 of 733 players gained up to 9 games). Two findings
+worth carrying forward: the PP-TOI **level** carries the signal, not the 5-vs-20 delta (ranks 3rd
+vs 44th of 49 features), and the feature confirms a breakout late rather than catching it early
+(Raddysh moved DOWN 47 places at the one date he is a real free agent). Full numbers in the
+Learning Log; `fht-research-frontier` item 2 marked SHIPPED (PARTIAL).
+
+**Frontend export is STALE and needs a manual run:** `api_export.py` was deliberately not run this
+session (it can block on Yahoo OAuth waiting on stdin, which a non-interactive session cannot
+answer). `data/processed/frontend_data.json` therefore predates the retrained pickup model and the
+rebuilt `player_seasons.csv`. Run `.\.venv\Scripts\python.exe api_export.py` interactively
+before trusting the Next.js board.
+
+**Earlier session (2026-07-20, branch `feat/mock-draft-multi-team`, PR #14):** swept the mock draft
 across all ten managers, which exposed that the board drafted **zero centers in 140 picks** and
 produced rosters that could not be legally fielded. Fixed with positional floors, keeper-aware
 floors and caps, demand-aware replacement ranks, and startable-lineup grading. Also fixed a unit
@@ -875,7 +1157,9 @@ made the keeper board recommend keeping nobody. Full write-up in the Learning Lo
       (`src/keepers.py`, wired at `main.py:253`); it only needs the announced list.
 - [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an
       API key the owner doesn't have — plan on a Claude Code session in chunks), then re-run
-      `api_export.py`. 50 of 774 players have summaries as of 2026-07-20. Generate these
+      `api_export.py`. **19** of 745 players have summaries as of 2026-08-24 (this line previously
+      said 50 of 774; counted directly off `draft_summaries.json` via `build_draft_list`). The
+      board now shows a dot on rows that have one, so the gap is at least visible. Generate these
       AFTER `data/raw/keepers.csv` is filled, so credits are not spent on the ~40 players
       who will not be in the draft pool (owner decision, 2026-07-20).
 

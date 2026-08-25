@@ -52,6 +52,16 @@ Fantasy-mechanics glossary (a non-hockey engineer needs these):
   cutting a rostered player to make room.
 - **Keeper** — a player a team is allowed to retain across draft years
   instead of re-drafting (4 per team here); see `src/keepers.py`.
+- **PDO** — on-ice shooting % plus on-ice save %, a classic "luck" index.
+  League mean is 1.00 *by construction*, which makes it its own sanity check:
+  if your computed PDO does not average ~1.00, the halves are wrong. A player
+  far above 1.00 is conventionally read as due to regress. In this repo it is
+  computed at 5on5 only and split into halves; it was tested as a model
+  feature on 2026-08-24 and **rejected** — see §6.
+- **PP1 / PP2** — a team's first and second power-play units. PP1 gets the
+  bulk of the power-play minutes, so a promotion from PP2 to PP1 is the
+  classic fantasy breakout trigger. No data source in this repo names the
+  unit; power-play ice-time share is the available proxy.
 - **Rank order matters more than point values** — the product decision
   behind "Spearman rank correlation as primary metric" (PROJECT-PLAN.md:73):
   a draft board only has to order players correctly, not predict their exact
@@ -110,15 +120,26 @@ The single most important domain fact in this repo: MoneyPuck's file is
 | `gameScore` | a single-number per-game performance rating |
 | Corsi / Fenwick | shot-attempt (Corsi) and unblocked-shot-attempt (Fenwick) percentages — possession proxies, columns `onIce_corsiPercentage` / `onIce_fenwickPercentage` |
 | High-danger shots | shots from high-danger ice; `high_danger_rate = I_F_highDangerShots / I_F_shotsOnGoal` (`src/features/mlFeatures.py:15`) |
+| `OnIce_F_` / `OnIce_A_` prefix | on-ice goals/shots FOR and AGAINST while the player was on the ice — PDO's ingredients, read from the `5on5` rows only (`src/fantasyPoints.py` `EV_ONICE_COLUMNS`) |
+| PDO | on-ice SH% + on-ice SV%, league mean 1.00 by construction. Split into halves in this repo, never summed into a model feature: on-ice SV% reaches fantasy points only through plus/minus, which `moneypuckGamePoints` does not compute. **Tested and rejected as a model feature 2026-08-24** — see §6 and PROJECT-PLAN's Learning Log |
+| PP TOI | power-play ice time = `icetime` on the `5on4` row, carried as `powerPlayIcetime`. Same 5-on-3 undercount as PPP. `pp_toi_share = powerPlayIcetime / icetime`. **Adopted for the pickup/cooling models 2026-08-24**, rejected for the draft ranker |
 
-The repo never reads all ~150 raw columns — it reads a fixed 22-column
-subset, `GAME_COLUMNS` at `src/moneypuck.py:26-33`, specifically to keep the
-2.6 GB history file loadable in memory. Verified list (2026-07-05):
+The repo never reads all ~150 raw columns — it reads a fixed 27-column
+subset, `GAME_COLUMNS` in `src/moneypuck.py`, specifically to keep the
+2.6 GB history file loadable in memory. Verified list (2026-08-24):
 `playerId, name, gameId, season, gameDate, position, situation, icetime,
 gameScore, onIce_corsiPercentage, onIce_fenwickPercentage, I_F_goals,
 I_F_primaryAssists, I_F_secondaryAssists, I_F_points, I_F_xGoals,
 I_F_shotsOnGoal, I_F_hits, shotsBlockedByPlayer, I_F_oZoneShiftStarts,
-I_F_dZoneShiftStarts, I_F_highDangerShots`.
+I_F_dZoneShiftStarts, I_F_highDangerShots, OnIce_F_goals,
+OnIce_F_shotsOnGoal, OnIce_F_xGoals, OnIce_A_goals, OnIce_A_shotsOnGoal`.
+
+**The game-log cache filename is versioned** (`GAME_CACHE_VERSION`, currently
+`v2`, via `moneypuck.gameCachePath()`): `loadGameLogs` serves a cache whenever
+it is newer than the current-season CSV, so without a version tag a widened
+`GAME_COLUMNS` would be served a cache written with the OLD column set and fail
+downstream with a `KeyError` that looks like a code bug. Bump the tag whenever
+`GAME_COLUMNS` changes; caches are `moneypuck_games_v2_{min_season}.parquet`.
 
 PPP/SHP derivation (`src/fantasyPoints.py:44-86`, pinned by
 `tests/test_fantasyPoints.py:38-59`): PPP = `I_F_points` summed over that
@@ -236,6 +257,35 @@ everyone", `src/keepers.py:36`).
   construction** (the label's own cold/hot split), printed alongside the
   model's and a naive last-10-games baseline's hit rates at
   `src/backtest.py:107-112`.
+- **Deployment vs luck (2026-08-24 experiment, both families tested).** Two
+  feature families were added, each behind its own retrain gate, and the
+  results split cleanly — read this before proposing either again:
+  - **Deployment (PP TOI) — ADOPTED for pickups/cooling.** `powerPlayIcetime`
+    (5on4 `icetime`) and `pp_toi_share` lifted pickup val Spearman
+    0.6214→0.6249 and the spot-check top-15 mean 54.8%→56.2%. The **level**
+    carries the signal, not the trend: `rolling_20_powerPlayIcetime` is the
+    3rd most important feature of 49, while `rolling_delta_5_20_pp_toi_share`
+    ranks 44th. The spec's premise that only a 5-vs-20 delta can express a
+    promotion is **not supported** by the fitted model.
+  - **Deployment — REJECTED for the draft ranker.** Val Spearman 0.8259→0.8244.
+    At season level PP ice time is largely redundant with `avgIcetime` /
+    `PP_share` / `fpPerGame` (Pearson +0.97 against `avgPPIcetime`, +0.88
+    against `PP_share`). Ridge Spearman was flat while Ridge MAE improved:
+    the features sharpen magnitude, not rank order, and the board ranks.
+  - **Luck (split PDO) — REJECTED everywhere.** On pickups it made every metric
+    worse (spot-check 56.2%→53.4%, simulated adds 60%→56%). On-ice **save %**
+    outranked on-ice **shooting %** in both models, which is backwards: save %
+    has no path to fantasy points here (no plus/minus in `moneypuckGamePoints`),
+    so a model leaning on it is learning team quality. The season-level
+    residual `onice_sh_luck` came out with a **positive** Ridge coefficient
+    when a luck residual must be negative — it correlates +0.12 with
+    this-season FP/g and +0.29 with `fp_delta`, i.e. it cannot separate "got
+    lucky" from "got better linemates". Its clearest failure: it promoted
+    38-year-old Brad Marchand 21 places up the board, the exact player class it
+    was designed to demote.
+  - The statistics were **verified correct** before rejection (league mean PDO
+    0.9995, on-ice SH% 0.081, SV% 0.919), so these are real negative results,
+    not computation bugs. Full numbers: PROJECT-PLAN's 2026-08-24 Learning Log.
 
 ## When NOT to use this skill
 
@@ -263,6 +313,9 @@ Re-run these to catch drift before trusting this document:
 
 # Column subset actually read from MoneyPuck files
 .\.venv\Scripts\python.exe -c "from src.moneypuck import GAME_COLUMNS; print(GAME_COLUMNS)"
+
+# League mean PDO must be ~1.00 -- if it is not, the halves are computed wrong
+.\.venv\Scripts\python.exe -c "import pandas as pd; d=pd.read_csv('data/processed/player_seasons.csv'); d=d[d['gamesPlayed']>=40]; print(d[['ppToiShare','oniceShootingPct','oniceSavePct','pdo']].mean())"
 
 # Freshness nag threshold and live staleness state
 .\.venv\Scripts\python.exe -c "from src import moneypuck; moneypuck.checkCurrentFreshness()"

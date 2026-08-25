@@ -36,7 +36,19 @@ GAME_COLUMNS = [
     'I_F_goals', 'I_F_primaryAssists', 'I_F_secondaryAssists', 'I_F_points',
     'I_F_xGoals', 'I_F_shotsOnGoal', 'I_F_hits', 'shotsBlockedByPlayer',
     'I_F_oZoneShiftStarts', 'I_F_dZoneShiftStarts', 'I_F_highDangerShots',
+    # On-ice goals and shots, for and against -- PDO's four ingredients, plus
+    # the xGoals denominator for the shot-quality-adjusted version. Read off
+    # the 5on5 rows only; see fantasyPoints.moneypuckGamePoints for why.
+    'OnIce_F_goals', 'OnIce_F_shotsOnGoal', 'OnIce_F_xGoals',
+    'OnIce_A_goals', 'OnIce_A_shotsOnGoal',
 ]
+
+# Bump whenever GAME_COLUMNS changes. The cache filename carries this tag so a
+# cache written with an older column set can never be served to code expecting
+# the newer one -- loadGameLogs prefers a fresh-looking cache over the raw
+# files, so without the tag a widened GAME_COLUMNS fails downstream with a
+# KeyError that looks like a code bug.
+GAME_CACHE_VERSION = 'v2'
 
 
 def checkCurrentFreshness(current_file=CURRENT_FILE):
@@ -71,6 +83,12 @@ def writeCache(df, path):
         df.to_parquet(path, index=False)
     else:
         df.to_csv(path, index=False)
+
+
+def gameCachePath(min_season):
+    """Default on-disk cache path for loadGameLogs at a given min_season."""
+    return os.path.join(
+        PROCESSED_DIR, f'moneypuck_games_{GAME_CACHE_VERSION}_{min_season}.parquet')
 
 
 def _missingSourceError(history_file, current_file):
@@ -110,7 +128,7 @@ def loadGameLogs(min_season=2020, history_file=HISTORY_FILE,
     unportable (that guard order was also a known test failure).
     """
     if cache_file is None:
-        cache_file = os.path.join(PROCESSED_DIR, f'moneypuck_games_{min_season}.parquet')
+        cache_file = gameCachePath(min_season)
 
     if os.path.exists(cache_file):
         # No current-season file to compare against => the cache is all we
@@ -173,6 +191,13 @@ def buildPlayerSeasons(game_df):
         totalPPAssists=('powerPlayAssists', 'sum'),
         totalSHP=('shorthandedPoints', 'sum'),
         totalFP=('fantasyPoints', 'sum'),
+        totalIcetime=('icetime', 'sum'),
+        totalPPIcetime=('powerPlayIcetime', 'sum'),
+        totalOnIceGoalsFor=('ev_onIce_goalsFor', 'sum'),
+        totalOnIceShotsFor=('ev_onIce_shotsFor', 'sum'),
+        totalOnIceXGoalsFor=('ev_onIce_xGoalsFor', 'sum'),
+        totalOnIceGoalsAgainst=('ev_onIce_goalsAgainst', 'sum'),
+        totalOnIceShotsAgainst=('ev_onIce_shotsAgainst', 'sum'),
     ).reset_index()
 
     summary['fpPerGame'] = summary['totalFP'] / summary['gamesPlayed']
@@ -180,6 +205,30 @@ def buildPlayerSeasons(game_df):
     summary['highDangerShare'] = (
         summary['totalHighDangerShots'] / summary['totalShotsOnGoal'].replace(0, 1)
     )
+
+    # Deployment. ppToiShare is the rate the draft model wants; avgPPIcetime is
+    # the level, kept because a share hides whether 20% of 12 minutes or 20% of
+    # 22 is behind it.
+    summary['ppToiShare'] = (
+        summary['totalPPIcetime'] / summary['totalIcetime'].replace(0, 1))
+    summary['avgPPIcetime'] = (
+        summary['totalPPIcetime'] / summary['gamesPlayed'].replace(0, 1))
+
+    # Luck, at 5on5. Sums over sums, never a mean of per-game rates — see
+    # features/mlFeatures.buildOnIceLuckFeatures for the full argument. A
+    # player with no 5on5 shots gets NaN, not a divide-by-zero.
+    summary['oniceShootingPct'] = (
+        summary['totalOnIceGoalsFor']
+        / summary['totalOnIceShotsFor'].where(summary['totalOnIceShotsFor'] > 0))
+    summary['oniceSavePct'] = 1 - (
+        summary['totalOnIceGoalsAgainst']
+        / summary['totalOnIceShotsAgainst'].where(summary['totalOnIceShotsAgainst'] > 0))
+    # Display/diagnostic only, same as pdo_{window} on the game-log side: the
+    # two halves are what the model sees.
+    summary['pdo'] = summary['oniceShootingPct'] + summary['oniceSavePct']
+    summary['oniceGaxPerGame'] = (
+        (summary['totalOnIceGoalsFor'] - summary['totalOnIceXGoalsFor'])
+        / summary['gamesPlayed'].replace(0, 1))
 
     return summary
 

@@ -5,11 +5,14 @@ from src import fantasyPoints
 
 
 def _moneypuck_row(playerId, gameId, situation, goals=0, pA=0, sA=0,
-                   sog=0, hits=0, blocks=0, points=0):
+                   sog=0, hits=0, blocks=0, points=0, icetime=0,
+                   onice_gf=0, onice_sf=0, onice_xgf=0.0,
+                   onice_ga=0, onice_sa=0):
     return {
         'playerId': playerId,
         'gameId': gameId,
         'situation': situation,
+        'icetime': icetime,
         'I_F_goals': goals,
         'I_F_primaryAssists': pA,
         'I_F_secondaryAssists': sA,
@@ -17,6 +20,11 @@ def _moneypuck_row(playerId, gameId, situation, goals=0, pA=0, sA=0,
         'I_F_hits': hits,
         'shotsBlockedByPlayer': blocks,
         'I_F_points': points,
+        'OnIce_F_goals': onice_gf,
+        'OnIce_F_shotsOnGoal': onice_sf,
+        'OnIce_F_xGoals': onice_xgf,
+        'OnIce_A_goals': onice_ga,
+        'OnIce_A_shotsOnGoal': onice_sa,
     }
 
 
@@ -124,3 +132,61 @@ def test_goalie_weights_are_the_six_league_categories_exactly():
         'gamesStarted': 0.75, 'wins': 2.5, 'losses': -1,
         'goalsAgainst': -0.5, 'saves': 0.15, 'shutouts': 3,
     }
+
+
+def test_moneypuck_game_points_carries_power_play_icetime():
+    # PP TOI is the 5on4 row's icetime, merged onto the 'all' row. The 'all'
+    # row's icetime (1080s) is total ice time and must not be overwritten.
+    df = pd.DataFrame([
+        _moneypuck_row(1, 100, 'all', goals=1, points=1, icetime=1080),
+        _moneypuck_row(1, 100, '5on4', points=1, icetime=180),
+        _moneypuck_row(1, 100, '4on5', icetime=90),
+    ])
+    row = fantasyPoints.moneypuckGamePoints(df).iloc[0]
+    assert row['powerPlayIcetime'] == 180
+    assert row['icetime'] == 1080
+
+
+def test_moneypuck_game_points_on_ice_counts_come_from_5on5_only():
+    # PDO is an even-strength stat. The 'all' row's on-ice counts include
+    # power-play time, which would turn a luck feature into a deployment
+    # proxy -- so only the 5on5 row's counts are carried through.
+    df = pd.DataFrame([
+        _moneypuck_row(1, 100, 'all', onice_gf=3, onice_sf=25,
+                       onice_ga=2, onice_sa=20, onice_xgf=2.5),
+        _moneypuck_row(1, 100, '5on5', onice_gf=1, onice_sf=18,
+                       onice_ga=2, onice_sa=17, onice_xgf=1.4),
+        _moneypuck_row(1, 100, '5on4', onice_gf=2, onice_sf=7,
+                       onice_ga=0, onice_sa=3, onice_xgf=1.1),
+    ])
+    row = fantasyPoints.moneypuckGamePoints(df).iloc[0]
+    assert row['ev_onIce_goalsFor'] == 1
+    assert row['ev_onIce_shotsFor'] == 18
+    assert row['ev_onIce_goalsAgainst'] == 2
+    assert row['ev_onIce_shotsAgainst'] == 17
+    assert row['ev_onIce_xGoalsFor'] == pytest.approx(1.4)
+
+
+def test_moneypuck_game_points_missing_situations_give_zero_not_nan():
+    # A player with no 5on4 and no 5on5 row that game gets zeros, so
+    # downstream rolling sums never silently propagate NaN.
+    df = pd.DataFrame([_moneypuck_row(2, 100, 'all', goals=1, points=1, icetime=600)])
+    row = fantasyPoints.moneypuckGamePoints(df).iloc[0]
+    assert row['powerPlayIcetime'] == 0
+    assert row['ev_onIce_goalsFor'] == 0
+    assert row['ev_onIce_shotsAgainst'] == 0
+
+
+def test_moneypuck_game_points_value_is_unchanged_by_the_new_columns():
+    # Same fixture as test_moneypuck_game_points_with_special_teams:
+    # FP = 3*1 + 2*(1+1) + 0.15*4 + 0.15*2 + 0.35*1 + 1*2 + 1*1 = 11.25
+    # Adding deployment/luck columns must not move the scoring path at all.
+    df = pd.DataFrame([
+        _moneypuck_row(1, 100, 'all', goals=1, pA=1, sA=1, sog=4, hits=2,
+                       blocks=1, points=3, icetime=1080, onice_gf=3, onice_sf=25),
+        _moneypuck_row(1, 100, '5on4', goals=1, pA=1, points=2, icetime=180),
+        _moneypuck_row(1, 100, '4on5', points=1, icetime=90),
+        _moneypuck_row(1, 100, '5on5', points=1, icetime=810, onice_gf=1, onice_sf=18),
+    ])
+    row = fantasyPoints.moneypuckGamePoints(df).iloc[0]
+    assert row['fantasyPoints'] == pytest.approx(11.25)

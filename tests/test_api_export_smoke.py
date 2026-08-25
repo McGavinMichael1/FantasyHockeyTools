@@ -43,7 +43,8 @@ KEEPER_ROW = {
 DRAFT_PLAYER_KEYS = {
     'id', 'full_name', 'positionCode', 'headshot', 'age', 'gamesPlayed',
     'last_fpPerGame', 'projected_fpPerGame', 'projected_total',
-    'delta_vs_last', 'vorp', 'projected_gp', 'confidence', 'factors', 'summary',
+    'delta_vs_last', 'vorp', 'projected_gp', 'confidence', 'factors', 'stats',
+    'summary',
 }
 
 

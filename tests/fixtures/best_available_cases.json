@@ -1,0 +1,188 @@
+{
+  "_comment": [
+    "Shared contract for the roster-aware 'who should I pick now' rule.",
+    "",
+    "The rule lives twice on purpose: src/mockDraft.py::best_available drives the",
+    "backtest, and frontend/src/lib/bestAvailable.ts drives the live board (the",
+    "board must keep working with no Python process running on draft day). Two",
+    "implementations of the same math is exactly how liveDraft.ts and keeper.py",
+    "already drifted apart with only a comment holding them together.",
+    "",
+    "Both are run against this file. A change to either that is not a change to",
+    "the other fails here.",
+    "",
+    "`rules` pins the league constants themselves: Python asserts they still equal",
+    "keeper.STARTING_SLOTS / mockDraft.MAX_BY_POSITION, TypeScript asserts its",
+    "fallback constants match. So a slot change in Python cannot silently leave",
+    "the frontend on stale numbers."
+  ],
+  "rules": {
+    "starting_slots": { "C": 2, "L": 2, "R": 2, "D": 4, "G": 2 },
+    "max_by_position": { "C": 4, "L": 4, "R": 4, "D": 6, "G": 2 }
+  },
+  "cases": [
+    {
+      "name": "takes the highest vorp when nothing constrains the pick",
+      "board": [
+        { "playerId": 1, "full_name": "Top Center", "position": "C", "vorp": 50 },
+        { "playerId": 2, "full_name": "Good D", "position": "D", "vorp": 40 },
+        { "playerId": 3, "full_name": "A Goalie", "position": "G", "vorp": 30 }
+      ],
+      "taken": [],
+      "counts": {},
+      "kept_counts": null,
+      "picks_left": null,
+      "expected_playerId": 1
+    },
+    {
+      "name": "skips a player already off the board",
+      "board": [
+        { "playerId": 1, "full_name": "Top Center", "position": "C", "vorp": 50 },
+        { "playerId": 2, "full_name": "Good D", "position": "D", "vorp": 40 }
+      ],
+      "taken": [1],
+      "counts": {},
+      "kept_counts": null,
+      "picks_left": null,
+      "expected_playerId": 2
+    },
+    {
+      "name": "skips a position already at its cap",
+      "why": "Four centers is the cap; a fifth can never leave the bench.",
+      "board": [
+        { "playerId": 1, "full_name": "C One", "position": "C", "vorp": 50 },
+        { "playerId": 2, "full_name": "C Two", "position": "C", "vorp": 49 },
+        { "playerId": 3, "full_name": "Marginal D", "position": "D", "vorp": 10 }
+      ],
+      "taken": [],
+      "counts": { "C": 4 },
+      "kept_counts": null,
+      "picks_left": null,
+      "expected_playerId": 3
+    },
+    {
+      "name": "a keeper at a position counts against that position's cap",
+      "why": "Kept goalie plus one drafted fills both G slots; a third can never start.",
+      "board": [
+        { "playerId": 1, "full_name": "G One", "position": "G", "vorp": 50 },
+        { "playerId": 2, "full_name": "G Two", "position": "G", "vorp": 45 },
+        { "playerId": 3, "full_name": "Marginal D", "position": "D", "vorp": 10 }
+      ],
+      "taken": [],
+      "counts": { "G": 1 },
+      "kept_counts": { "G": 1 },
+      "picks_left": null,
+      "expected_playerId": 3
+    },
+    {
+      "name": "without a keeper list the base cap applies unchanged",
+      "why": "The opponent path passes no keepers and must not inherit your constraints.",
+      "board": [
+        { "playerId": 1, "full_name": "G One", "position": "G", "vorp": 50 },
+        { "playerId": 3, "full_name": "Marginal D", "position": "D", "vorp": 10 }
+      ],
+      "taken": [],
+      "counts": { "G": 1 },
+      "kept_counts": null,
+      "picks_left": null,
+      "expected_playerId": 1
+    },
+    {
+      "name": "reserves the last picks for unfilled starting slots",
+      "why": "One pick left and one empty G slot: the 99-VORP center cannot be started.",
+      "board": [
+        { "playerId": 1, "full_name": "Elite Center", "position": "C", "vorp": 99 },
+        { "playerId": 2, "full_name": "Backup Goalie", "position": "G", "vorp": 5 }
+      ],
+      "taken": [],
+      "counts": { "C": 2, "L": 2, "R": 2, "D": 4, "G": 1 },
+      "kept_counts": null,
+      "picks_left": 1,
+      "expected_playerId": 2
+    },
+    {
+      "name": "reserves when needs outnumber the picks left, not only when equal",
+      "why": "Two G slots open and one pick: still forced, and the >= is what does it.",
+      "board": [
+        { "playerId": 1, "full_name": "Elite Center", "position": "C", "vorp": 99 },
+        { "playerId": 2, "full_name": "Backup Goalie", "position": "G", "vorp": 5 }
+      ],
+      "taken": [],
+      "counts": { "C": 2, "L": 2, "R": 2, "D": 4, "G": 0 },
+      "kept_counts": null,
+      "picks_left": 1,
+      "expected_playerId": 2
+    },
+    {
+      "name": "a keeper fills a starting slot and lifts the reservation",
+      "why": "Kept goalie means G is not a need, so the best player is free to win.",
+      "board": [
+        { "playerId": 1, "full_name": "Elite Center", "position": "C", "vorp": 99 },
+        { "playerId": 2, "full_name": "Backup Goalie", "position": "G", "vorp": 5 }
+      ],
+      "taken": [],
+      "counts": { "C": 2, "L": 2, "R": 2, "D": 4, "G": 1 },
+      "kept_counts": { "G": 1 },
+      "picks_left": 1,
+      "expected_playerId": 1
+    },
+    {
+      "name": "falls back to best available when the needed position is empty",
+      "why": "A skipped pick would hand the comparison away for free.",
+      "board": [
+        { "playerId": 1, "full_name": "Elite Center", "position": "C", "vorp": 99 }
+      ],
+      "taken": [],
+      "counts": { "C": 2, "L": 2, "R": 2, "D": 4, "G": 1 },
+      "kept_counts": null,
+      "picks_left": 1,
+      "expected_playerId": 1
+    },
+    {
+      "name": "picks_left null disables the reservation rule entirely",
+      "why": "Opponent substitutions are unmodelled; inventing needs for them would skew the result.",
+      "board": [
+        { "playerId": 1, "full_name": "Elite Center", "position": "C", "vorp": 99 },
+        { "playerId": 2, "full_name": "Backup Goalie", "position": "G", "vorp": 5 }
+      ],
+      "taken": [],
+      "counts": { "C": 2, "L": 2, "R": 2, "D": 4, "G": 1 },
+      "kept_counts": null,
+      "picks_left": null,
+      "expected_playerId": 1
+    },
+    {
+      "name": "plenty of picks left leaves the early board undistorted",
+      "why": "Reserving only the tail is the point: needs can still be met later.",
+      "board": [
+        { "playerId": 1, "full_name": "Elite Center", "position": "C", "vorp": 99 },
+        { "playerId": 2, "full_name": "Backup Goalie", "position": "G", "vorp": 5 }
+      ],
+      "taken": [],
+      "counts": { "C": 2, "L": 2, "R": 2, "D": 4, "G": 1 },
+      "kept_counts": null,
+      "picks_left": 8,
+      "expected_playerId": 1
+    },
+    {
+      "name": "an empty board yields no pick",
+      "board": [],
+      "taken": [],
+      "counts": {},
+      "kept_counts": null,
+      "picks_left": null,
+      "expected_playerId": null
+    },
+    {
+      "name": "a fully taken board yields no pick",
+      "board": [
+        { "playerId": 1, "full_name": "Top Center", "position": "C", "vorp": 50 }
+      ],
+      "taken": [1],
+      "counts": {},
+      "kept_counts": null,
+      "picks_left": null,
+      "expected_playerId": null
+    }
+  ]
+}

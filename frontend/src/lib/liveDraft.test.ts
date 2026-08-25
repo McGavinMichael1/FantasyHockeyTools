@@ -3,12 +3,21 @@ import test from 'node:test';
 import type { DraftPlayer, Position } from '@/types/player';
 import {
   REPLACEMENT_RANKS,
+  addPick,
+  draftedIds,
   liveVorp,
   loadDrafted,
+  loadPicks,
+  myPicks,
+  positionCounts,
   positionalRuns,
   remaining,
+  removePick,
   replacementLevels,
   saveDrafted,
+  savePicks,
+  setMine,
+  undoLast,
   withLiveVorp,
 } from './liveDraft';
 
@@ -28,6 +37,7 @@ function player(id: number, positionCode: Position, projected_total: number): Dr
     projected_gp: 78,
     confidence: null,
     factors: [],
+    stats: [],
     summary: null,
   };
 }
@@ -138,9 +148,8 @@ test('the most depleted position sorts first', () => {
 
 // --- persistence ----------------------------------------------------------
 
-function fakeStorage(initial?: string): Storage {
-  const map = new Map<string, string>();
-  if (initial !== undefined) map.set('fht.draftedIds.v1', initial);
+function storageWith(entries: Record<string, string> = {}): Storage {
+  const map = new Map<string, string>(Object.entries(entries));
   return {
     getItem: (k: string) => map.get(k) ?? null,
     setItem: (k: string, v: string) => void map.set(k, v),
@@ -149,6 +158,10 @@ function fakeStorage(initial?: string): Storage {
     key: () => null,
     length: 0,
   } as unknown as Storage;
+}
+
+function fakeStorage(initial?: string): Storage {
+  return storageWith(initial === undefined ? {} : { 'fht.draftedIds.v1': initial });
 }
 
 test('drafted ids survive a round trip', () => {
@@ -175,4 +188,174 @@ test('a storage that throws does not take the board down', () => {
 
   assert.equal(loadDrafted(hostile).size, 0);
   assert.doesNotThrow(() => saveDrafted(new Set([1]), hostile));
+});
+
+// --- pick log -------------------------------------------------------------
+
+test('picks are numbered in the order they were made', () => {
+  const log = addPick(addPick(addPick([], 7, false), 3, true), 9, false);
+  assert.deepEqual(
+    log.map((p) => [p.id, p.pick, p.mine]),
+    [
+      [7, 1, false],
+      [3, 2, true],
+      [9, 3, false],
+    ],
+  );
+});
+
+test('a player already in the log is not picked twice', () => {
+  // Double-tapping the same row mid-draft must not invent a second pick and
+  // shift every later pick number by one.
+  const log = addPick(addPick([], 7, false), 7, true);
+  assert.equal(log.length, 1);
+  assert.equal(log[0].mine, false);
+});
+
+test('draftedIds returns every pick regardless of who made it', () => {
+  const log = addPick(addPick([], 7, false), 3, true);
+  assert.deepEqual([...draftedIds(log)].sort(), [3, 7]);
+});
+
+test('myPicks returns only the picks marked mine', () => {
+  const log = addPick(addPick(addPick([], 7, false), 3, true), 9, true);
+  assert.deepEqual(myPicks(log).map((p) => p.id), [3, 9]);
+});
+
+test('undoLast removes the most recent pick', () => {
+  const log = addPick(addPick([], 7, false), 3, true);
+  assert.deepEqual(undoLast(log).map((p) => p.id), [7]);
+});
+
+test('undoing an empty log is a no-op rather than an error', () => {
+  assert.deepEqual(undoLast([]), []);
+});
+
+test('removing a pick renumbers the ones after it', () => {
+  // Pick numbers are what the roster panel and the picks-left math count, so a
+  // gap would quietly overstate how far into the draft you are.
+  let log = addPick(addPick(addPick([], 7, false), 3, true), 9, false);
+  log = removePick(log, 3);
+  assert.deepEqual(
+    log.map((p) => [p.id, p.pick]),
+    [
+      [7, 1],
+      [9, 2],
+    ],
+  );
+});
+
+test('setMine flips ownership without disturbing the order', () => {
+  // "I marked him taken, then realised that was my pick" -- the common
+  // mid-draft correction.
+  const log = setMine(addPick(addPick([], 7, false), 3, false), 7, true);
+  assert.deepEqual(
+    log.map((p) => [p.id, p.pick, p.mine]),
+    [
+      [7, 1, true],
+      [3, 2, false],
+    ],
+  );
+});
+
+test('positionCounts counts the picks it is given, by position', () => {
+  const players = [...pool('C', 2, 1000, 0), ...pool('D', 2, 500, 100)];
+  const log = addPick(addPick(addPick([], 1, true), 2, true), 101, true);
+  const counts = positionCounts(log, players);
+  assert.equal(counts.C, 2);
+  assert.equal(counts.D, 1);
+  assert.equal(counts.G, 0, 'every position is present so the panel can render a zero');
+});
+
+test('positionCounts ignores picks with no matching board row', () => {
+  // The board applies games-played display floors, so a real pick can be a
+  // player the board never listed.
+  const counts = positionCounts(addPick([], 999, true), pool('C', 2));
+  assert.equal(counts.C, 0);
+});
+
+// --- pick log persistence -------------------------------------------------
+
+test('a pick log survives a round trip', () => {
+  const storage = storageWith();
+  const log = addPick(addPick([], 7, false), 3, true);
+  savePicks(log, storage);
+  assert.deepEqual(loadPicks(storage), log);
+});
+
+test('a v1 drafted-id list migrates to picks nobody claims', () => {
+  // Everyone stored under v1 was marked with the old owner-less toggle, so the
+  // only honest reading is "taken by someone".
+  const storage = storageWith({ 'fht.draftedIds.v1': JSON.stringify([7, 3, 9]) });
+  assert.deepEqual(
+    loadPicks(storage).map((p) => [p.id, p.pick, p.mine]),
+    [
+      [7, 1, false],
+      [3, 2, false],
+      [9, 3, false],
+    ],
+  );
+});
+
+test('an existing v2 log wins over a stale v1 list', () => {
+  const storage = storageWith({
+    'fht.draftedIds.v1': JSON.stringify([7, 3, 9]),
+    'fht.draftLog.v2': JSON.stringify([{ id: 42, pick: 1, mine: true }]),
+  });
+  assert.deepEqual(loadPicks(storage).map((p) => p.id), [42]);
+});
+
+test('clearing every pick does not resurrect the migrated v1 list', () => {
+  // v1 is left in place as insurance, so "log exists but is empty" has to be
+  // distinguishable from "log was never written" -- otherwise Clear would undo
+  // itself on the next reload, mid-draft.
+  const storage = storageWith({ 'fht.draftedIds.v1': JSON.stringify([7, 3]) });
+  savePicks([], storage);
+  assert.deepEqual(loadPicks(storage), []);
+});
+
+test('a corrupt pick log yields an empty log rather than throwing', () => {
+  assert.deepEqual(loadPicks(storageWith({ 'fht.draftLog.v2': 'not json' })), []);
+  assert.deepEqual(loadPicks(storageWith({ 'fht.draftLog.v2': '{"not":"an array"}' })), []);
+});
+
+test('malformed entries are dropped and the survivors renumbered', () => {
+  const storage = storageWith({
+    'fht.draftLog.v2': JSON.stringify([
+      { id: 7, pick: 1, mine: false },
+      { id: 'nope', pick: 2, mine: false },
+      { id: 9, pick: 3, mine: true },
+    ]),
+  });
+  assert.deepEqual(
+    loadPicks(storage).map((p) => [p.id, p.pick]),
+    [
+      [7, 1],
+      [9, 2],
+    ],
+  );
+});
+
+test('a stored log out of pick order is restored in order', () => {
+  const storage = storageWith({
+    'fht.draftLog.v2': JSON.stringify([
+      { id: 9, pick: 2, mine: true },
+      { id: 7, pick: 1, mine: false },
+    ]),
+  });
+  assert.deepEqual(loadPicks(storage).map((p) => p.id), [7, 9]);
+});
+
+test('a hostile storage does not take the pick log down', () => {
+  const hostile = {
+    getItem: () => {
+      throw new Error('private mode');
+    },
+    setItem: () => {
+      throw new Error('quota exceeded');
+    },
+  } as unknown as Storage;
+
+  assert.deepEqual(loadPicks(hostile), []);
+  assert.doesNotThrow(() => savePicks(addPick([], 1, true), hostile));
 });

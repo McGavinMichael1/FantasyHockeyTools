@@ -418,6 +418,122 @@
   color: var(--boards);
 }
 
+/* Last season's actual production -- the only thing on the board a projection
+   can be checked against. */
+.statLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.statPair {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.statLabel {
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.statValue {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* A goalie's projected starts, inline beside his projected total: workload IS
+   the value for a goalie, and the total means nothing without it. */
+.startsHint {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.projectedGp {
+  margin: 9px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* A player who has a scouting summary written. Without it you expand rows at
+   random hunting for the ~7% that do. */
+.summaryDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cold);
+  flex: none;
+}
+
+/* Tier chips. A display grouping of the projections, deliberately quieter than
+   the projected numbers themselves -- it is a reading aid, not a result. */
+.tierChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--ice);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.tierLeft {
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Two or fewer left in a tier is the moment the decision changes from "wait a
+   round" to "take him now". */
+.tierChipThin {
+  border-color: var(--hot);
+  background: var(--hot-tint);
+  color: var(--hot-deep);
+}
+
+.tierChipThin .tierLeft {
+  color: var(--hot-deep);
+}
+
+/* A rule where the position falls off a cliff. Only drawn between rows of the
+   same position, so it never implies a break that is not there. */
+.tierBreak td {
+  border-top: 2px solid var(--line);
+}
+
+.draftButtons {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.mineButton {
+  width: auto;
+  padding: 0 6px;
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.mineButtonOn,
+.mineButtonOn:hover {
+  background: var(--hot-deep, var(--ink));
+  border-color: var(--hot-deep, var(--ink));
+  color: var(--boards);
+}
+
 /* Drafted players stay visible but recede -- seeing who is gone is part of
    reading the room, so they are dimmed rather than removed. */
 .rowDrafted {
@@ -426,6 +542,23 @@
 
 .rowDrafted .playerName {
   text-decoration: line-through;
+}
+
+/* Your own picks are not gone, they are your roster -- they read as owned
+   rather than lost, so scanning the log tells you what you have. */
+.rowMine {
+  opacity: 1;
+  background: var(--hot-tint);
+}
+
+.rowMine .playerName {
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.rowMine .rank {
+  color: var(--hot-deep);
+  font-weight: 700;
 }
 
 .rosteredChip {

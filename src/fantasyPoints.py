@@ -29,6 +29,17 @@ GOALIE_WEIGHTS = {
 }
 
 
+# 5on5 on-ice counts carried onto each player-game for the PDO features.
+# MoneyPuck column -> pipeline column. 'ev' = even strength.
+EV_ONICE_COLUMNS = {
+    'OnIce_F_goals': 'ev_onIce_goalsFor',
+    'OnIce_F_shotsOnGoal': 'ev_onIce_shotsFor',
+    'OnIce_F_xGoals': 'ev_onIce_xGoalsFor',
+    'OnIce_A_goals': 'ev_onIce_goalsAgainst',
+    'OnIce_A_shotsOnGoal': 'ev_onIce_shotsAgainst',
+}
+
+
 def calculateGoaliePoints(stats):
     """League fantasy points for one goalie stat line (dict or pandas Series).
 
@@ -54,6 +65,9 @@ def moneypuckGamePoints(games_df):
     draft features can value PP production in fantasy units (a PP goal is
     worth 3+1, a PP assist 2+1), not just the raw PPP bonus — see
     src/features/draft.py PP_share.
+    powerPlayIcetime (5on4 icetime) and the ev_onIce_* counts (5on5 on-ice
+    goals/shots for and against) ride along for the deployment and luck
+    features — see src/features/mlFeatures.py and src/features/draft.py.
     """
     result = games_df[games_df['situation'] == 'all'].copy()
     for situation, col in (('5on4', 'powerPlayPoints'), ('4on5', 'shorthandedPoints')):
@@ -74,6 +88,30 @@ def moneypuckGamePoints(games_df):
     result = result.merge(pp_breakdown, on=['playerId', 'gameId'], how='left')
     result[['powerPlayGoals', 'powerPlayAssists']] = (
         result[['powerPlayGoals', 'powerPlayAssists']].fillna(0))
+
+    # Power-play ice time: the 5on4 row's icetime. Same 5-on-3-lands-in-'other'
+    # undercount as PPP, and for the same reason — MoneyPuck has no 5on3
+    # situation row. The 'all' row's own icetime (total TOI) is untouched.
+    pp_toi = (games_df[games_df['situation'] == '5on4']
+              .groupby(['playerId', 'gameId'])['icetime']
+              .sum()
+              .rename('powerPlayIcetime')
+              .reset_index())
+    result = result.merge(pp_toi, on=['playerId', 'gameId'], how='left')
+    result['powerPlayIcetime'] = result['powerPlayIcetime'].fillna(0)
+
+    # 5on5 on-ice goal and shot counts — PDO's ingredients. Even strength
+    # only: on the 'all' rows, power-play time systematically inflates on-ice
+    # shooting % for exactly the players who already get PP1 minutes, which
+    # turns a luck feature into a deployment feature the model already has.
+    ev_counts = (games_df[games_df['situation'] == '5on5']
+                 .groupby(['playerId', 'gameId'])[list(EV_ONICE_COLUMNS)]
+                 .sum()
+                 .rename(columns=EV_ONICE_COLUMNS)
+                 .reset_index())
+    result = result.merge(ev_counts, on=['playerId', 'gameId'], how='left')
+    ev_cols = list(EV_ONICE_COLUMNS.values())
+    result[ev_cols] = result[ev_cols].fillna(0)
 
     result['fantasyPoints'] = (
         result['I_F_goals'] * SKATER_WEIGHTS['goals']

@@ -108,8 +108,14 @@ def test_missing_sources_still_error_when_there_is_no_cache(tmp_path):
 
 def _pickup_row(playerId, gameId, gameDate, situation='all', season=2025,
                 name='Player One', position='C', icetime=1200,
-                goals=0, pA=0, sA=0, sog=0, hits=0, blocks=0, points=0):
-    """Minimal full-situation game-log row for buildPickupStats tests."""
+                goals=0, pA=0, sA=0, sog=0, hits=0, blocks=0, points=0,
+                onice_gf=0, onice_sf=0, onice_xgf=0.0,
+                onice_ga=0, onice_sa=0, gameScore=0.0, xGoals=0.0,
+                highDangerShots=0, corsi=50.0, fenwick=50.0):
+    """Minimal full-situation game-log row for buildPickupStats and
+    buildPlayerSeasons tests. Carries every column those two aggregate --
+    buildPlayerSeasons reads more of GAME_COLUMNS than buildPickupStats does.
+    """
     return {
         'playerId': playerId, 'gameId': gameId, 'gameDate': gameDate,
         'season': season, 'name': name, 'position': position,
@@ -118,6 +124,12 @@ def _pickup_row(playerId, gameId, gameDate, situation='all', season=2025,
         'I_F_secondaryAssists': sA, 'I_F_shotsOnGoal': sog,
         'I_F_hits': hits, 'shotsBlockedByPlayer': blocks,
         'I_F_points': points,
+        'gameScore': gameScore, 'I_F_xGoals': xGoals,
+        'I_F_highDangerShots': highDangerShots,
+        'onIce_corsiPercentage': corsi, 'onIce_fenwickPercentage': fenwick,
+        'OnIce_F_goals': onice_gf, 'OnIce_F_shotsOnGoal': onice_sf,
+        'OnIce_F_xGoals': onice_xgf, 'OnIce_A_goals': onice_ga,
+        'OnIce_A_shotsOnGoal': onice_sa,
     }
 
 
@@ -196,3 +208,82 @@ def test_build_pickup_stats_keeps_players_separate():
     assert result.loc[2, 'position'] == 'D'
     # FP: player 2 = 0.15*4 + 0.35*3 = 1.65
     assert result.loc[2, 'fantasyPoints'] == pytest.approx(1.65)
+
+
+def test_game_columns_include_the_on_ice_pdo_ingredients():
+    # PDO needs on-ice goals and shots, for and against, plus the xGoals
+    # denominator for the shot-quality-adjusted version.
+    for col in ['OnIce_F_goals', 'OnIce_F_shotsOnGoal', 'OnIce_F_xGoals',
+                'OnIce_A_goals', 'OnIce_A_shotsOnGoal']:
+        assert col in moneypuck.GAME_COLUMNS
+
+
+def test_cache_path_is_versioned_so_column_changes_invalidate_it():
+    # A cache written with an older GAME_COLUMNS must not be served to code
+    # expecting the newer set. The version tag in the filename is what makes
+    # that impossible rather than merely unlikely.
+    path = moneypuck.gameCachePath(2020)
+    assert moneypuck.GAME_CACHE_VERSION in os.path.basename(path)
+    assert path.endswith('.parquet')
+    assert moneypuck.gameCachePath(2008) != moneypuck.gameCachePath(2020)
+
+
+def test_build_player_seasons_aggregates_pp_icetime_as_a_share():
+    # 2 games, 1200s total ice time each, 180s of PP each:
+    #   totalPPIcetime = 360, totalIcetime = 2400 -> ppToiShare = 0.15
+    #   avgPPIcetime = 360 / 2 games = 180
+    df = pd.DataFrame([
+        _pickup_row(1, 100, 20251015, icetime=1200),
+        _pickup_row(1, 100, 20251015, situation='5on4', icetime=180),
+        _pickup_row(1, 101, 20251017, icetime=1200),
+        _pickup_row(1, 101, 20251017, situation='5on4', icetime=180),
+    ])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert row['totalPPIcetime'] == 360
+    assert row['totalIcetime'] == 2400
+    assert row['ppToiShare'] == pytest.approx(0.15)
+    assert row['avgPPIcetime'] == pytest.approx(180)
+
+
+def test_build_player_seasons_onice_rates_are_sums_over_sums():
+    # 2 games of 5on5 on-ice counts:
+    #   game 1: 1 GF on 10 SF, 2 GA on 20 SA
+    #   game 2: 3 GF on 30 SF, 1 GA on 20 SA
+    #   SH% = (1+3)/(10+30) = 4/40 = 0.10
+    #   SV% = 1 - (2+1)/(20+20) = 1 - 3/40 = 0.925
+    #   PDO = 1.025
+    df = pd.DataFrame([
+        _pickup_row(1, 100, 20251015),
+        _pickup_row(1, 100, 20251015, situation='5on5', onice_gf=1, onice_sf=10,
+                    onice_ga=2, onice_sa=20),
+        _pickup_row(1, 101, 20251017),
+        _pickup_row(1, 101, 20251017, situation='5on5', onice_gf=3, onice_sf=30,
+                    onice_ga=1, onice_sa=20),
+    ])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert row['oniceShootingPct'] == pytest.approx(0.10)
+    assert row['oniceSavePct'] == pytest.approx(0.925)
+    assert row['pdo'] == pytest.approx(1.025)
+
+
+def test_build_player_seasons_onice_gax_is_per_game():
+    # 2 games, 4 on-ice goals total on 3.0 total on-ice xG:
+    # (4 - 3.0) / 2 games = +0.5 goals above expected per game.
+    df = pd.DataFrame([
+        _pickup_row(1, 100, 20251015),
+        _pickup_row(1, 100, 20251015, situation='5on5', onice_gf=1, onice_sf=10,
+                    onice_xgf=1.5),
+        _pickup_row(1, 101, 20251017),
+        _pickup_row(1, 101, 20251017, situation='5on5', onice_gf=3, onice_sf=10,
+                    onice_xgf=1.5),
+    ])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert row['oniceGaxPerGame'] == pytest.approx(0.5)
+
+
+def test_build_player_seasons_zero_onice_shots_is_nan_not_infinity():
+    # A player with no 5on5 rows must not produce a divide-by-zero rate.
+    df = pd.DataFrame([_pickup_row(1, 100, 20251015)])
+    row = moneypuck.buildPlayerSeasons(df).iloc[0]
+    assert pd.isna(row['oniceShootingPct'])
+    assert pd.isna(row['oniceSavePct'])

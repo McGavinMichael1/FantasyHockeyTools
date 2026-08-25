@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { Player, DraftPlayer, KeeperSection, Position } from '@/types/player';
+import type {
+  Player,
+  DraftPlayer,
+  DraftRosterRules,
+  KeeperSection,
+  Position,
+} from '@/types/player';
 import ThreeStars from '@/components/rink/ThreeStars';
 import RinkTable from '@/components/rink/RinkTable';
 import DraftBoard from '@/components/rink/DraftBoard';
@@ -15,6 +21,8 @@ interface ApiResponse {
   // The ranks the exported vorp was computed with. Absent in snapshots taken
   // before demand-aware ranks existed; DraftBoard falls back to the base ranks.
   draft_replacement_ranks?: Record<Position, number>;
+  // League slot rules; absent in snapshots exported before they existed.
+  draft_roster_rules?: DraftRosterRules;
   keeper?: KeeperSection | null;
   dataAge?: string;
   error?: string;
@@ -146,7 +154,12 @@ export default function RinkPage() {
               </p>
             </div>
           ) : (
-            <DraftBoard players={data.draft} replacementRanks={data.draft_replacement_ranks} />
+            <DraftBoard
+              players={data.draft}
+              replacementRanks={data.draft_replacement_ranks}
+              rosterRules={data.draft_roster_rules}
+              keeperOptions={data.keeper?.recommendations ?? []}
+            />
           )
         ) : (
           <>

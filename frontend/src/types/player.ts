@@ -65,7 +65,26 @@ export interface DraftPlayer {
   projected_gp: number | null;
   confidence: number | null;
   factors: DraftFactor[];
+  stats: DraftStat[];
   summary: string | null;
+}
+
+// Last season's actual production, pre-formatted by api_export.py. Skaters and
+// goalies share no columns, so the shape is label/value pairs and the board
+// renders whatever it is handed. Display only — never a model input.
+export interface DraftStat {
+  label: string;
+  value: string;
+}
+
+// League slot rules, shipped by api_export.py::_draft_roster_rules so the board
+// does not keep its own copy of numbers keeper.py owns. Absent in snapshots
+// exported before they existed; the board falls back to its own constants.
+export interface DraftRosterRules {
+  starting_slots: Record<Position, number>;
+  max_by_position: Record<Position, number>;
+  util_slots: number;
+  roster_slots: Record<string, number>;
 }
 
 export interface KeeperRecommendation {

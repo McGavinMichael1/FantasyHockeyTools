@@ -20,7 +20,7 @@ this project's own naive baselines on its own product metric — see Methodology
 | # | Frontier item | Problem in one line | Effort |
 |---|---|---|---|
 | 1 | Tune the cooling model | Weakest model (val AUC 0.6425) got zero tuning | Low — port existing search |
-| 2 | Trend and deployment features | No delta/PP-TOI features; misses PP1 promotions (Raddysh case) | Medium — new feature code, data on disk |
+| 2 | Trend and deployment features | **SHIPPED (PARTIAL) 2026-08-24** — PP TOI adopted for pickups; trend deltas and the luck family rejected | — |
 | 3 | Regress on next-5 FP | Binarized label throws away signal; UI ranks anyway | Medium — new training path |
 | 4 | Optuna swap | Random search is sample-inefficient at 20–50 trials | Low — but a dependency change |
 | 5 | Parked and gated ideas | Each blocked on a written precondition — check before starting | — |
@@ -56,6 +56,56 @@ across seasons) — not just a single 2023 split, since a single split can overf
 itself — with 2025 still held out untouched for the backtest.
 
 ## Frontier item 2 — Trend and deployment features
+
+**STATUS: SHIPPED (PARTIAL) 2026-08-24.** Deployment adopted for the pickup and
+cooling models; the trend deltas and the whole luck family were tested and did
+not earn their place. Plan:
+`docs/superpowers/plans/2026-08-24-deployment-and-luck-features.md`.
+
+| Gate | Before | After | Verdict |
+|---|---|---|---|
+| Pickup val Spearman | 0.6214 | **0.6249** | |
+| Pickup val AUC | 0.8465 | **0.8494** | |
+| Cooling val Spearman | 0.6063 | 0.6072 | |
+| Spot-check top-15 mean | 54.8% (67/60/47/53/47) | **56.2%** (73/67/47/47/47) | **PP TOI ADOPTED** |
+| Simulated adds | 60% hit, 2.83 FP/g | 60% hit, **2.96** FP/g | |
+| Spot-check with PDO added | 56.2% | 53.4% | **PDO REVERTED** |
+| Simulated adds with PDO | 60% | 56% | |
+| Draft val Spearman | 0.8259 | 0.8244 (deployment) / 0.8256 (both) | **BOTH REJECTED for draft** |
+
+**Three findings that change what to try next — do not relitigate these:**
+
+1. **The LEVEL is the signal, not the delta.** Step 1 below predicted that
+   `rolling_5 − rolling_20` deltas would carry the promotion signal. They do not.
+   Of 49 features, `rolling_20_powerPlayIcetime` ranks **3rd** while
+   `rolling_delta_5_20_pp_toi_share` ranks **44th** and
+   `rolling_delta_5_20_powerPlayIcetime` **46th**. The deltas are still in the
+   code (they cost nothing and the gate passed on the package) but they are not
+   where the gain came from.
+2. **It confirms late rather than catching early.** On the canonical Raddysh
+   case, PP TOI moved him UP at the January/February/March dates but **DOWN 47
+   places (238→285 of 449) at 2025-11-01** — the only date he is actually in
+   the free-agent pool, i.e. the only date a pickup recommendation would have
+   mattered. The feature ratifies a breakout after the 20-game window fills,
+   which is the opposite of the mechanism step 2 below assumes.
+3. **Step 3's shooting-percentage regression idea was tested and FAILED.**
+   Split PDO (on-ice SH%, on-ice SV%, on-ice goals-above-expected, at 5on5,
+   as ratios of rolling sums) was the pre-registered "most likely to help
+   cooling" bet. Cooling moved **−0.0006**, not the predicted +0.01 to +0.03,
+   and every product metric fell. Worse, on-ice **save %** outranked on-ice
+   **shooting %** in both models — backwards, since save % reaches fantasy
+   points only through plus/minus, which `moneypuckGamePoints` does not compute,
+   so the model was learning team quality. The season-level residual
+   `onice_sh_luck` came out with a **positive** Ridge coefficient when a luck
+   residual must be negative, and promoted 38-year-old Brad Marchand 21 places
+   up the draft board — precisely the player class it was built to demote.
+   The statistics were verified correct first (league mean PDO **0.9995**),
+   so this is a real negative result, not a bug. **Do not re-add a luck feature
+   without a way to separate "got lucky" from "got better linemates."**
+
+The original rationale is kept below for context, but read the three findings
+above as corrections to it.
+
 
 PROJECT-PLAN calls this "the most likely source of real signal," ahead of more tuning.
 

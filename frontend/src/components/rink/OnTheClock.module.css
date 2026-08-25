@@ -1,0 +1,86 @@
+/* The board's own answer to "who should I take", sitting above the pool it is
+   drawn from. */
+.clock {
+  margin-bottom: 14px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 7px;
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 250px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--boards);
+}
+
+/* The first card is the recommendation; the other two are what you give up by
+   not taking it. */
+.cardTop {
+  border-color: var(--hot);
+  background: var(--hot-tint);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: auto;
+}
+
+.name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.reason {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.vorp {
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.take {
+  padding: 5px 11px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--boards);
+  font-family: var(--font-cond), 'Arial Narrow', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.take:hover {
+  background: var(--hot-deep, var(--ink));
+  border-color: var(--hot-deep, var(--ink));
+}
