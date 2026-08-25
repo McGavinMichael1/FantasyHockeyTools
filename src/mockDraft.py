@@ -148,7 +148,7 @@ def attach_outcome_ids(resolved: pd.DataFrame, outcomes: pd.DataFrame,
     return attached
 
 
-def _unmet_needs(counts: dict, kept_counts: dict | None = None) -> dict:
+def unmet_needs(counts: dict, kept_counts: dict | None = None) -> dict:
     """Starting slots still unfilled, counting the team's keepers as filled."""
     kept_counts = kept_counts or {}
     return {
@@ -157,7 +157,7 @@ def _unmet_needs(counts: dict, kept_counts: dict | None = None) -> dict:
     }
 
 
-def _position_caps(kept_counts: dict | None = None) -> dict:
+def position_caps(kept_counts: dict | None = None) -> dict:
     """Caps with the team's own keepers already counted against them.
 
     A team that kept a goalie can start only one more, so drafting two is a
@@ -172,7 +172,7 @@ def _position_caps(kept_counts: dict | None = None) -> dict:
     }
 
 
-def _best_available(board: pd.DataFrame, taken: set, counts: dict,
+def best_available(board: pd.DataFrame, taken: set, counts: dict,
                     kept_counts: dict | None = None,
                     picks_left: int | None = None) -> pd.Series | None:
     """Highest-VORP player left who does not blow a positional cap.
@@ -196,13 +196,13 @@ def _best_available(board: pd.DataFrame, taken: set, counts: dict,
     """
     needed = None
     if picks_left is not None:
-        needs = _unmet_needs(counts, kept_counts)
+        needs = unmet_needs(counts, kept_counts)
         if sum(needs.values()) >= picks_left:
             needed = {position for position, count in needs.items() if count > 0}
 
     # Caps only shrink for a team whose keepers we know. The opponent path
     # passes nothing, which leaves them exactly as they were.
-    caps = MAX_BY_POSITION if kept_counts is None else _position_caps(kept_counts)
+    caps = MAX_BY_POSITION if kept_counts is None else position_caps(kept_counts)
 
     fallback = None
     for _, row in board.iterrows():
@@ -244,7 +244,7 @@ def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str,
         player_id = pick['playerId']
 
         if is_mine:
-            choice = _best_available(ranked, taken, counts, kept_counts, picks_left)
+            choice = best_available(ranked, taken, counts, kept_counts, picks_left)
             picks_left -= 1
             if choice is None:
                 print(f"⚠️  Board had nobody left at pick {pick['pick']}")
@@ -292,7 +292,7 @@ def replay(resolved: pd.DataFrame, board: pd.DataFrame, my_team_key: str,
         # available. No positional cap is applied: we do not model opponent
         # rosters, and inventing constraints for them would be a guess that
         # changes the owner's result.
-        replacement = _best_available(ranked, taken, {})
+        replacement = best_available(ranked, taken, {})
         if replacement is not None:
             taken.add(replacement['playerId'])
             substitutions.append({

@@ -1,224 +1,163 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import type { DraftPlayer, Position } from '@/types/player';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { draftKeyAction } from '@/lib/draftKeys';
+import { tiers } from '@/lib/tiers';
+import type { DraftPlayer, KeeperRecommendation, Position } from '@/types/player';
+import type { RosterRules } from '@/lib/bestAvailable';
+import { DEFAULT_ROSTER_RULES, shortlist } from '@/lib/bestAvailable';
+import { DEFAULT_PICK_BUDGET, loadSetup, saveSetup } from '@/lib/draftSetup';
+import OnTheClock from './OnTheClock';
+import RosterPanel from './RosterPanel';
+import DraftTable, { COLUMNS, type Column, type SortDir } from './DraftTable';
+import { PositionChip } from './bits';
+import type { Pick } from '@/lib/liveDraft';
 import {
-  loadDrafted,
+  addPick,
+  draftedIds,
+  loadPicks,
+  myPicks,
+  positionCounts,
   positionalRuns,
   REPLACEMENT_RANKS,
-  saveDrafted,
+  removePick,
+  savePicks,
+  setMine,
+  undoLast,
   withLiveVorp,
 } from '@/lib/liveDraft';
-import { Headshot, PositionChip, ScoreMeter } from './bits';
 import styles from './RinkTable.module.css';
-import bitStyles from './bits.module.css';
-
-type SortDir = 'asc' | 'desc';
-
-interface Column {
-  key: string;
-  label: string;
-  title?: string;
-  numeric?: boolean;
-  sortValue?: (p: DraftPlayer) => number | string;
-  render: (p: DraftPlayer) => React.ReactNode;
-}
-
-/** Signed projection-change chip: red when projected above last season, blue below. */
-function ProjectionDeltaChip({ value }: { value: number }) {
-  const label = `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2)}`;
-  const cls =
-    value >= 0.1
-      ? bitStyles.deltaHot
-      : value <= -0.1
-        ? bitStyles.deltaCold
-        : bitStyles.deltaFlat;
-  return (
-    <span
-      className={`${bitStyles.delta} ${cls}`}
-      title="Projected FP per game vs. last season"
-    >
-      {label}
-    </span>
-  );
-}
-
-const COLUMNS: Column[] = [
-  {
-    key: 'full_name',
-    label: 'Player',
-    sortValue: (p) => p.full_name,
-    render: (p) => (
-      <span className={styles.playerCell}>
-        <Headshot src={p.headshot} name={p.full_name} size={32} />
-        <span className={styles.playerName}>{p.full_name}</span>
-        <PositionChip position={p.positionCode} />
-      </span>
-    ),
-  },
-  {
-    key: 'age',
-    label: 'Age',
-    title: 'Age at next season start',
-    numeric: true,
-    sortValue: (p) => p.age ?? 0,
-    render: (p) => (p.age === null ? '—' : p.age.toFixed(1)),
-  },
-  {
-    key: 'gamesPlayed',
-    label: 'GP',
-    title: 'Games played last season',
-    numeric: true,
-    sortValue: (p) => p.gamesPlayed,
-    render: (p) => p.gamesPlayed,
-  },
-  {
-    key: 'last_fpPerGame',
-    label: 'FP/G',
-    title: 'Fantasy points per game last season',
-    numeric: true,
-    sortValue: (p) => p.last_fpPerGame,
-    render: (p) => p.last_fpPerGame.toFixed(2),
-  },
-  {
-    key: 'projected_fpPerGame',
-    label: 'Proj FP/G',
-    title: 'Model-projected fantasy points per game next season',
-    numeric: true,
-    sortValue: (p) => p.projected_fpPerGame,
-    render: (p) => <strong>{p.projected_fpPerGame.toFixed(2)}</strong>,
-  },
-  {
-    key: 'projected_total',
-    label: 'Proj FP',
-    title: 'Projected season total (FP/game × projected games: 78 for skaters; weighted recent starts for goalies)',
-    numeric: true,
-    sortValue: (p) => p.projected_total,
-    render: (p) => p.projected_total.toFixed(0),
-  },
-  {
-    key: 'vorp',
-    label: 'VORP',
-    title: 'Value over replacement player (projected FP above a replacement-level pick at the position)',
-    numeric: true,
-    // old frontend_data.json snapshots lack vorp -- sort them last, render a dash
-    sortValue: (p) => p.vorp ?? Number.NEGATIVE_INFINITY,
-    render: (p) => (p.vorp != null ? p.vorp.toFixed(1) : '—'),
-  },
-  {
-    key: 'delta_vs_last',
-    label: 'Δ',
-    title: 'Projected minus last-season FP per game',
-    numeric: true,
-    sortValue: (p) => p.delta_vs_last,
-    render: (p) => <ProjectionDeltaChip value={p.delta_vs_last} />,
-  },
-  {
-    key: 'confidence',
-    label: 'Conf',
-    title:
-      'Model confidence (seasons of history, games played, age band, and how far the projection sits from recent form), 0–100',
-    numeric: true,
-    // players without a confidence sort last rather than mixing in at zero
-    sortValue: (p) => p.confidence ?? -1,
-    render: (p) =>
-      p.confidence === null ? (
-        '—'
-      ) : (
-        <ScoreMeter value={p.confidence / 100} tone="neutral" />
-      ),
-  },
-];
-
-function ExpandedDraftDetail({ player }: { player: DraftPlayer }) {
-  return (
-    <div className={styles.detail}>
-      <div className={styles.detailBlock}>
-        <h4 className={styles.detailHeading}>Scouting summary</h4>
-        {player.summary ? (
-          <p className={styles.summaryText}>{player.summary}</p>
-        ) : (
-          <p className={`${styles.summaryText} ${styles.summaryEmpty}`}>—</p>
-        )}
-      </div>
-
-      <div className={styles.detailBlock}>
-        <h4 className={styles.detailHeading}>Confidence</h4>
-        {player.confidence === null ? (
-          <p className={`${styles.summaryText} ${styles.summaryEmpty}`}>—</p>
-        ) : (
-          <ScoreMeter value={player.confidence / 100} tone="neutral" />
-        )}
-      </div>
-
-      <div className={styles.detailBlock}>
-        <h4 className={styles.detailHeading}>What moved the ranking</h4>
-        {player.factors.length === 0 ? (
-          <p className={`${styles.summaryText} ${styles.summaryEmpty}`}>—</p>
-        ) : (
-          <ul className={styles.factorList}>
-            {player.factors.map((f) => (
-              <li
-                key={f.label}
-                className={`${styles.factorItem} ${
-                  f.value >= 0 ? styles.factorUp : styles.factorDown
-                }`}
-              >
-                <span className={styles.factorLabel}>{f.label}</span>
-                <span className={styles.factorValue}>
-                  {f.value >= 0 ? '+' : '−'}
-                  {Math.abs(f.value).toFixed(2)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function DraftBoard({
   players,
   // Ranks the exported vorp was computed with (keeper-adjusted). Undefined for
   // snapshots exported before they existed -- the base ranks are what those used.
   replacementRanks = REPLACEMENT_RANKS,
+  // Slot rules from api_export.py; older snapshots fall back to our own copy.
+  // Typed as the two fields actually used, so a snapshot carrying only those
+  // is honestly describable rather than cast into a fuller shape.
+  rosterRules = DEFAULT_ROSTER_RULES,
+  keeperOptions = [],
 }: {
   players: DraftPlayer[];
   replacementRanks?: Record<Position, number>;
+  rosterRules?: RosterRules;
+  keeperOptions?: KeeperRecommendation[];
 }) {
   const [sortKey, setSortKey] = useState('vorp');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [position, setPosition] = useState<Position | 'ALL'>('ALL');
+  // An empty set means "all" -- the filter is additive, so C+L+R is expressible
+  // and "forwards" is one click rather than three views.
+  const [positions, setPositions] = useState<Set<Position>>(() => new Set());
+  const [hideDrafted, setHideDrafted] = useState(false);
   const [query, setQuery] = useState('');
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  // Up to three at once: on the clock the choice is between two or three
+  // players, and one-at-a-time makes you hold the other in your head.
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set());
   const [draftMode, setDraftMode] = useState(false);
-  const [drafted, setDrafted] = useState<Set<number>>(() => new Set());
+  const [picks, setPicks] = useState<Pick[]>([]);
+  const [keeperIds, setKeeperIds] = useState<Set<number>>(() => new Set());
+  const [pickBudget, setPickBudget] = useState(DEFAULT_PICK_BUDGET);
+  const [activeRow, setActiveRow] = useState(0);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   // Hydrate after mount, not during render: localStorage does not exist on the
   // server, and seeding state from it directly would mismatch the SSR output.
   useEffect(() => {
-    const stored = loadDrafted();
-    if (stored.size > 0) {
-      setDrafted(stored);
+    const stored = loadPicks();
+    if (stored.length > 0) {
+      setPicks(stored);
       setDraftMode(true);
     }
+    const setup = loadSetup();
+    setPickBudget(setup.pickBudget);
+    // A saved setup wins; an unconfigured board starts from the keeper board's
+    // recommendation, which is a suggestion the owner can clear.
+    setKeeperIds(
+      new Set(
+        setup.keeperIds.length > 0
+          ? setup.keeperIds
+          : keeperOptions.map((k) => k.id).filter((id): id is number => id !== null),
+      ),
+    );
+    // keeperOptions arrives with the payload and does not change afterwards.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function toggleDrafted(id: number) {
-    setDrafted((prev) => {
+  const drafted = useMemo(() => draftedIds(picks), [picks]);
+  const pickById = useMemo(() => new Map(picks.map((p) => [p.id, p])), [picks]);
+  const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+
+  const mine = useMemo(() => myPicks(picks), [picks]);
+  const myCounts = useMemo(() => positionCounts(mine, players), [mine, players]);
+  const keptCounts = useMemo(
+    () =>
+      positionCounts(
+        [...keeperIds].map((id, i) => ({ id, pick: i + 1, mine: true })),
+        players,
+      ),
+    [keeperIds, players],
+  );
+
+  function update(next: Pick[]) {
+    savePicks(next);
+    setPicks(next);
+  }
+
+  /** ✓ — taken by somebody. On a pick of yours it hands it to the room. */
+  function markTaken(id: number) {
+    const existing = pickById.get(id);
+    if (!existing) update(addPick(picks, id, false));
+    else if (existing.mine) update(setMine(picks, id, false));
+    else update(removePick(picks, id));
+  }
+
+  /** ME — taken by you. On somebody else's pick it claims it. */
+  function markMine(id: number) {
+    const existing = pickById.get(id);
+    if (!existing) update(addPick(picks, id, true));
+    else if (!existing.mine) update(setMine(picks, id, true));
+    else update(removePick(picks, id));
+  }
+
+  function resetDraft() {
+    // Losing a live draft log to a stray click is the one unrecoverable
+    // mistake this board can make.
+    if (!window.confirm(`Clear all ${picks.length} picks? This cannot be undone.`)) return;
+    update([]);
+  }
+
+  /**
+   * Open a row's detail, keeping at most three open.
+   *
+   * Three is the most you can actually read side by side; past that the oldest
+   * drops out rather than the click being refused, so a fourth compare does
+   * something instead of appearing broken.
+   */
+  function toggleExpanded(id: number) {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
-      else next.add(id);
-      saveDrafted(next);
+      else {
+        if (next.size >= 3) next.delete(next.values().next().value as number);
+        next.add(id);
+      }
       return next;
     });
   }
 
-  function resetDraft() {
-    const empty = new Set<number>();
-    saveDrafted(empty);
-    setDrafted(empty);
+  function toggleKeeper(id: number) {
+    const next = new Set(keeperIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setKeeperIds(next);
+    saveSetup({ keeperIds: [...next], pickBudget });
+  }
+
+  function changePickBudget(value: number) {
+    const budget = Number.isFinite(value) && value >= 0 ? value : DEFAULT_PICK_BUDGET;
+    setPickBudget(budget);
+    saveSetup({ keeperIds: [...keeperIds], pickBudget: budget });
   }
 
   // VORP is recomputed against whoever is left, so the ranking re-sorts itself
@@ -233,9 +172,34 @@ export default function DraftBoard({
     [players, drafted, draftMode, replacementRanks],
   );
 
+  // Useful before the draft too, so this is not gated on draft mode: with
+  // nobody drafted it is the preseason tier board.
+  const tierMap = useMemo(
+    () => tiers(players, drafted, replacementRanks),
+    [players, drafted, replacementRanks],
+  );
+
+  // Recommendations run against the LIVE board: their VORP has to mean the same
+  // thing as the column the owner is reading, or the two quietly disagree.
+  // Keepers are excluded from the pool -- they were never draftable.
+  const candidates = useMemo(() => {
+    if (!draftMode) return [];
+    const gone = new Set([...drafted, ...keeperIds]);
+    return shortlist(
+      board,
+      gone,
+      myCounts,
+      keptCounts,
+      Math.max(0, pickBudget - mine.length),
+      3,
+      rosterRules,
+    );
+  }, [draftMode, board, drafted, keeperIds, myCounts, keptCounts, pickBudget, mine, rosterRules]);
+
   const rows = useMemo(() => {
     let data = board;
-    if (position !== 'ALL') data = data.filter((p) => p.positionCode === position);
+    if (positions.size > 0) data = data.filter((p) => positions.has(p.positionCode));
+    if (draftMode && hideDrafted) data = data.filter((p) => !drafted.has(p.id));
     if (query) {
       const q = query.toLowerCase();
       data = data.filter((p) => p.full_name.toLowerCase().includes(q));
@@ -261,7 +225,74 @@ export default function DraftBoard({
       });
     }
     return data;
-  }, [board, position, query, sortKey, sortDir, draftMode, drafted]);
+  }, [board, positions, hideDrafted, query, sortKey, sortDir, draftMode, drafted]);
+
+  // The draft-day keyboard loop: `/`, three letters, Enter. The decision half
+  // lives in lib/draftKeys so it can be tested without a DOM; this only wires
+  // actions to state.
+  const applyAction = useCallback(
+    (action: ReturnType<typeof draftKeyAction>) => {
+      if (!action) return false;
+      switch (action.type) {
+        case 'focusSearch':
+          searchRef.current?.focus();
+          searchRef.current?.select();
+          return true;
+        case 'markTaken':
+        case 'markMine': {
+          const target = rows.find((p) => !drafted.has(p.id));
+          if (!target) return false;
+          update(addPick(picks, target.id, action.type === 'markMine'));
+          setQuery('');
+          return true;
+        }
+        case 'undo':
+          if (picks.length === 0) return false;
+          update(undoLast(picks));
+          return true;
+        case 'clearSearch':
+          setQuery('');
+          return true;
+        case 'closeDetail':
+          setExpandedIds(new Set());
+          return true;
+        case 'moveActive':
+          setActiveRow((current) =>
+            Math.max(0, Math.min(rows.length - 1, current + action.delta)),
+          );
+          return true;
+      }
+    },
+    // `update` and `rows` close over the current picks/board every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, drafted, picks],
+  );
+
+  useEffect(() => {
+    if (!draftMode) return;
+    function onKeyDown(event: KeyboardEvent) {
+      const inSearch = event.target === searchRef.current;
+      const handled = applyAction(
+        draftKeyAction({
+          key: event.key,
+          shiftKey: event.shiftKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          inSearch,
+          hasQuery: query.length > 0,
+          hasDetail: expandedIds.size > 0,
+        }),
+      );
+      if (handled) event.preventDefault();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [draftMode, applyAction, query, expandedIds]);
+
+  // Keep the active row inside the list as filters change under it.
+  useEffect(() => {
+    setActiveRow((current) => Math.min(current, Math.max(0, rows.length - 1)));
+  }, [rows.length]);
 
   function toggleSort(col: Column) {
     if (!col.sortValue) return;
@@ -273,26 +304,52 @@ export default function DraftBoard({
     }
   }
 
-  const positions: (Position | 'ALL')[] = ['ALL', 'C', 'L', 'R', 'D', 'G'];
+  const FORWARDS: Position[] = ['C', 'L', 'R'];
+  const SINGLES: Position[] = ['C', 'L', 'R', 'D', 'G'];
+  const forwardsOnly =
+    positions.size === FORWARDS.length && FORWARDS.every((p) => positions.has(p));
+
+  function togglePosition(target: Position) {
+    const next = new Set(positions);
+    if (next.has(target)) next.delete(target);
+    else next.add(target);
+    setPositions(next);
+  }
 
   return (
     <section className={styles.section} aria-label="Draft board">
       <div className={styles.controls}>
         <input
+          ref={searchRef}
           type="search"
           className={styles.search}
-          placeholder="Search players"
+          placeholder={draftMode ? 'Search  ·  / focus, ⏎ taken, ⇧⏎ mine' : 'Search players'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search players by name"
         />
         <div className={styles.positions} role="group" aria-label="Filter by position">
-          {positions.map((pos) => (
+          <button
+            className={`${styles.posButton} ${positions.size === 0 ? styles.posActive : ''}`}
+            onClick={() => setPositions(new Set())}
+            aria-pressed={positions.size === 0}
+          >
+            ALL
+          </button>
+          <button
+            className={`${styles.posButton} ${forwardsOnly ? styles.posActive : ''}`}
+            onClick={() => setPositions(forwardsOnly ? new Set() : new Set(FORWARDS))}
+            aria-pressed={forwardsOnly}
+            title="Centres and wingers"
+          >
+            F
+          </button>
+          {SINGLES.map((pos) => (
             <button
               key={pos}
-              className={`${styles.posButton} ${position === pos ? styles.posActive : ''}`}
-              onClick={() => setPosition(pos)}
-              aria-pressed={position === pos}
+              className={`${styles.posButton} ${positions.has(pos) ? styles.posActive : ''}`}
+              onClick={() => togglePosition(pos)}
+              aria-pressed={positions.has(pos)}
             >
               {pos}
             </button>
@@ -306,15 +363,57 @@ export default function DraftBoard({
         >
           Draft mode
         </button>
-        {draftMode && drafted.size > 0 && (
-          <button className={styles.resetButton} onClick={resetDraft}>
-            Clear {drafted.size}
+        {draftMode && (
+          <button
+            className={`${styles.draftToggle} ${hideDrafted ? styles.draftToggleOn : ''}`}
+            onClick={() => setHideDrafted((on) => !on)}
+            aria-pressed={hideDrafted}
+            title="Hide players already off the board"
+          >
+            Hide taken
           </button>
+        )}
+        {draftMode && picks.length > 0 && (
+          <>
+            <button
+              className={styles.resetButton}
+              onClick={() => update(undoLast(picks))}
+              title={`Undo pick ${picks.length}`}
+            >
+              ↩ Undo
+            </button>
+            <button className={styles.resetButton} onClick={resetDraft}>
+              Clear {picks.length}
+            </button>
+          </>
         )}
         <span className={styles.count}>
           {rows.length} player{rows.length === 1 ? '' : 's'}
         </span>
       </div>
+
+      {draftMode && (
+        <RosterPanel
+          players={players}
+          counts={myCounts}
+          keptCounts={keptCounts}
+          keepers={keeperOptions}
+          keeperIds={keeperIds}
+          onToggleKeeper={toggleKeeper}
+          picksMade={mine.length}
+          pickBudget={pickBudget}
+          onPickBudgetChange={changePickBudget}
+          rules={rosterRules}
+        />
+      )}
+
+      {draftMode && (
+        <OnTheClock
+          candidates={candidates}
+          playersById={playersById}
+          onPick={(id) => update(addPick(picks, id, true))}
+        />
+      )}
 
       {draftMode && (
         <div className={styles.runs} aria-label="Positional runs">
@@ -339,108 +438,21 @@ export default function DraftBoard({
         </div>
       )}
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.thRank} scope="col">
-                No.
-              </th>
-              {draftMode && (
-                <th className={styles.draftCell} scope="col" title="Mark as drafted">
-                  ✓
-                </th>
-              )}
-              {COLUMNS.map((col) => (
-                <th
-                  key={col.key}
-                  scope="col"
-                  title={col.title}
-                  className={col.numeric ? styles.thNumeric : undefined}
-                  aria-sort={
-                    sortKey === col.key
-                      ? sortDir === 'asc'
-                        ? 'ascending'
-                        : 'descending'
-                      : undefined
-                  }
-                >
-                  <button className={styles.thButton} onClick={() => toggleSort(col)}>
-                    {col.label}
-                    <span className={styles.sortMark} aria-hidden="true">
-                      {sortKey === col.key ? (sortDir === 'asc' ? '▲' : '▼') : ''}
-                    </span>
-                  </button>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={COLUMNS.length + (draftMode ? 2 : 1)} className={styles.empty}>
-                  No players match. Clear the search or position filter to see the
-                  full list.
-                </td>
-              </tr>
-            )}
-            {rows.map((p, i) => (
-              <Fragment key={p.id}>
-                <tr
-                  className={`${styles.row} ${expandedId === p.id ? styles.rowOpen : ''} ${
-                    draftMode && drafted.has(p.id) ? styles.rowDrafted : ''
-                  }`}
-                  onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setExpandedId(expandedId === p.id ? null : p.id);
-                    }
-                  }}
-                  aria-expanded={expandedId === p.id}
-                >
-                  <td className={styles.rank}>{i + 1}</td>
-                  {draftMode && (
-                    <td className={styles.draftCell}>
-                      <button
-                        className={`${styles.draftButton} ${
-                          drafted.has(p.id) ? styles.draftButtonOn : ''
-                        }`}
-                        // The row itself expands on click; without this the
-                        // toggle would also open the detail panel every time.
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleDrafted(p.id);
-                        }}
-                        aria-pressed={drafted.has(p.id)}
-                        aria-label={`Mark ${p.full_name} as drafted`}
-                      >
-                        ✓
-                      </button>
-                    </td>
-                  )}
-                  {COLUMNS.map((col) => (
-                    <td
-                      key={col.key}
-                      className={col.numeric ? styles.tdNumeric : undefined}
-                    >
-                      {col.render(p)}
-                    </td>
-                  ))}
-                </tr>
-                {expandedId === p.id && (
-                  <tr className={styles.detailRow}>
-                    <td colSpan={COLUMNS.length + (draftMode ? 2 : 1)}>
-                      <ExpandedDraftDetail player={p} />
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DraftTable
+        rows={rows}
+        draftMode={draftMode}
+        pickById={pickById}
+        tierMap={tierMap}
+        expandedIds={expandedIds}
+        activeRow={activeRow}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onToggleExpanded={toggleExpanded}
+        onSetActiveRow={setActiveRow}
+        onToggleSort={toggleSort}
+        onMarkTaken={markTaken}
+        onMarkMine={markMine}
+      />
     </section>
   );
 }

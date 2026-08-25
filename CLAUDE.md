@@ -101,6 +101,20 @@ Full rationale and file:line citations: `fht-architecture-contract`.
   keeper scored ≈−80 to −115 and the board said keep nobody. `round_pick_costs` now returns VORP,
   slices each round by VORP (the board's own sort order), and floors at 0 — forfeiting a pick
   cannot be a gain. Per-round value now falls monotonically +80.2 (rd 1) → 0 (rd 10) → −25.0 (rd 18).
+- **The draft board is roster-aware as of 2026-08-24.** Picks are a **pick log**
+  (`{id, pick, mine}`, `localStorage` key `fht.draftLog.v2`, migrating `fht.draftedIds.v1`), not a
+  flat id set — which is what lets the board know *your* roster. Built on that: a roster panel vs.
+  `keeper.STARTING_SLOTS`, an "on the clock" shortlist, undo, a keyboard loop (`/` focus, `⏎`
+  taken, `⇧⏎` mine, `Ctrl/Cmd+Z` undo), tier chips, a last-season stat line, and multi-select
+  position filters. Two rules to keep: **all new draft logic goes in `frontend/src/lib`**, never in
+  the components (the runner is bare `node --test` with no DOM, so `src/lib` is the only testable
+  surface); and **tiers (`lib/tiers.ts`) are a display heuristic, not a model output** — gap-based
+  clustering of projections, never presented as or fed into a projection.
+- **`best_available` lives in two languages, pinned by one fixture.** `mockDraft.best_available`
+  (promoted from `_best_available`) and `frontend/src/lib/bestAvailable.ts` are both run against
+  `tests/fixtures/best_available_cases.json` — 13 cases plus the league slot constants themselves.
+  The live board must work on draft day with no Python running, hence the duplication. Change the
+  rule in one place and the other language's test fails. Do not "fix" one side alone.
 - **The draft board does not beat hand-drafting.** The 2025 mock draft (the one held-out look,
   now spent) came out at −1.75% over 14 picks — inconclusive. Treat the board as a consistent
   second opinion, not an authority. See `docs/superpowers/plans/2026-07-20-draft-validation-handoff.md`.

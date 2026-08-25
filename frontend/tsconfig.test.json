@@ -14,6 +14,7 @@
     "src/types/**/*.ts",
     "src/lib/**/*.ts",
     "src/components/keeper/**/*.tsx",
+    "src/components/rink/**/*.tsx",
     "src/app/api/**/*.ts"
   ],
   "exclude": ["node_modules", ".next", ".test-build"]

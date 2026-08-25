@@ -175,3 +175,129 @@ export function saveDrafted(drafted: ReadonlySet<number>, storage?: Storage): vo
     // Persistence is a convenience; never let it break the board.
   }
 }
+
+/**
+ * The pick log.
+ *
+ * A flat set of drafted ids can say who is gone but not who took them, so it
+ * cannot describe YOUR roster -- and "what does my roster still need?" is the
+ * question actually being asked on the clock. Every pick therefore carries its
+ * overall number and whether it was yours.
+ */
+export interface Pick {
+  /** playerId, matching DraftPlayer.id. */
+  id: number;
+  /** 1-based overall pick number; renumbered whenever a pick is removed. */
+  pick: number;
+  /** True for your own picks, false for the other managers'. */
+  mine: boolean;
+}
+
+const PICKS_STORAGE_KEY = 'fht.draftLog.v2';
+
+/** The positions the board ranks, in a stable order. */
+const POSITIONS = Object.keys(REPLACEMENT_RANKS) as Position[];
+
+/** Pick numbers are always 1..n with no gaps -- picks-left math counts them. */
+function renumber(picks: readonly Pick[]): Pick[] {
+  return picks.map((pick, i) => ({ ...pick, pick: i + 1 }));
+}
+
+/** Every drafted id, whoever took them -- the input the VORP helpers want. */
+export function draftedIds(picks: readonly Pick[]): Set<number> {
+  return new Set(picks.map((p) => p.id));
+}
+
+export function myPicks(picks: readonly Pick[]): Pick[] {
+  return picks.filter((p) => p.mine);
+}
+
+/**
+ * Append a pick, unless that player is already logged.
+ *
+ * Double-tapping a row mid-draft must not invent a second pick and shift every
+ * later number by one.
+ */
+export function addPick(picks: readonly Pick[], id: number, mine: boolean): Pick[] {
+  if (picks.some((p) => p.id === id)) return [...picks];
+  return [...picks, { id, pick: picks.length + 1, mine }];
+}
+
+export function undoLast(picks: readonly Pick[]): Pick[] {
+  return picks.slice(0, -1);
+}
+
+export function removePick(picks: readonly Pick[], id: number): Pick[] {
+  return renumber(picks.filter((p) => p.id !== id));
+}
+
+/** Reassign a pick's owner -- the "that one was mine" correction. */
+export function setMine(picks: readonly Pick[], id: number, mine: boolean): Pick[] {
+  return picks.map((p) => (p.id === id ? { ...p, mine } : p));
+}
+
+/**
+ * How many of each position the given picks cover.
+ *
+ * Every position is present, zero included, so the roster panel can render an
+ * unfilled slot without the caller filling in the gaps. Picks with no board row
+ * are skipped: the board applies games-played display floors, so a real pick can
+ * be someone it never listed.
+ */
+export function positionCounts(
+  picks: readonly Pick[],
+  players: DraftPlayer[],
+): Record<Position, number> {
+  const positionById = new Map(players.map((p) => [p.id, p.positionCode]));
+  const counts = Object.fromEntries(
+    POSITIONS.map((position) => [position, 0]),
+  ) as Record<Position, number>;
+
+  for (const pick of picks) {
+    const position = positionById.get(pick.id);
+    if (position !== undefined) counts[position] += 1;
+  }
+  return counts;
+}
+
+/** Drop malformed entries and restore pick order. */
+function parsePicks(raw: unknown): Pick[] {
+  if (!Array.isArray(raw)) return [];
+  const valid = raw.filter(
+    (entry): entry is Pick =>
+      typeof entry === 'object' &&
+      entry !== null &&
+      typeof (entry as Pick).id === 'number' &&
+      typeof (entry as Pick).pick === 'number' &&
+      typeof (entry as Pick).mine === 'boolean',
+  );
+  return renumber([...valid].sort((a, b) => a.pick - b.pick));
+}
+
+/**
+ * The pick log, migrating a v1 drafted-id list on first read.
+ *
+ * v1 had no notion of ownership, so everything it holds becomes a pick nobody
+ * claims -- the only honest reading. The v1 key is left in place as insurance,
+ * which is why an EXISTING v2 key short-circuits the migration even when it is
+ * empty: otherwise clearing the board would undo itself on the next reload.
+ */
+export function loadPicks(storage?: Storage): Pick[] {
+  try {
+    const store = storage ?? globalThis.localStorage;
+    const raw = store?.getItem(PICKS_STORAGE_KEY);
+    if (raw != null) return parsePicks(JSON.parse(raw) as unknown);
+  } catch {
+    return [];
+  }
+  return [...loadDrafted(storage)].map((id, i) => ({ id, pick: i + 1, mine: false }));
+}
+
+export function savePicks(picks: readonly Pick[], storage?: Storage): void {
+  try {
+    const store = storage ?? globalThis.localStorage;
+    store?.setItem(PICKS_STORAGE_KEY, JSON.stringify(picks));
+  } catch {
+    // Persistence is a convenience; never let it break the board.
+  }
+}

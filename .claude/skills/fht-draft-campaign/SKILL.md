@@ -190,14 +190,51 @@ Per `PROJECT-PLAN.md` C2 (lines 221-228), from `draft_rankings.csv`:
 **Shipped 2026-07-20.** The UI is the Next.js `frontend/`, not Streamlit -- `ui/` was deleted in
 the July 2026 sustainability pass.
 
-- Board: `frontend/src/components/rink/DraftBoard.tsx`, fed by `api_export.py` ->
-  `data/processed/frontend_data.json`. Sortable, position filter, expandable per-player detail.
-- Live draft mode: "mark as drafted" per row, VORP recomputed against the *remaining* pool, and a
-  positional-run strip. The math is `frontend/src/lib/liveDraft.ts` (kept out of the component so
-  `tsconfig.test.json` can compile it -- that config includes `src/lib` but not
-  `src/components/rink`). It mirrors `src/keeper.py::replacement_levels`; keep the two in step.
-- Picks persist to `localStorage`, hydrated in an effect rather than during render (no
-  `localStorage` on the server -> SSR mismatch).
+- Board: `frontend/src/components/rink/DraftBoard.tsx` (state + panels) and `DraftTable.tsx`
+  (the table, split out 2026-08-24), fed by `api_export.py` ->
+  `data/processed/frontend_data.json`. Sortable, multi-select position filter (plus `F` for
+  forwards and a hide-taken toggle), up to three rows expanded at once for side-by-side compare.
+- Live draft mode: VORP recomputed against the *remaining* pool, a positional-run strip, and tier
+  chips. The math is `frontend/src/lib/liveDraft.ts` (kept out of the component so
+  `tsconfig.test.json` can compile it). It mirrors `src/keeper.py::replacement_levels`; keep the
+  two in step.
+
+**Roster awareness -- shipped 2026-08-24.** The board used to store picks as a flat
+`Set<number>`, which could say who was gone but not *who took them*, so it could not describe your
+roster. Picks are now a **pick log** (`Pick {id, pick, mine}`), and everything below hangs off that.
+
+- `lib/liveDraft.ts` -- pick log + `localStorage` key `fht.draftLog.v2`, migrating `…draftedIds.v1`
+  (a v1 list becomes picks nobody claims). An **existing but empty** v2 key short-circuits the
+  migration; otherwise clearing the board would undo itself on the next reload.
+- `lib/bestAvailable.ts` -- the roster-aware recommendation, **a port of
+  `mockDraft.best_available`** (promoted from `_best_available` in the same change). Both run
+  against `tests/fixtures/best_available_cases.json`, which also pins `keeper.STARTING_SLOTS` and
+  `mockDraft.MAX_BY_POSITION` against the TS fallback constants. The duplication is deliberate --
+  the board must work on draft day with no Python behind it -- and the fixture is what stops it
+  drifting the way `liveDraft.ts` and `keeper.py` nearly did.
+- `lib/tiers.ts` -- **a display heuristic, NOT a model output.** A new tier opens where the gap to
+  the next player at a position exceeds `TIER_GAP_MULTIPLIER` (1.6) x the median gap over the
+  startable region. Nothing is fitted or gated; it must never be presented as, or feed, a
+  projection. Positions with fewer than `MIN_FOR_TIERING` (3) players left are one tier.
+- `lib/draftKeys.ts` -- pure key -> action reducer for the keyboard loop (`/` focus search, `⏎`
+  taken, `⇧⏎` mine, `Ctrl/Cmd+Z` undo, `Esc`, arrows). Enter is a no-op on an empty query, so a
+  stray keystroke cannot hand away the board leader. Rows use a roving tabindex (there were 734
+  tab stops).
+- `lib/draftSetup.ts` -- your keepers and pick budget (`fht.draftSetup.v1`), the two things the
+  export cannot supply: `data/raw/keepers.csv` is league-wide and last season's, and draft length
+  depends on the final keeper count. Keepers prefill from the keeper board's *recommendation*.
+- `RosterPanel.tsx` / `OnTheClock.tsx` -- filled-vs-required slots, and the top-3 shortlist with a
+  reason per entry.
+- `api_export.py` ships `draft_roster_rules` (from `keeper.STARTING_SLOTS` +
+  `mockDraft.MAX_BY_POSITION`) so the frontend does not keep a third copy, and a per-player
+  `stats` list -- last season's real production, formatted in Python because skaters and goalies
+  share no columns. Those stat columns ride on `draft_rankings.csv` as **display only**; verified
+  2026-08-24 that adding them leaves every pre-existing column byte-identical.
+
+**Rule for any further draft work: new logic goes in `frontend/src/lib`, not in the components.**
+The runner is bare `node --test` with no DOM library, so `src/lib` is the only testable surface --
+that is why `liveDraft.ts` exists at all. `tsconfig.test.json` now also compiles
+`src/components/rink` (type-checking only, no component tests).
 - Keeper board: `frontend/src/app/keeper/page.tsx` plus the advisor chat.
 
 **Goalie ranker -- SHIPPED 2026-07-16** (full spec:

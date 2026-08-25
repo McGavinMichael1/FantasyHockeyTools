@@ -1054,7 +1054,32 @@ shipped July 15–20, 2026). The draft board, keeper analyzer, goalie ranker, li
 and mock-draft backtest are all in. What is left before the October 2026 draft is correctness work
 on what shipped, not new surface area.
 
-**Last session (2026-08-24, branch `feat/deployment-luck-features`):** ran the deployment and
+**Last session (2026-08-24, branch `feat/draft-day-ux`): draft-day UX — the board became
+roster-aware.** A UX review found the board answered "who is the best player left?" and never
+"what should *I* do with *this* pick?" — because picks were a flat `Set<number>` with no owner, so
+the board could not describe your roster. Picks are now a **pick log** (`{id, pick, mine}`,
+`fht.draftLog.v2`, migrating v1), and everything else hangs off it: roster panel vs.
+`keeper.STARTING_SLOTS`, an on-the-clock top-3 shortlist with reasons, undo, a keyboard loop
+(`/` `⏎` `⇧⏎` `Ctrl+Z`), tier chips, a last-season stat line, `projected_gp` surfaced (invisible
+until now despite being exported), a summary-coverage dot, multi-select position filters, and
+3-way compare. `DraftBoard.tsx` split into board + `DraftTable.tsx`.
+
+Two things worth carrying forward. **The recommendation rule now lives in two languages on
+purpose** — `mockDraft.best_available` (promoted from private) and
+`frontend/src/lib/bestAvailable.ts`, because the board must work on draft day with no Python
+running — and `tests/fixtures/best_available_cases.json` runs against *both*, pinning the league
+slot constants as well as 13 behavioural cases. That is the fix for the drift hazard
+`liveDraft.ts` had been carrying as a bare comment. **Tiers are explicitly a display heuristic**
+(gap-based clustering, `TIER_GAP_MULTIPLIER = 1.6`), labelled as such in code and UI so a
+plausible-looking heuristic cannot quietly acquire the authority of a gated result.
+
+Gates: Python 213 passed; frontend 133 unit tests (up from 44) + `tsc --noEmit` + `next build`
+clean; `tsconfig.test.json` now compiles `src/components/rink` too. Verified on real data that the
+new display-stat columns leave **every pre-existing `draft_rankings.csv` column byte-identical** —
+they are not model features. Also found: only **19** of 745 players have a scouting summary, not
+the 50 recorded below; the B5 top-200 batch is further from done than the plan says.
+
+**Prior session (2026-08-24, branch `feat/deployment-luck-features`):** ran the deployment and
 luck feature experiment end to end, three pre-registered gates, one adopted and two rejected.
 **PP ice time is now a pickup/cooling feature** (val Spearman 0.6214 -> 0.6249, spot-check top-15
 mean 54.8% -> 56.2%). **Split PDO failed its gate and was reverted**, and **both families were
@@ -1075,7 +1100,7 @@ answer). `data/processed/frontend_data.json` therefore predates the retrained pi
 rebuilt `player_seasons.csv`. Run `.\.venv\Scripts\python.exe api_export.py` interactively
 before trusting the Next.js board.
 
-**Prior session (2026-07-20, branch `feat/mock-draft-multi-team`, PR #14):** swept the mock draft
+**Earlier session (2026-07-20, branch `feat/mock-draft-multi-team`, PR #14):** swept the mock draft
 across all ten managers, which exposed that the board drafted **zero centers in 140 picks** and
 produced rosters that could not be legally fielded. Fixed with positional floors, keeper-aware
 floors and caps, demand-aware replacement ranks, and startable-lineup grading. Also fixed a unit
@@ -1132,7 +1157,9 @@ made the keeper board recommend keeping nobody. Full write-up in the Learning Lo
       (`src/keepers.py`, wired at `main.py:253`); it only needs the announced list.
 - [ ] **B5 remainder:** generate the full top-200 summary batch before draft day (script needs an
       API key the owner doesn't have — plan on a Claude Code session in chunks), then re-run
-      `api_export.py`. 50 of 774 players have summaries as of 2026-07-20. Generate these
+      `api_export.py`. **19** of 745 players have summaries as of 2026-08-24 (this line previously
+      said 50 of 774; counted directly off `draft_summaries.json` via `build_draft_list`). The
+      board now shows a dot on rows that have one, so the gap is at least visible. Generate these
       AFTER `data/raw/keepers.csv` is filled, so credits are not spent on the ~40 players
       who will not be in the draft pool (owner decision, 2026-07-20).
 
