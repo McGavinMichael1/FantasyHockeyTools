@@ -452,3 +452,77 @@
     row-gap: 14px;
   }
 }
+
+/* --- Multi-year keeper horizon ------------------------------------------ */
+
+/* The per-year breakdown exists so the owner can SEE why a 34-year-old's
+   year-4 contribution rounds to nothing, rather than trusting one number. */
+.horizon {
+  margin: -4px 0 16px;
+}
+
+.horizonBars {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+  height: 46px;
+}
+
+.horizonYear {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.horizonBar {
+  background: var(--hot);
+  border-radius: 2px 2px 0 0;
+  /* A zero-value year still shows a hairline, so five years always read as
+     five columns instead of silently becoming three. */
+  min-height: 2px;
+  opacity: 0.85;
+}
+
+.horizonYear span {
+  margin-top: 5px;
+  color: var(--ink-3);
+  font-size: 10px;
+  text-align: center;
+}
+
+.horizon small {
+  display: block;
+  margin-top: 9px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+/* Demoted, not deleted: the single-season number is still the right answer to
+   "what does he do next year", it is just no longer what the board ranks on. */
+.nextSeason {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  align-items: baseline;
+  margin: 0 0 18px;
+}
+
+.nextSeason span,
+.nextSeason small {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.nextSeason strong {
+  justify-self: end;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.nextSeason small {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}

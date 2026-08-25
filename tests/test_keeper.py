@@ -1,15 +1,24 @@
+import json
+
 import pandas as pd
 import pytest
 
 from src import keeper
+from src import keeperHorizon
 
 
 def test_league_rules_are_the_canonical_keeper_assumptions():
+    # keeper_tenure is answered as of 2026-08-24: you may keep the same player
+    # in consecutive seasons, paying your final four picks each year. The
+    # horizon constants ride along so the advisor and the frontend read one
+    # source rather than each hardcoding 5 and 0.88.
     assert keeper.league_rules() == {
         "team_count": 10,
         "keeper_count": 4,
         "keeper_rounds": [18, 17, 16, 15],
-        "keeper_tenure": "unknown",
+        "keeper_tenure": "multi_year_annual_cost",
+        "horizon_years": 5,
+        "discount_rate": 0.88,
         "roster_slots": {
             "C": 2, "L": 2, "R": 2, "D": 4,
             "UTIL": 2, "G": 2, "BN": 5, "IR+": 2,
@@ -323,3 +332,141 @@ def test_vorp_column_is_nan_for_positions_without_replacement_level():
     # G replacement = 20th goalie = 240-19 = 221
     top_goalie = board[g_rows].sort_values("projected_total", ascending=False).index[0]
     assert with_goalies.loc[top_goalie] == pytest.approx(240.0 - 221.0)
+
+
+# --- keeper horizon (multi-year valuation) --------------------------------
+
+def _board_with_ages(ages):
+    """The standard projection board with specific players given an age."""
+    board = _projection_board()
+    board["age"] = board["full_name"].map(ages).fillna(27.0)
+    return board
+
+
+# Hand-computable curves. Production is neutral (A = 1 at every age) so the
+# whole effect is availability: everyone through 28 survives, everyone from 29
+# on has a coin-flip season. Then
+#   multiplier(23) = sum(0.88^k)          for k=1..5 = 3.4633
+#   multiplier(34) = sum(0.88^k * 0.5^k)  for k=1..5 = 0.7728
+_FLAT_AGE = {age: 1.0 for age in range(20, 41)}
+_STEP_SURVIVAL = {age: (1.0 if age <= 28 else 0.5) for age in range(20, 41)}
+_CURVES = {
+    "skater": {"age": _FLAT_AGE, "survival": _STEP_SURVIVAL},
+    "goalie": {"age": _FLAT_AGE, "survival": _STEP_SURVIVAL},
+}
+
+# C Player 1 is the better keeper for ONE season; L Player 3 is the better
+# keeper for five. Replacement is the 24th at each position, so on the standard
+# board C Player 1 is 200 - 177 = 23.0 over replacement and L Player 3 is
+# 178 - 157 = 21.0.
+_OLD_AND_YOUNG = {"C Player 1": 34.0, "L Player 3": 23.0}
+_TWO_MAN_ROSTER = [
+    {"name": "C Player 1", "player_id": "y1", "eligible_positions": ["C"]},
+    {"name": "L Player 3", "player_id": "y2", "eligible_positions": ["LW"]},
+]
+
+
+def test_without_curves_the_horizon_columns_are_absent_and_order_is_unchanged():
+    # Degrade the way the goalie board does: no history, no horizon, today's
+    # answer. This is what keeps the analyzer usable on a fresh clone.
+    rankings = keeper.analyze_keepers(_TWO_MAN_ROSTER, _board_with_ages(_OLD_AND_YOUNG))
+    recommended = rankings[rankings["is_recommended"]].sort_values("keeper_rank")
+
+    assert recommended["full_name"].tolist() == ["C Player 1", "L Player 3"]
+    assert recommended["horizon_keeper_value"].isna().all()
+    assert recommended["horizon_multiplier"].isna().all()
+
+
+def test_horizon_flips_the_order_toward_the_younger_player():
+    # THE POINT OF THE FEATURE. Raw value prefers the 34-year-old (23.0 vs
+    # 21.0). Over five years the 23-year-old is worth 21.0 * 3.4633 = 72.7 and
+    # the 34-year-old 23.0 * 0.7728 = 17.8, so the order flips.
+    rankings = keeper.analyze_keepers(
+        _TWO_MAN_ROSTER, _board_with_ages(_OLD_AND_YOUNG), horizon_curves=_CURVES)
+    recommended = rankings[rankings["is_recommended"]].sort_values("keeper_rank")
+
+    assert recommended["full_name"].tolist() == ["L Player 3", "C Player 1"]
+    by_name = rankings.set_index("full_name")
+    assert by_name.loc["L Player 3", "horizon_keeper_value"] == pytest.approx(72.73, abs=0.01)
+    assert by_name.loc["C Player 1", "horizon_keeper_value"] == pytest.approx(17.77, abs=0.01)
+
+
+def test_horizon_is_additive_and_leaves_the_existing_columns_alone():
+    # "Additive only" is the integration contract: raw_keeper_value and
+    # replacement_level must be byte-for-byte what they were before.
+    board = _board_with_ages(_OLD_AND_YOUNG)
+    before = keeper.analyze_keepers(_TWO_MAN_ROSTER, board)
+    after = keeper.analyze_keepers(_TWO_MAN_ROSTER, board, horizon_curves=_CURVES)
+
+    for column in ("raw_keeper_value", "replacement_level", "projected_total"):
+        assert before[column].tolist() == after[column].tolist()
+
+
+def test_horizon_multiplier_is_the_benefit_side_only():
+    # The multiplier is what the UI shows next to "5-yr"; it must be the pure
+    # sum(discount^k * S * A), never entangled with pick cost.
+    rankings = keeper.analyze_keepers(
+        _TWO_MAN_ROSTER, _board_with_ages(_OLD_AND_YOUNG), horizon_curves=_CURVES)
+    by_name = rankings.set_index("full_name")
+
+    assert by_name.loc["L Player 3", "horizon_multiplier"] == pytest.approx(3.4633, abs=1e-3)
+    assert by_name.loc["C Player 1", "horizon_multiplier"] == pytest.approx(0.7728, abs=1e-3)
+
+
+def test_horizon_pick_cost_is_the_mean_of_the_keeper_round_costs(monkeypatch):
+    # Round assignment happens AFTER the sort, so a per-round cost cannot feed
+    # the sort without circularity. Every candidate is priced identically, at
+    # the mean of the four picks a keeper set actually spends.
+    #
+    # Early rounds on purpose: with the real KEEPER_ROUNDS every pick on this
+    # fixture is below replacement and prices at 0.0, which would let a missing
+    # cost term pass.
+    monkeypatch.setattr(keeper, "KEEPER_ROUNDS", (2, 3, 4, 5))
+    board = _board_with_ages(_OLD_AND_YOUNG)
+    rankings = keeper.analyze_keepers(_TWO_MAN_ROSTER, board, horizon_curves=_CURVES)
+    costs = keeper.round_pick_costs(board)
+    expected = sum(costs.values()) / len(costs)
+
+    assert expected > 0
+    matched = rankings[rankings["match_status"] == "matched"]
+    assert matched["horizon_pick_cost"].tolist() == pytest.approx([expected] * len(matched))
+    # And the cost actually reaches the value: benefit-only would be higher.
+    by_name = rankings.set_index("full_name")
+    benefit_only = (by_name.loc["C Player 1", "raw_keeper_value"]
+                    * by_name.loc["C Player 1", "horizon_multiplier"])
+    assert by_name.loc["C Player 1", "horizon_keeper_value"] < benefit_only
+
+
+def test_horizon_breakdown_is_one_json_row_per_year():
+    rankings = keeper.analyze_keepers(
+        _TWO_MAN_ROSTER, _board_with_ages(_OLD_AND_YOUNG), horizon_curves=_CURVES)
+    breakdown = json.loads(
+        rankings.set_index("full_name").loc["C Player 1", "horizon_breakdown"])
+
+    assert len(breakdown) == keeperHorizon.HORIZON_YEARS
+    assert [entry["year"] for entry in breakdown] == [1, 2, 3, 4, 5]
+    # Year 4 for a 34-year-old is where the survival term has all but wiped the
+    # contribution out -- the thing the owner should be able to SEE.
+    assert breakdown[3]["value"] < breakdown[0]["value"]
+    assert breakdown[3]["survival"] == pytest.approx(0.5 ** 4)
+
+
+def test_goalies_are_priced_off_the_goalie_curves():
+    curves = {
+        "skater": {"age": _FLAT_AGE, "survival": _FLAT_AGE},
+        # Goalie survival is halved everywhere, so a goalie's multiplier must
+        # come out below a skater's of the same age -- proof the family split
+        # is wired, not just present.
+        "goalie": {"age": _FLAT_AGE,
+                   "survival": {age: 0.5 for age in range(20, 41)}},
+    }
+    roster = [
+        {"name": "G Player 1", "player_id": "g1", "eligible_positions": ["G"]},
+        {"name": "C Player 1", "player_id": "y1", "eligible_positions": ["C"]},
+    ]
+    rankings = keeper.analyze_keepers(
+        roster, _board_with_ages({}), horizon_curves=curves)
+    by_name = rankings.set_index("full_name")
+
+    assert (by_name.loc["G Player 1", "horizon_multiplier"]
+            < by_name.loc["C Player 1", "horizon_multiplier"])

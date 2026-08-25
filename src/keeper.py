@@ -6,9 +6,12 @@ frontend. Callers provide a Yahoo roster and a projected skater board.
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 from rapidfuzz import process
 
+from src import keeperHorizon
 from src import season
 
 
@@ -30,7 +33,12 @@ KEEPER_COUNT = 4
 # .claude/skills/OPEN-QUESTIONS.md #1b. Keeper math is a class (a) change
 # (fht-quality-gates) -- highest bar, tests first.
 KEEPER_ROUNDS = (18, 17, 16, 15)
-KEEPER_TENURE = "unknown"
+
+# Answered by the owner 2026-08-24: you may keep the same player in consecutive
+# seasons, paying your final four picks EACH year. That is what makes the
+# single-season net_keeper_value the wrong unit for the decision, and what
+# src/keeperHorizon.py exists to price.
+KEEPER_TENURE = "multi_year_annual_cost"
 ROSTER_SLOTS = {
     "C": 2,
     "L": 2,
@@ -113,6 +121,10 @@ def league_rules() -> dict:
         "keeper_count": KEEPER_COUNT,
         "keeper_rounds": list(KEEPER_ROUNDS),
         "keeper_tenure": KEEPER_TENURE,
+        # Surfaced from keeperHorizon so the advisor and the frontend read one
+        # source instead of each hardcoding 5 and 0.88.
+        "horizon_years": keeperHorizon.HORIZON_YEARS,
+        "discount_rate": keeperHorizon.DISCOUNT_RATE,
         "roster_slots": dict(ROSTER_SLOTS),
         "replacement_ranks": dict(REPLACEMENT_RANKS),
     }
@@ -238,9 +250,78 @@ def _eligible_board(frame: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def recommendation_order(candidates: pd.DataFrame) -> pd.DataFrame:
+    """Sort matched keeper candidates into recommendation order.
+
+    Ranks on `horizon_keeper_value` when the horizon columns are populated and
+    falls back to `raw_keeper_value` when they are not. Shared with
+    keeper_advisor, which enumerates keeper combinations and would otherwise
+    argue against the very four the board recommends.
+    """
+    primary = ("horizon_keeper_value"
+               if "horizon_keeper_value" in candidates.columns
+               and candidates["horizon_keeper_value"].notna().any()
+               else "raw_keeper_value")
+    keyed = candidates.assign(
+        _sort_key=pd.to_numeric(candidates[primary], errors="coerce"))
+    return keyed.sort_values(
+        ["_sort_key", "projected_total", "playerId"],
+        ascending=[False, False, True],
+    ).drop(columns="_sort_key")
+
+
+def _curve_family(position: str) -> str:
+    """Goalies age differently enough to need their own curves (owner,
+    2026-08-24): their production ratio is flat and survival carries the whole
+    signal, which is the opposite shape from skaters."""
+    return "goalie" if position == "G" else "skater"
+
+
+def _horizon_columns(row, player, horizon_curves, annual_pick_cost):
+    """Per-player horizon value, multiplier and per-year breakdown.
+
+    Returns NA columns when curves are unavailable so a fresh clone -- or a run
+    with no season history on disk -- degrades to today's single-season answer
+    rather than failing.
+    """
+    blank = {"horizon_keeper_value": pd.NA, "horizon_multiplier": pd.NA,
+             "horizon_pick_cost": pd.NA, "horizon_breakdown": pd.NA}
+    if not horizon_curves:
+        return blank
+
+    curves = horizon_curves.get(_curve_family(player.get("position")))
+    age = player.get("age")
+    if not curves or age is None or pd.isna(age):
+        return blank
+
+    age_curve, survival_curve = curves["age"], curves["survival"]
+    multipliers = keeperHorizon.horizon_multipliers(
+        float(age), age_curve, survival_curve)
+    vorp1 = float(row["raw_keeper_value"])
+
+    breakdown = [
+        {"year": year,
+         "discount": round(discount, 4),
+         "survival": round(survival, 4),
+         "aging": round(aging, 4),
+         "value": round(discount * survival * (aging * vorp1 - annual_pick_cost), 2)}
+        for year, (discount, survival, aging) in enumerate(multipliers, start=1)
+    ]
+    return {
+        "horizon_keeper_value": keeperHorizon.horizon_value(
+            vorp1, float(age), annual_pick_cost, age_curve, survival_curve),
+        # Benefit side only -- the number the UI puts next to "5-yr". Keeping it
+        # free of pick cost is what lets it be read as "worth N seasons of him".
+        "horizon_multiplier": sum(d * s * a for d, s, a in multipliers),
+        "horizon_pick_cost": annual_pick_cost,
+        "horizon_breakdown": json.dumps(breakdown),
+    }
+
+
 def analyze_keepers(roster: list[dict], projections: pd.DataFrame,
                     pool: pd.DataFrame | None = None,
-                    kept_counts: dict[str, int] | None = None) -> pd.DataFrame:
+                    kept_counts: dict[str, int] | None = None,
+                    horizon_curves: dict | None = None) -> pd.DataFrame:
     """Return every Yahoo roster row with keeper values and four recommendations.
 
     `projections` is the frame roster players are matched against and must keep
@@ -249,6 +330,12 @@ def analyze_keepers(roster: list[dict], projections: pd.DataFrame,
     costs are measured from, which should exclude every keeper in the league:
     what you get instead of keeping someone is a draft pick, and a draft pick
     cannot fetch a kept player.
+
+    `horizon_curves` is `{"skater": {"age": ..., "survival": ...}, "goalie": ...}`
+    from src/keeperHorizon.py. Supplied, the recommendation order becomes
+    `horizon_keeper_value` -- the league rule is multi-year, so a single-season
+    ranking answers a narrower question than the one being decided. Omitted, the
+    horizon columns are NA and the order is exactly what it was.
     """
     board = _eligible_board(projections)
     value_pool = board if pool is None else _eligible_board(pool)
@@ -257,6 +344,10 @@ def analyze_keepers(roster: list[dict], projections: pd.DataFrame,
     # the surplus of the pick it costs. Mixing a VORP with an absolute total is
     # what made every keeper look like a mistake.
     pick_costs = round_pick_costs(value_pool, kept_counts=kept_counts)
+    # Rounds are assigned AFTER the sort, so a per-round cost cannot feed the
+    # sort without circularity. Every candidate is priced at the mean of the
+    # four picks a keeper set actually spends, which keeps them comparable.
+    annual_pick_cost = sum(pick_costs.values()) / len(pick_costs)
     names = board["full_name"].astype(str).tolist()
 
     rows = []
@@ -276,6 +367,10 @@ def analyze_keepers(roster: list[dict], projections: pd.DataFrame,
             "replacement_level": pd.NA,
             "raw_keeper_value": pd.NA,
             "net_keeper_value": pd.NA,
+            "horizon_keeper_value": pd.NA,
+            "horizon_multiplier": pd.NA,
+            "horizon_pick_cost": pd.NA,
+            "horizon_breakdown": pd.NA,
         }
         match = process.extractOne(row["yahoo_name"], names, score_cutoff=85)
         if not match:
@@ -296,6 +391,7 @@ def analyze_keepers(roster: list[dict], projections: pd.DataFrame,
         row["match_score"] = round(float(score), 1)
         row["replacement_level"] = levels[position]
         row["raw_keeper_value"] = float(player["projected_total"]) - levels[position]
+        row.update(_horizon_columns(row, player, horizon_curves, annual_pick_cost))
         rows.append(row)
 
     rankings = pd.DataFrame(rows)
@@ -306,10 +402,7 @@ def analyze_keepers(roster: list[dict], projections: pd.DataFrame,
         if column not in rankings.columns:
             rankings[column] = pd.NA
 
-    candidates = rankings[rankings["match_status"] == "matched"].sort_values(
-        ["raw_keeper_value", "projected_total", "playerId"],
-        ascending=[False, False, True],
-    )
+    candidates = recommendation_order(rankings[rankings["match_status"] == "matched"])
     for rank, (index, round_number) in enumerate(
         zip(candidates.head(KEEPER_COUNT).index, KEEPER_ROUNDS), start=1
     ):

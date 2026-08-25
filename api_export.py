@@ -246,6 +246,23 @@ def _optional_int(row, column):
     return int(value) if value is not None else None
 
 
+def _horizon_breakdown(row):
+    """Per-year horizon contributions, parsed out of the CSV's JSON cell.
+
+    Same round-trip as the draft board's factor_1..6 columns: a list has to
+    survive a CSV, so it travels as JSON. A malformed or absent cell degrades
+    to None rather than breaking the whole export.
+    """
+    raw = row.get('horizon_breakdown')
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, list) and parsed else None
+
+
 def build_keeper_section():
     """Shape cached keeper rankings and advisor-chat readiness for the UI."""
     if not os.path.exists(KEEPER_RANKINGS_PATH):
@@ -280,6 +297,12 @@ def build_keeper_section():
             'projected_fpPerGame': _optional_number(row, 'projected_fpPerGame', 3),
             'projected_total': _optional_number(row, 'projected_total', 1),
             'confidence': _optional_int(row, 'confidence'),
+            # Multi-year keeper valuation. These are None on a board built
+            # without season history, so the UI must treat them as optional.
+            'horizon_keeper_value': _optional_number(row, 'horizon_keeper_value', 1),
+            'horizon_multiplier': _optional_number(row, 'horizon_multiplier', 2),
+            'horizon_pick_cost': _optional_number(row, 'horizon_pick_cost', 1),
+            'horizon_breakdown': _horizon_breakdown(row),
         })
 
     advisor_roster = []
