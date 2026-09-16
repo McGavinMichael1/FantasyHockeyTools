@@ -65,6 +65,9 @@ def runPickups():
     rostered_nhle_ids = set()
     try:
         lg = yahooAPI.getLeague()
+        if lg.settings().get('draft_status') == 'predraft':
+            print("⚠️  The live Yahoo league has not drafted yet, so nobody is "
+                  "rostered -- no players will be filtered out")
         rostered_names = yahooAPI.getRosteredIds(lg)
         rostered_nhle_ids = yahooAPI.getRosteredNHLIds(rostered_names, allPlayerData)
         print(f"Yahoo API: Filtering out {len(rostered_nhle_ids)} rostered players")
@@ -424,8 +427,16 @@ def runKeeper():
     # Loaded before analyze_keepers so the curves can price the board, and
     # reused as the advisor's history rather than reading both CSVs twice.
     horizon_curves, skater_history, goalie_history = loadHorizonCurves()
+    # Two DIFFERENT leagues. The roster we are choosing keepers from is last
+    # season's -- next season's league is predraft, so every roster in it is
+    # empty -- while the settings that govern the keeper decision (draft date,
+    # roster slots) belong to the league we are keeping INTO.
+    roster_league = yahooAPI.getRosterLeague()
+    roster = yahooAPI.getMyRoster(roster_league)
     league = yahooAPI.getLeague()
-    roster = yahooAPI.getMyRoster(league)
+    if not roster:
+        print(f"WARNING: no players on the {roster_league.settings().get('name')} "
+              f"roster -- keeper rankings will be empty")
 
     # What you get INSTEAD of keeping someone is a draft pick, and a draft pick
     # cannot fetch a player another team kept. So replacement levels and pick
