@@ -43,7 +43,7 @@ Check these before starting Phase B work; all are cheap and read-only.
    keepers is known (`PROJECT-PLAN.md:316`, "Roster: ... 10 teams, 4 keepers"). Whether keepers
    cost a draft pick/round, and any restrictions, is **UNKNOWN** and blocks Phase C2's pick-cost
    subtraction term. This cannot be verified from the repo -- it requires the owner to check Yahoo
-   league settings for `nhl.l.33072`. Flag it now so it isn't rediscovered as a surprise at Phase C.
+   league settings for the live league (2026: `477.l.12419`). Flag it now so it isn't rediscovered as a surprise at Phase C.
 
 ## Phase B1 -- player_seasons table
 

@@ -204,3 +204,89 @@ def test_get_draft_results_keeps_picks_whose_name_yahoo_cannot_resolve():
 
     assert len(rows) == 2
     assert rows[1]['player_name'] is None
+
+
+# --- Live league resolution (regression: the bare `nhl.l.<id>` alias) -------
+#
+# `getLeague` used to hardcode 'nhl.l.33072'. The bare `nhl` alias resolves to
+# whatever game key is CURRENT, so when Yahoo rolled 465 (2025) -> 477 (2026)
+# that string started naming league 33072 in the 2026 game -- someone else's
+# league -- and every call 403'd with "you are not in this league". These pin
+# the season-qualified resolution that replaced it.
+
+class FakeGameYHandler:
+    def __init__(self, season):
+        self._season = season
+
+    def get_game_raw(self, game_code):
+        return {'fantasy_content': {'game': [
+            {'game_key': '477', 'code': game_code, 'season': str(self._season)}]}}
+
+
+class FakeSeasonGame(FakeGame):
+    """FakeGame that also answers "what season is live?" and tracks lookups."""
+
+    def __init__(self, season, ids_by_season, leagues=None, settings=None):
+        super().__init__([], leagues)
+        self.yhandler = FakeGameYHandler(season)
+        self.ids_by_season = ids_by_season
+        self.settings_by_id = settings or {}
+        self.to_league_calls = []
+
+    def league_ids(self, **kwargs):
+        self.league_ids_kwargs.append(kwargs)
+        return self.ids_by_season.get(kwargs.get('seasons', [None])[0], [])
+
+    def to_league(self, league_id):
+        self.to_league_calls.append(league_id)
+        return self.leagues.get(league_id, FakeLeague(
+            picks=[], details=[],
+            name=self.settings_by_id.get(league_id, yahooAPI.LEAGUE_NAME)))
+
+
+LIVE_SEASON = 2026
+LIVE_KEY = '477.l.12419'
+PREV_KEY = '465.l.33072'
+IDS = {'2026': [LIVE_KEY, '477.l.91025'], '2025': [PREV_KEY, '465.l.19487']}
+NAMES = {LIVE_KEY: yahooAPI.LEAGUE_NAME, '477.l.91025': "Michael's Genius League",
+         PREV_KEY: yahooAPI.LEAGUE_NAME, '465.l.19487': 'Some Other League'}
+
+
+@pytest.fixture
+def fake_game(monkeypatch):
+    game = FakeSeasonGame(LIVE_SEASON, IDS, settings=NAMES)
+    monkeypatch.setattr(yahooAPI, '_game', lambda: game)
+    return game
+
+
+def test_current_league_season_comes_from_yahoo_not_a_hardcoded_year(fake_game):
+    assert yahooAPI.currentLeagueSeason() == LIVE_SEASON
+
+
+def test_get_league_resolves_the_live_season_and_never_uses_a_bare_nhl_key(fake_game):
+    yahooAPI.getLeague()
+
+    assert fake_game.league_ids_kwargs[0]['seasons'] == [str(LIVE_SEASON)]
+    assert not any(key.startswith('nhl.l.') for key in fake_game.to_league_calls), (
+        f"bare alias key requested: {fake_game.to_league_calls}")
+
+
+def test_get_league_picks_our_league_out_of_several_that_season(fake_game):
+    yahooAPI.getLeague()
+
+    assert fake_game.to_league_calls[-1] == LIVE_KEY
+
+
+def test_roster_league_is_the_previous_season_where_our_players_still_are(fake_game):
+    # The live league is predraft: every roster in it is empty, so keeper
+    # analysis has to read last season's league to see who we actually hold.
+    yahooAPI.getRosterLeague()
+
+    assert fake_game.league_ids_kwargs[0]['seasons'] == [str(LIVE_SEASON - 1)]
+    assert fake_game.to_league_calls[-1] == PREV_KEY
+
+
+def test_get_league_honours_an_explicit_season(fake_game):
+    yahooAPI.getLeague(season=2025)
+
+    assert fake_game.to_league_calls[-1] == PREV_KEY

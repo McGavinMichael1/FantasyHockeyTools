@@ -5,7 +5,9 @@ description: Use when about to add a module, product feature, or data source; wh
 
 # FHT architecture contract
 
-This is a solo ML fantasy-hockey toolkit (Yahoo league nhl.l.33072) with three tools: pickup
+This is a solo ML fantasy-hockey toolkit (Yahoo league "Greasy Slappy" -- season-qualified
+key, 2026 = 477.l.12419; `yahooAPI` resolves it by name, never via the bare `nhl.l.<id>` alias)
+with three tools: pickup
 analyzer (working prototype), draft analyzer (Phase B, in progress), keeper analyzer (Phase C,
 not started). Read this before touching scoring, features, splits, or module boundaries.
 

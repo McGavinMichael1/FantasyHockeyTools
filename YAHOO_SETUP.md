@@ -6,6 +6,22 @@ The Yahoo API integration allows the app to filter out already-rostered players 
 
 ## Setup Instructions
 
+### 0. Apply for Fantasy Sports API access (Yahoo now gates this)
+
+> **Status for this repo: granted 2026-09-15.** Kept here because a new app still has to
+> go through it, and because the failure mode is otherwise baffling.
+
+As of 2026, Yahoo requires a separate approval step before the Fantasy Sports API works for
+any app — the old "just check the Fantasy Sports box in the app console" flow is no longer
+sufficient. `developer.yahoo.com/fantasysports/guide` now redirects to
+`sports.yahoo.com/developer`, a new portal where you submit a product description, what data
+you need, and expected usage; Yahoo's Fantasy Sports team reviews it before API calls succeed.
+
+Apply at https://sports.yahoo.com/developer/access/. Until approved, every call — even the
+basic `users;games` endpoint — fails with `"This application is not authorized to perform
+this action."`, regardless of how fresh your OAuth token is. Re-authenticating does not fix
+this; only approval does. Access is read-only by default.
+
 ### 1. Create a Yahoo App
 
 1. Go to https://developer.yahoo.com/apps/create/
@@ -54,6 +70,13 @@ Never share or commit:
 
 ## Troubleshooting
 
+### `RuntimeError: ... "This application is not authorized to perform this action."`
+
+This is not a token or scope problem — a freshly re-authenticated token fails identically.
+It means the app hasn't been approved under Yahoo's access-application process (see step 0
+above). Apply at https://sports.yahoo.com/developer/access/ and wait for approval; deleting
+`oauth2.json`'s token fields and re-running the OAuth flow will not help.
+
 ### "No such file or directory: oauth2.json"
 
 This is normal if you haven't set up Yahoo API. The app will continue without roster filtering.
@@ -71,13 +94,40 @@ python main.py pickups
 
 This will trigger a new OAuth flow.
 
-### Wrong league ID
+### `403 "You are not allowed to view this page because you are not in this league."`
 
-The code currently hardcodes league `nhl.l.33072` in [src/yahooAPI.py:12](src/yahooAPI.py#L12).
+A different failure from the one above, and it means the opposite: the app is authorized, the
+league key is wrong. Almost always a bare `nhl.l.<id>` key. `nhl` is an alias for the **current**
+game, which rolls every September (465 = 2025, 477 = 2026), so `nhl.l.33072` stopped meaning our
+league the moment Yahoo created the 2026 game — it started naming league 33072 in *that* game,
+which belongs to strangers.
 
-To use a different league:
-1. Find your league ID from the Yahoo Fantasy URL (e.g., `https://hockey.fantasysports.yahoo.com/hockey/12345` → ID is `12345`)
-2. Edit `src/yahooAPI.py` line 12: `lg = gm.to_league('nhl.l.YOUR_LEAGUE_ID')`
+Nothing is hardcoded now. `yahooAPI.getLeague()` asks Yahoo which season is live and resolves
+our league by **name** (`yahooAPI.LEAGUE_NAME`), because the numeric id changes every year:
+
+| Season | League key |
+|---|---|
+| 2024 | `453.l.27273` |
+| 2025 | `465.l.33072` |
+| 2026 | `477.l.12419` |
+
+To point this at a different league, change `LEAGUE_NAME` in `src/yahooAPI.py`, or pass
+`league_id=` to `getLeague()` / `getLeagueForYear()` to bypass resolution entirely.
+
+### Two leagues, on purpose
+
+`getLeague()` returns the **live** league (where you draft and play). `getRosterLeague()`
+returns the **previous** season's, and that is where your current roster lives — from the day
+Yahoo creates next season's league until its draft, every roster in it is empty. Keeper analysis
+reads the roster-source league; pickup filtering reads the live one.
+
+### Checking access
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_yahoo_access.py
+```
+
+Stages escalate, so the first failure names the broken layer.
 
 ## References
 

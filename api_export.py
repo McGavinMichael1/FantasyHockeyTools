@@ -369,6 +369,9 @@ def export_data():
     rostered_nhle_ids = set()
     try:
         lg = yahooAPI.getLeague()
+        if lg.settings().get('draft_status') == 'predraft':
+            print("Yahoo: live league has not drafted yet -- nobody is rostered, "
+                  "so no players are filtered out")
         rostered_names = yahooAPI.getRosteredIds(lg)
         rostered_nhle_ids = yahooAPI.getRosteredNHLIds(rostered_names, allPlayerData)
         print(f"Yahoo API: Filtering out {len(rostered_nhle_ids)} rostered players")
