@@ -6,6 +6,22 @@ The Yahoo API integration allows the app to filter out already-rostered players 
 
 ## Setup Instructions
 
+### 0. Apply for Fantasy Sports API access (Yahoo now gates this)
+
+> **Status for this repo: granted 2026-09-15.** Kept here because a new app still has to
+> go through it, and because the failure mode is otherwise baffling.
+
+As of 2026, Yahoo requires a separate approval step before the Fantasy Sports API works for
+any app — the old "just check the Fantasy Sports box in the app console" flow is no longer
+sufficient. `developer.yahoo.com/fantasysports/guide` now redirects to
+`sports.yahoo.com/developer`, a new portal where you submit a product description, what data
+you need, and expected usage; Yahoo's Fantasy Sports team reviews it before API calls succeed.
+
+Apply at https://sports.yahoo.com/developer/access/. Until approved, every call — even the
+basic `users;games` endpoint — fails with `"This application is not authorized to perform
+this action."`, regardless of how fresh your OAuth token is. Re-authenticating does not fix
+this; only approval does. Access is read-only by default.
+
 ### 1. Create a Yahoo App
 
 1. Go to https://developer.yahoo.com/apps/create/
@@ -53,6 +69,13 @@ Never share or commit:
 - Any generated token files
 
 ## Troubleshooting
+
+### `RuntimeError: ... "This application is not authorized to perform this action."`
+
+This is not a token or scope problem — a freshly re-authenticated token fails identically.
+It means the app hasn't been approved under Yahoo's access-application process (see step 0
+above). Apply at https://sports.yahoo.com/developer/access/ and wait for approval; deleting
+`oauth2.json`'s token fields and re-running the OAuth flow will not help.
 
 ### "No such file or directory: oauth2.json"
 
