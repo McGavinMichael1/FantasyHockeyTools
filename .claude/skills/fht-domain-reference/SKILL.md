@@ -11,8 +11,8 @@ was verified against repo source on 2026-07-05; anchors are `path:line`.
 
 ## 1. The league and fantasy mechanics
 
-League: Yahoo `nhl.l.33072`, hardcoded at `src/yahooAPI.py:12`. 10 teams, 4
-keepers. Roster: `C, C, LW, LW, RW, RW, D, D, D, D, Util, G, G, BN×5, IR+×2`
+League: Yahoo "Greasy Slappy" -- 2024 `453.l.27273`, 2025 `465.l.33072`, 2026
+`477.l.12419`; `yahooAPI` resolves it by name per season. 10 teams, 4 keepers. Roster: `C, C, LW, LW, RW, RW, D, D, D, D, Util, G, G, BN×5, IR+×2`
 (PROJECT-PLAN.md:316).
 
 **Skater scoring** (PROJECT-PLAN.md:293-304, exactly matches
@@ -198,8 +198,9 @@ PROJECT-PLAN.md:53).
 `yahoo_fantasy_api` + `yahoo_oauth`; OAuth session built from
 `oauth2.json` at repo root (`src/yahooAPI.py:10`) — **never quote this
 file's contents in any output**; it is untracked and gitignored (verified
-`git ls-files .env oauth2.json` returns empty). League handle:
-`gm.to_league('nhl.l.33072')` (`src/yahooAPI.py:12`).
+`git ls-files .env oauth2.json` returns empty). League handle: `yahooAPI.getLeague()`
+(live season) or `yahooAPI.getRosterLeague()` (previous season, where the current
+roster lives).
 
 Yahoo rosters return **display names**, not NHL player ids, so every
 Yahoo-sourced name needs fuzzy matching to the NHL id space: rapidfuzz

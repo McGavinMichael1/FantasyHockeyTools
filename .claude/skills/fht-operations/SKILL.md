@@ -78,8 +78,11 @@ NHL API data (roster identity only — `players_cache.csv`) self-populates throu
 24h file cache on first `pickups`/`api_export.py` run — no manual step. Yahoo is optional: see
 `YAHOO_SETUP.md` for the OAuth flow. `oauth2.json` and `.env` are both untracked and
 gitignored (verified `git ls-files .env oauth2.json` → empty) — **never print or
-commit their contents**. The league id is hardcoded at `src/yahooAPI.py:12`
-(`gm.to_league('nhl.l.33072')`); if `pickups`/`api_export.py` run without
+commit their contents**. The league is resolved by NAME
+(`yahooAPI.LEAGUE_NAME`) against whichever season Yahoo reports as live -- never a bare
+`nhl.l.<id>` key, which follows Yahoo's September game rollover into a stranger's
+league. `getLeague()` is the live league; `getRosterLeague()` is last season's, where
+our roster still exists while the new league sits predraft. If `pickups`/`api_export.py` run without
 `oauth2.json` they degrade gracefully (roster filtering just gets skipped, a
 warning is printed).
 

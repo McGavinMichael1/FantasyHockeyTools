@@ -1,6 +1,8 @@
 # FantasyHockeyTools
 
-Solo ML fantasy-hockey toolkit for a single Yahoo league (`nhl.l.33072`). Three tools:
+Solo ML fantasy-hockey toolkit for a single Yahoo league ("Greasy Slappy"; the key is
+season-qualified and changes yearly -- 2026 is `477.l.12419`, resolved by name, never as
+`nhl.l.<id>`). Three tools:
 pickup analyzer (working prototype), draft analyzer (board + goalie ranker shipped),
 keeper analyzer (CLI shipped; goalie-inclusive). See PROJECT-PLAN's Current Phase for
 remaining work.

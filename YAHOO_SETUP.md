@@ -94,13 +94,40 @@ python main.py pickups
 
 This will trigger a new OAuth flow.
 
-### Wrong league ID
+### `403 "You are not allowed to view this page because you are not in this league."`
 
-The code currently hardcodes league `nhl.l.33072` in [src/yahooAPI.py:12](src/yahooAPI.py#L12).
+A different failure from the one above, and it means the opposite: the app is authorized, the
+league key is wrong. Almost always a bare `nhl.l.<id>` key. `nhl` is an alias for the **current**
+game, which rolls every September (465 = 2025, 477 = 2026), so `nhl.l.33072` stopped meaning our
+league the moment Yahoo created the 2026 game — it started naming league 33072 in *that* game,
+which belongs to strangers.
 
-To use a different league:
-1. Find your league ID from the Yahoo Fantasy URL (e.g., `https://hockey.fantasysports.yahoo.com/hockey/12345` → ID is `12345`)
-2. Edit `src/yahooAPI.py` line 12: `lg = gm.to_league('nhl.l.YOUR_LEAGUE_ID')`
+Nothing is hardcoded now. `yahooAPI.getLeague()` asks Yahoo which season is live and resolves
+our league by **name** (`yahooAPI.LEAGUE_NAME`), because the numeric id changes every year:
+
+| Season | League key |
+|---|---|
+| 2024 | `453.l.27273` |
+| 2025 | `465.l.33072` |
+| 2026 | `477.l.12419` |
+
+To point this at a different league, change `LEAGUE_NAME` in `src/yahooAPI.py`, or pass
+`league_id=` to `getLeague()` / `getLeagueForYear()` to bypass resolution entirely.
+
+### Two leagues, on purpose
+
+`getLeague()` returns the **live** league (where you draft and play). `getRosterLeague()`
+returns the **previous** season's, and that is where your current roster lives — from the day
+Yahoo creates next season's league until its draft, every roster in it is empty. Keeper analysis
+reads the roster-source league; pickup filtering reads the live one.
+
+### Checking access
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_yahoo_access.py
+```
+
+Stages escalate, so the first failure names the broken layer.
 
 ## References
 
