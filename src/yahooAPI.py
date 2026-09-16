@@ -9,11 +9,54 @@ from rapidfuzz import process
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def getLeague():
-    oauth = OAuth2(None, None, from_file=os.path.join(BASE_DIR, '..', 'oauth2.json'))
-    gm = yfa.Game(oauth, 'nhl')
-    lg = gm.to_league('nhl.l.33072')
-    return lg
+def _oauth():
+    return OAuth2(None, None, from_file=os.path.join(BASE_DIR, '..', 'oauth2.json'))
+
+
+def _game():
+    return yfa.Game(_oauth(), 'nhl')
+
+
+def currentLeagueSeason(gm=None):
+    """The season Yahoo's bare `nhl` alias currently points at.
+
+    Read from Yahoo rather than derived from season.CURRENT_SEASON: the two
+    roll at different moments. CURRENT_SEASON tracks the newest season with
+    MoneyPuck data, while Yahoo flips `nhl` to the new game key as soon as the
+    next league exists -- in September, before a single game is played.
+    """
+    gm = gm or _game()
+    rows = objectpath.Tree(gm.yhandler.get_game_raw('nhl')).execute('$..(season)')
+    seasons = [row['season'] for row in rows if isinstance(row, dict) and row.get('season')]
+    if not seasons:
+        raise RuntimeError("Yahoo did not report a season for the current NHL game")
+    return int(seasons[-1])
+
+
+def getLeague(season=None, league_id=None):
+    """Our league for one season -- the live one by default.
+
+    NEVER build a bare `nhl.l.<id>` key. The `nhl` alias means "the current
+    game", so a hardcoded 'nhl.l.33072' silently became league 33072 in the
+    2026 game when Yahoo rolled 465 -> 477, and Yahoo answered 403 "you are not
+    in this league" on every call. The season-qualified key is the only stable
+    form, and the numeric id changes yearly, so resolve by name instead.
+    """
+    gm = _game()
+    if league_id:
+        return gm.to_league(league_id)
+    return _resolve_league(gm, currentLeagueSeason(gm) if season is None else season)
+
+
+def getRosterLeague():
+    """The league whose rosters show who we currently hold.
+
+    Not the live league: from the moment next season's league is created until
+    its draft, every roster in it is EMPTY. Keeper analysis asks "who do I have
+    and which four should I keep", so it has to read the season we just played.
+    """
+    gm = _game()
+    return _resolve_league(gm, currentLeagueSeason(gm) - 1)
 
 def getRosteredIds(lg):
     rostered_names = set()
@@ -69,9 +112,9 @@ def getRosteredNHLIds(rostered_names, players_df):
 
 # --- Historical draft results (for the mock-draft backtest) -----------------
 #
-# getLeague() hardcodes this season's league key. Past seasons are DIFFERENT
-# Yahoo leagues with different keys, so anything historical has to resolve the
-# key by year first -- reusing getLeague() would silently grade the wrong draft.
+# getLeague() resolves the LIVE season. Past seasons are DIFFERENT Yahoo
+# leagues with different keys, so anything historical has to name its year --
+# defaulting to the live league would silently grade the wrong draft.
 
 DRAFT_RESULTS_PATH = os.path.join(BASE_DIR, '..', 'data', 'raw', 'draft_results_{year}.csv')
 
@@ -139,11 +182,7 @@ def getLeagueForYear(year, league_id=None):
     is season 2025, matching the MoneyPuck convention used everywhere else.
     Pass `league_id` to bypass resolution entirely.
     """
-    oauth = OAuth2(None, None, from_file=os.path.join(BASE_DIR, '..', 'oauth2.json'))
-    gm = yfa.Game(oauth, 'nhl')
-    if league_id:
-        return gm.to_league(league_id)
-    return _resolve_league(gm, year)
+    return getLeague(season=year, league_id=league_id)
 
 
 def _assert_expected_league(league, year):
