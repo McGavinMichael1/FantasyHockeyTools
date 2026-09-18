@@ -159,6 +159,67 @@
   text-align: right;
 }
 
+/* Konami-code easter egg: a goal celebration over the whole board. */
+.konami {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.konamiBanner {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display), 'Arial Black', sans-serif;
+  font-size: clamp(30px, 8vw, 96px);
+  white-space: nowrap;
+  color: var(--hot);
+  text-shadow:
+    0 4px 0 var(--ink),
+    0 0 28px var(--hot);
+  animation: konamiPulse 0.45s ease-in-out infinite alternate;
+}
+
+.konamiPuck {
+  position: absolute;
+  top: -8%;
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--ink);
+  animation-name: konamiFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes konamiFall {
+  to {
+    transform: translateY(115vh) rotate(540deg);
+  }
+}
+
+@keyframes konamiPulse {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+}
+
+/* Respect reduced-motion: keep the banner, drop the moving parts. */
+@media (prefers-reduced-motion: reduce) {
+  .konamiPuck {
+    display: none;
+  }
+  .konamiBanner {
+    animation: none;
+  }
+}
+
 .nudgeInput {
   width: 48px;
   text-align: right;
