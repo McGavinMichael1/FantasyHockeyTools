@@ -113,6 +113,28 @@ at all** (it's created on first `train-pickups` run via `save()`'s `os.makedirs`
 So on this machine right now, `pickups`/`spot-check`/`api_export.py` will all fail
 with `FileNotFoundError` until `train-pickups` runs at least once.
 
+### Deploy the draft board (league-hosted)
+
+League-mates get a **draft-board-only** static site on Cloudflare Pages behind
+Cloudflare Access. Refresh loop: `api_export.py` → `.\scripts\deploy_draft_board.ps1`
+(`-BuildOnly` builds `frontend\out` without uploading, for a local check via
+`.\.venv\Scripts\python.exe -m http.server -d frontend\out 8080`).
+
+- `scripts/publish_draft_data.py` **whitelists** the draft sections of
+  `frontend_data.json` into `frontend/public/` (pickups/cooling/keeper emptied: they are
+  the owner's private edge). The script deletes that copy after the build: the repo is
+  public and the data is MoneyPuck-derived, so it must never be committed.
+- `NEXT_PUBLIC_FHT_DRAFT_ONLY=1` (set only by the script) switches `next.config.mjs` to
+  `output: 'export'` + `pageExtensions: ['tsx']`, which drops the `.ts` API routes, and
+  makes `page.tsx` fetch `/frontend_data.json` with only the Draft tab. Keeper chat is
+  never deployed. Plain `npm run dev` is unchanged.
+- One-time setup: free Cloudflare account, `npx wrangler login` (the first deploy creates
+  the `fht-draft-board` project), then Zero Trust → Access → Applications → Self-hosted
+  covering **both** `fht-draft-board.pages.dev` and `*.fht-draft-board.pages.dev`,
+  policy Allow by the league-mates' emails, login method One-time PIN.
+- Each league-mate's picks live in their own browser's `localStorage`; the roster
+  panel offers no keeper toggles for them (keeper options are the owner's).
+
 ## 4. Cache and artifact catalog
 
 This project's "config" is constants-in-source plus file caches — there is no

@@ -8,6 +8,10 @@
 # Production
 /build
 
+# Draft-board deploy data (scripts/publish_draft_data.py). MoneyPuck-derived and
+# the repo is public -- never commit it.
+/public/frontend_data.json
+
 # Misc
 .DS_Store
 *.pem

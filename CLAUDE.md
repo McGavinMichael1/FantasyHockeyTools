@@ -159,6 +159,11 @@ Full rationale and file:line citations: `fht-architecture-contract`.
   Two measured results worth knowing: survival (not production) is what separates a 34-year-old
   from a 23-year-old, and the **goalie multiplier peaks at 24 and is low at 21** — the opposite
   shape from skaters, because young goalies do not stick.
+- **The draft board is league-hosted as a static, draft-only build** (2026-09-18):
+  `scripts/deploy_draft_board.ps1` → Cloudflare Pages behind Cloudflare Access.
+  `scripts/publish_draft_data.py` is a whitelist: never publish pickups/cooling/keeper, and
+  never commit `frontend/public/frontend_data.json` (public repo, MoneyPuck-derived).
+  Runbook: `fht-operations` § Deploy the draft board.
 - **The game-log cache filename is versioned** (`moneypuck.GAME_CACHE_VERSION`, now `v2`).
   `loadGameLogs` prefers a fresh-looking cache over the raw CSVs, so widening `GAME_COLUMNS`
   without bumping the tag would serve a stale-schema cache and fail downstream with a
