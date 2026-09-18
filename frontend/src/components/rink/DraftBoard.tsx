@@ -7,6 +7,7 @@ import type { DraftPlayer, KeeperRecommendation, Position } from '@/types/player
 import type { RosterRules } from '@/lib/bestAvailable';
 import { DEFAULT_ROSTER_RULES, shortlist } from '@/lib/bestAvailable';
 import { DEFAULT_PICK_BUDGET, loadSetup, saveSetup } from '@/lib/draftSetup';
+import { applyNudges, loadNudges, saveNudges, setNudge, type NudgeMap } from '@/lib/nudges';
 import OnTheClock from './OnTheClock';
 import RosterPanel from './RosterPanel';
 import DraftTable, { COLUMNS, type Column, type SortDir } from './DraftTable';
@@ -59,6 +60,9 @@ export default function DraftBoard({
   const [keeperIds, setKeeperIds] = useState<Set<number>>(() => new Set());
   const [pickBudget, setPickBudget] = useState(DEFAULT_PICK_BUDGET);
   const [activeRow, setActiveRow] = useState(0);
+  // Manual overrides for players the model never saw a role change on. See
+  // lib/nudges; applied to the raw list so every ranking below re-derives.
+  const [nudges, setNudges] = useState<NudgeMap>({});
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Hydrate after mount, not during render: localStorage does not exist on the
@@ -69,6 +73,7 @@ export default function DraftBoard({
       setPicks(stored);
       setDraftMode(true);
     }
+    setNudges(loadNudges());
     const setup = loadSetup();
     setPickBudget(setup.pickBudget);
     // A saved setup wins; an unconfigured board starts from the keeper board's
@@ -84,19 +89,24 @@ export default function DraftBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The list every ranking below reads. Nudging the projection here re-derives
+  // VORP, tiers, best-available and the roster panel in one place -- none of
+  // them know a manual override happened.
+  const nudged = useMemo(() => applyNudges(players, nudges), [players, nudges]);
+
   const drafted = useMemo(() => draftedIds(picks), [picks]);
   const pickById = useMemo(() => new Map(picks.map((p) => [p.id, p])), [picks]);
-  const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+  const playersById = useMemo(() => new Map(nudged.map((p) => [p.id, p])), [nudged]);
 
   const mine = useMemo(() => myPicks(picks), [picks]);
-  const myCounts = useMemo(() => positionCounts(mine, players), [mine, players]);
+  const myCounts = useMemo(() => positionCounts(mine, nudged), [mine, nudged]);
   const keptCounts = useMemo(
     () =>
       positionCounts(
         [...keeperIds].map((id, i) => ({ id, pick: i + 1, mine: true })),
-        players,
+        nudged,
       ),
-    [keeperIds, players],
+    [keeperIds, nudged],
   );
 
   function update(next: Pick[]) {
@@ -160,23 +170,34 @@ export default function DraftBoard({
     saveSetup({ keeperIds: [...keeperIds], pickBudget: budget });
   }
 
+  function changeNudge(id: number, factor: number) {
+    const next = setNudge(nudges, id, factor);
+    setNudges(next);
+    saveNudges(next);
+  }
+
+  function resetNudges() {
+    setNudges({});
+    saveNudges({});
+  }
+
   // VORP is recomputed against whoever is left, so the ranking re-sorts itself
   // as the pool thins. Outside draft mode the exported preseason value stands.
   const board = useMemo(
-    () => (draftMode ? withLiveVorp(players, drafted, replacementRanks) : players),
-    [players, drafted, draftMode, replacementRanks],
+    () => (draftMode ? withLiveVorp(nudged, drafted, replacementRanks) : nudged),
+    [nudged, drafted, draftMode, replacementRanks],
   );
 
   const runs = useMemo(
-    () => (draftMode ? positionalRuns(players, drafted, replacementRanks) : []),
-    [players, drafted, draftMode, replacementRanks],
+    () => (draftMode ? positionalRuns(nudged, drafted, replacementRanks) : []),
+    [nudged, drafted, draftMode, replacementRanks],
   );
 
   // Useful before the draft too, so this is not gated on draft mode: with
   // nobody drafted it is the preseason tier board.
   const tierMap = useMemo(
-    () => tiers(players, drafted, replacementRanks),
-    [players, drafted, replacementRanks],
+    () => tiers(nudged, drafted, replacementRanks),
+    [nudged, drafted, replacementRanks],
   );
 
   // Recommendations run against the LIVE board: their VORP has to mean the same
@@ -271,6 +292,12 @@ export default function DraftBoard({
   useEffect(() => {
     if (!draftMode) return;
     function onKeyDown(event: KeyboardEvent) {
+      // A nudge (or pick-budget) field owns its own keys: undo and the arrows
+      // fire from anywhere, and would hijack typing a number. The search box is
+      // the one input the loop is built around, so it alone flows through.
+      if (event.target instanceof HTMLInputElement && event.target !== searchRef.current) {
+        return;
+      }
       const inSearch = event.target === searchRef.current;
       const handled = applyAction(
         draftKeyAction({
@@ -387,6 +414,15 @@ export default function DraftBoard({
             </button>
           </>
         )}
+        {Object.keys(nudges).length > 0 && (
+          <button
+            className={styles.resetButton}
+            onClick={resetNudges}
+            title="Remove every manual projection nudge"
+          >
+            Reset {Object.keys(nudges).length} nudge{Object.keys(nudges).length === 1 ? '' : 's'}
+          </button>
+        )}
         <span className={styles.count}>
           {rows.length} player{rows.length === 1 ? '' : 's'}
         </span>
@@ -394,7 +430,7 @@ export default function DraftBoard({
 
       {draftMode && (
         <RosterPanel
-          players={players}
+          players={nudged}
           counts={myCounts}
           keptCounts={keptCounts}
           keepers={keeperOptions}
@@ -452,6 +488,8 @@ export default function DraftBoard({
         onToggleSort={toggleSort}
         onMarkTaken={markTaken}
         onMarkMine={markMine}
+        nudges={nudges}
+        onNudge={changeNudge}
       />
     </section>
   );

@@ -3,6 +3,7 @@
 import { Fragment } from 'react';
 import type { DraftPlayer } from '@/types/player';
 import type { Pick } from '@/lib/liveDraft';
+import type { NudgeMap } from '@/lib/nudges';
 import type { TierInfo } from '@/lib/tiers';
 import { Headshot, PositionChip, ScoreMeter } from './bits';
 import styles from './RinkTable.module.css';
@@ -40,6 +41,32 @@ function ProjectionDeltaChip({ value }: { value: number }) {
     <span className={`${bitStyles.delta} ${cls}`} title="Projected FP per game vs. last season">
       {label}
     </span>
+  );
+}
+
+/**
+ * The manual projection override, entered as a percent (+20 = a line promotion
+ * the model never saw). Empty at 0 so 700 rows are not a wall of zeroes; the
+ * board re-ranks off the nudged projection. stopPropagation keeps a click or
+ * Enter here from expanding the row / firing the draft keyboard loop.
+ */
+function NudgeCell({ factor, onNudge }: { factor: number; onNudge: (factor: number) => void }) {
+  const pct = Math.round((factor - 1) * 100);
+  return (
+    <input
+      type="number"
+      className={`${styles.nudgeInput} ${pct !== 0 ? styles.nudgeActive : ''}`}
+      value={pct === 0 ? '' : pct}
+      step={5}
+      min={-50}
+      max={100}
+      placeholder="0%"
+      title="Manual projection nudge in % (e.g. 20 for a top-line promotion). Re-ranks VORP and tiers."
+      aria-label="Projection nudge percent"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onChange={(e) => onNudge(1 + Number(e.target.value) / 100)}
+    />
   );
 }
 
@@ -236,6 +263,8 @@ export default function DraftTable({
   onToggleSort,
   onMarkTaken,
   onMarkMine,
+  nudges,
+  onNudge,
 }: {
   rows: DraftPlayer[];
   draftMode: boolean;
@@ -250,8 +279,10 @@ export default function DraftTable({
   onToggleSort: (col: Column) => void;
   onMarkTaken: (id: number) => void;
   onMarkMine: (id: number) => void;
+  nudges: NudgeMap;
+  onNudge: (id: number, factor: number) => void;
 }) {
-  const span = COLUMNS.length + (draftMode ? 3 : 2);
+  const span = COLUMNS.length + (draftMode ? 3 : 2) + 1;
 
   return (
     <div className={styles.tableWrap}>
@@ -299,6 +330,13 @@ export default function DraftTable({
                 </button>
               </th>
             ))}
+            <th
+              className={styles.thNumeric}
+              scope="col"
+              title="Manually override a projection by % when the model is out of the loop (a trade, a line promotion). Re-ranks the board."
+            >
+              Nudge
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -395,6 +433,9 @@ export default function DraftTable({
                       {col.render(p)}
                     </td>
                   ))}
+                  <td className={styles.tdNumeric}>
+                    <NudgeCell factor={nudges[p.id] ?? 1} onNudge={(f) => onNudge(p.id, f)} />
+                  </td>
                 </tr>
                 {expandedIds.has(p.id) && (
                   <tr className={styles.detailRow}>
