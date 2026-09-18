@@ -159,6 +159,26 @@
   text-align: right;
 }
 
+.nudgeInput {
+  width: 48px;
+  text-align: right;
+  padding: 3px 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  background: var(--boards);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+}
+
+/* A set nudge is a manual override standing in for the model -- make it visible
+   at a glance so a stale one weeks later is not mistaken for a projection. */
+.nudgeActive {
+  border-color: var(--hot);
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .playerCell {
   display: inline-flex;
   align-items: center;
