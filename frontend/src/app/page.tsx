@@ -25,10 +25,23 @@ interface ApiResponse {
   draft_roster_rules?: DraftRosterRules;
   keeper?: KeeperSection | null;
   dataAge?: string;
+  generated_at?: string;
   error?: string;
 }
 
 type Tab = 'pickups' | 'cooling' | 'draft';
+
+// The league-hosted static build (see next.config.mjs): draft board only, read
+// from a whitelisted JSON file because there is no API route to serve it.
+const DRAFT_ONLY = process.env.NEXT_PUBLIC_FHT_DRAFT_ONLY === '1';
+const DATA_URL = DRAFT_ONLY ? '/frontend_data.json' : '/api/players';
+
+/** The static file has no server-computed dataAge; derive the same "Xh ago" shape. */
+function ageSince(generatedAt?: string): string | undefined {
+  const at = generatedAt ? Date.parse(generatedAt) : NaN;
+  if (Number.isNaN(at)) return undefined;
+  return `${(Date.now() - at) / (1000 * 60 * 60)}h ago`;
+}
 
 /** "130.6h ago" from the API → "5d old"; unparseable strings pass through. */
 function formatAge(age?: string): string | undefined {
@@ -41,12 +54,13 @@ function formatAge(age?: string): string | undefined {
 }
 
 export default function RinkPage() {
-  const [tab, setTab] = useState<Tab>('pickups');
+  const [tab, setTab] = useState<Tab>(DRAFT_ONLY ? 'draft' : 'pickups');
   const [data, setData] = useState<ApiResponse>({ pickups: [], cooling: [], draft: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (DRAFT_ONLY) return;
     const view = new URLSearchParams(window.location.search).get('view');
     if (view === 'cold' || view === 'cooling') setTab('cooling');
     if (view === 'draft') setTab('draft');
@@ -55,7 +69,7 @@ export default function RinkPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch('/api/players');
+        const res = await fetch(DATA_URL);
         const json: ApiResponse = await res.json();
         if (json.error && json.pickups.length === 0) {
           setError(json.error);
@@ -74,6 +88,7 @@ export default function RinkPage() {
   }, []);
 
   const tone = tab === 'pickups' ? 'hot' : 'cold';
+  const dataAge = data.dataAge ?? ageSince(data.generated_at);
 
   const players = useMemo(() => {
     if (tab === 'draft') return [];
@@ -94,20 +109,24 @@ export default function RinkPage() {
           </span>
 
           <nav className={styles.tabs} aria-label="View">
-            <button
-              className={`${styles.tab} ${tab === 'pickups' ? styles.tabActive : ''}`}
-              onClick={() => setTab('pickups')}
-              aria-pressed={tab === 'pickups'}
-            >
-              Waiver wire
-            </button>
-            <button
-              className={`${styles.tab} ${tab === 'cooling' ? styles.tabActiveCold : ''}`}
-              onClick={() => setTab('cooling')}
-              aria-pressed={tab === 'cooling'}
-            >
-              Cold streaks
-            </button>
+            {!DRAFT_ONLY && (
+              <>
+                <button
+                  className={`${styles.tab} ${tab === 'pickups' ? styles.tabActive : ''}`}
+                  onClick={() => setTab('pickups')}
+                  aria-pressed={tab === 'pickups'}
+                >
+                  Waiver wire
+                </button>
+                <button
+                  className={`${styles.tab} ${tab === 'cooling' ? styles.tabActiveCold : ''}`}
+                  onClick={() => setTab('cooling')}
+                  aria-pressed={tab === 'cooling'}
+                >
+                  Cold streaks
+                </button>
+              </>
+            )}
             <button
               className={`${styles.tab} ${tab === 'draft' ? styles.tabActive : ''}`}
               onClick={() => setTab('draft')}
@@ -115,15 +134,15 @@ export default function RinkPage() {
             >
               Draft board
             </button>
-            <Link className={styles.tab} href="/keeper">
-              Keeper board
-            </Link>
+            {!DRAFT_ONLY && (
+              <Link className={styles.tab} href="/keeper">
+                Keeper board
+              </Link>
+            )}
           </nav>
 
           <div className={styles.meta}>
-            {data.dataAge && (
-              <span className={styles.dataAge}>Data {formatAge(data.dataAge)}</span>
-            )}
+            {dataAge && <span className={styles.dataAge}>Data {formatAge(dataAge)}</span>}
           </div>
         </div>
       </header>
