@@ -8,6 +8,7 @@ import type { RosterRules } from '@/lib/bestAvailable';
 import { DEFAULT_ROSTER_RULES, shortlist } from '@/lib/bestAvailable';
 import { DEFAULT_PICK_BUDGET, loadSetup, saveSetup } from '@/lib/draftSetup';
 import { applyNudges, loadNudges, saveNudges, setNudge, type NudgeMap } from '@/lib/nudges';
+import { konamiStep } from '@/lib/konami';
 import OnTheClock from './OnTheClock';
 import RosterPanel from './RosterPanel';
 import DraftTable, { COLUMNS, type Column, type SortDir } from './DraftTable';
@@ -28,6 +29,32 @@ import {
   withLiveVorp,
 } from '@/lib/liveDraft';
 import styles from './RinkTable.module.css';
+
+/**
+ * The Konami-code payoff: a rain of "WAHN 😭" over the board. Deterministic
+ * scatter (index-derived, not Math.random) so a re-render does not reshuffle
+ * it mid-fall. Click anywhere to dismiss; it also self-clears.
+ */
+function GoalCelebration({ onDone }: { onDone: () => void }) {
+  return (
+    <div className={styles.konami} onClick={onDone} role="presentation" aria-hidden="true">
+      <div className={styles.konamiBanner}>WAHN 😭</div>
+      {Array.from({ length: 28 }, (_, i) => (
+        <span
+          key={i}
+          className={styles.konamiPuck}
+          style={{
+            left: `${(i * 37) % 100}%`,
+            animationDelay: `${(i % 10) * 0.15}s`,
+            animationDuration: `${2.5 + (i % 5) * 0.4}s`,
+          }}
+        >
+          WAHN 😭
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function DraftBoard({
   players,
@@ -63,6 +90,7 @@ export default function DraftBoard({
   // Manual overrides for players the model never saw a role change on. See
   // lib/nudges; applied to the raw list so every ranking below re-derives.
   const [nudges, setNudges] = useState<NudgeMap>({});
+  const [celebrate, setCelebrate] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Hydrate after mount, not during render: localStorage does not exist on the
@@ -88,6 +116,28 @@ export default function DraftBoard({
     // keeperOptions arrives with the payload and does not change afterwards.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Konami code -> a goal celebration. Passive: it never preventDefault's, so
+  // the arrows still drive the draft loop while the code is being entered.
+  useEffect(() => {
+    let buffer: string[] = [];
+    function onKey(event: KeyboardEvent) {
+      const { buffer: next, matched } = konamiStep(buffer, event.key);
+      buffer = next;
+      if (matched) {
+        buffer = [];
+        setCelebrate(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (!celebrate) return;
+    const timer = setTimeout(() => setCelebrate(false), 4500);
+    return () => clearTimeout(timer);
+  }, [celebrate]);
 
   // The list every ranking below reads. Nudging the projection here re-derives
   // VORP, tiers, best-available and the roster panel in one place -- none of
@@ -345,6 +395,7 @@ export default function DraftBoard({
 
   return (
     <section className={styles.section} aria-label="Draft board">
+      {celebrate && <GoalCelebration onDone={() => setCelebrate(false)} />}
       <div className={styles.controls}>
         <input
           ref={searchRef}
