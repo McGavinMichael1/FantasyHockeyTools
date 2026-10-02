@@ -83,7 +83,7 @@ API script's `--force` semantics.
 $env:PYTHONUTF8='1'; .\.venv\Scripts\python.exe api_export.py
 ```
 
-Needs `models/{pickups,cooling}/model.pkl` (see `fht-operations` if missing).
+Needs `models/pickups/model.pkl` (see `fht-operations` if missing).
 The Next.js app reads `data/processed/frontend_data.json` per request
 (`frontend/src/app/api/players/route.ts`) — no rebuild needed.
 

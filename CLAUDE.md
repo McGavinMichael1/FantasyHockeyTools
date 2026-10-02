@@ -28,7 +28,7 @@ question shape:
 ```powershell
 uv venv
 uv pip install -e .
-.\.venv\Scripts\python.exe main.py train-pickups   # trains models/pickups + models/cooling
+.\.venv\Scripts\python.exe main.py train-pickups   # trains models/pickups
 .\.venv\Scripts\python.exe main.py pickups         # ranked free-agent recommendations
 ```
 
@@ -49,7 +49,7 @@ NHL API         -> src/nhlAPI.py, src/dataProcessing.py (identity/birthDate/rost
 Yahoo API       -> src/yahooAPI.py (optional roster filtering)
                 -> src/fantasyPoints.py (SKATER_WEIGHTS + GOALIE_WEIGHTS — scoring source of truth)
                 -> src/features/{mlFeatures,pickups,draft,goalies,shared}.py
-                -> src/models/{pickups,cooling,draft,goalieDraft,lstmPickups}.py
+                -> src/models/{pickups,draft,goalieDraft,lstmPickups}.py
                 -> main.py (CLI: train-pickups, pickups, train-draft, train-goalies, draft, keeper, spot-check, mock-draft)
                 -> src/mockDraft.py (end-to-end backtest: would the board have beaten the real draft?)
                 -> scripts/ (one-time builds: build_player_seasons.py, build_birthdates.py)
@@ -65,9 +65,14 @@ Yahoo API       -> src/yahooAPI.py (optional roster filtering)
   `fantasyPoints.GOALIE_WEIGHTS` (goalie `losses` are regulation-only, owner-confirmed).
 - LSTM (`src/models/lstmPickups.py`) is intentionally parked until after draft season.
 - Draft target is next-season fantasy PPG, not totals (avoids conflating skill with injury luck).
-- Pickup/cooling models are XGBoost **regressors** on next-5-game FP/g (converted from
-  classifiers July 2026); `predict()` returns projected FP/g, and consumers (`main.py`,
-  `api_export.py`) convert to 0-1 percentile ranks for the blend and frontend.
+- The pickup model is an XGBoost **regressor** on next-5-game FP/g (converted from a
+  classifier July 2026); `predict()` returns projected FP/g, and consumers (`main.py`,
+  `api_export.py`) convert to 0-1 percentile ranks for the blend and frontend. The
+  **cooling list is that same prediction inverted** (`cooling_score = 1 - ml_score`). The
+  separate cooling model was removed 2026-10-02: it trained the same target on the same
+  features, untuned, and its held-out 2025 predictions correlated 0.995 with the pickup
+  model's (Spearman 0.6189 vs 0.6194; cooling AUC 0.7784 vs 0.7778, a tie). Don't
+  reintroduce it unless a *different* target or feature set beats the inverse.
 - Splits are season-based, never random rows (train `<=2022`, validate `2023`).
 - Model `.pkl` files are gitignored — retrain locally; a fresh clone has no trained
   models and must run `train-pickups` before `pickups`/`spot-check`/`api_export.py` work.

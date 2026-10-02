@@ -19,13 +19,21 @@ this project's own naive baselines on its own product metric — see Methodology
 
 | # | Frontier item | Problem in one line | Effort |
 |---|---|---|---|
-| 1 | Tune the cooling model | Weakest model (val AUC 0.6425) got zero tuning | Low — port existing search |
+| 1 | Tune the cooling model | **RESOLVED 2026-10-02 by deletion** — the cooling list is now the pickup prediction inverted | — |
 | 2 | Trend and deployment features | **SHIPPED (PARTIAL) 2026-08-24** — PP TOI adopted for pickups; trend deltas and the luck family rejected | — |
 | 3 | Regress on next-5 FP | Binarized label throws away signal; UI ranks anyway | Medium — new training path |
 | 4 | Optuna swap | Random search is sample-inefficient at 20–50 trials | Low — but a dependency change |
 | 5 | Parked and gated ideas | Each blocked on a written precondition — check before starting | — |
 
 ## Frontier item 1 — Tune the cooling model
+
+**STATUS: RESOLVED 2026-10-02 — `src/models/cooling.py` deleted.** After the July regression
+conversion it trained the *same* target (`next_5_avg`) on the *same* features as the pickup
+model, so tuning it could only converge on the pickup model. On held-out 2025 the two
+models' predictions correlated 0.995 (Spearman vs `next_5_avg` 0.6194 pickup / 0.6189
+cooling; AUC vs `is_cooling_down` 0.7778 / 0.7784). `cooling_score = 1 - ml_score` now.
+A cooling-specific model is only worth reviving with a different target or features (e.g.
+item 3's `xgoals_surplus` idea below). The rest of this section is kept as history.
 
 **Why current fails:** `src/models/cooling.py` hardcodes `n_estimators=100, max_depth=5,
 learning_rate=0.1` (verified, lines 29–34) with no search, while `src/models/pickups.py` runs a
@@ -290,8 +298,8 @@ improvement.
 Written 2026-07-05 from a live read of the repo plus PROJECT-PLAN.md's July 2026 Learning Log.
 Re-verify before relying on any of these:
 
-- **Cooling still untuned?** Read `src/models/cooling.py` — confirm `n_estimators=100,
-  max_depth=5, learning_rate=0.1` are still hardcoded with no search call.
+- **Cooling model still gone?** `src/models/cooling.py` should not exist; `cooling_score`
+  should be `1 - ml_score` in `main.py` and `api_export.py`.
 - **Optuna still absent?** Grep `pyproject.toml` for `optuna` — confirm no match, and check the
   venv (`pip show optuna`) in case it was installed without a pin update.
 - **LSTM still parked?** Check `src/models/lstmPickups.py` for the parked header and confirm no

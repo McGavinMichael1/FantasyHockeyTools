@@ -74,7 +74,7 @@ def buildLabel(df, hot_quantile=0.75, cold_quantile=0.25):
     # defensemen) trigger "heating up" on ordinary block/hit variance without ever
     # producing fantasy-relevant totals. Percentile vs. the field ties the label
     # to actual absolute value. (Binary labels kept for diagnostics and the
-    # parked LSTM; the pickup/cooling models now regress on next_5_avg.)
+    # parked LSTM; the pickup model now regresses on next_5_avg.)
     next_5_percentile = df['next_5_avg'].groupby(df['season']).rank(pct=True)
     df['is_heating_up'] = (next_5_percentile >= hot_quantile).astype(int)
     df['is_cooling_down'] = (next_5_percentile <= cold_quantile).astype(int)
@@ -83,7 +83,7 @@ def buildLabel(df, hot_quantile=0.75, cold_quantile=0.25):
     return df
 
 def pickupFeatureCols(df):
-    """The pickup/cooling model's feature allowlist: all rolling-window stats
+    """The pickup model's feature allowlist: all rolling-window stats
     plus the season-to-date average and encoded position."""
     feature_cols = [col for col in df.columns if col.startswith('rolling_')]
     feature_cols.append('season_avg_so_far')

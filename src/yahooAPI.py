@@ -1,6 +1,5 @@
 from yahoo_oauth import OAuth2
 import yahoo_fantasy_api as yfa
-import objectpath
 import os
 import pandas as pd
 from src import dataProcessing
@@ -17,6 +16,19 @@ def _game():
     return yfa.Game(_oauth(), 'nhl')
 
 
+def _find_key(node, key):
+    """Every value stored under `key` at any depth of a Yahoo JSON response,
+    in document order (same order objectpath's `$..(key)` used)."""
+    if isinstance(node, dict):
+        if key in node:
+            yield node[key]
+        for value in node.values():
+            yield from _find_key(value, key)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _find_key(value, key)
+
+
 def currentLeagueSeason(gm=None):
     """The season Yahoo's bare `nhl` alias currently points at.
 
@@ -26,8 +38,7 @@ def currentLeagueSeason(gm=None):
     next league exists -- in September, before a single game is played.
     """
     gm = gm or _game()
-    rows = objectpath.Tree(gm.yhandler.get_game_raw('nhl')).execute('$..(season)')
-    seasons = [row['season'] for row in rows if isinstance(row, dict) and row.get('season')]
+    seasons = [s for s in _find_key(gm.yhandler.get_game_raw('nhl'), 'season') if s]
     if not seasons:
         raise RuntimeError("Yahoo did not report a season for the current NHL game")
     return int(seasons[-1])
@@ -78,11 +89,8 @@ def _team_key_for_league(team_keys, league_key):
 def getMyTeamKey(league):
     """The authenticated account's team key within one league."""
     league_key = league.settings().get('league_key')
-    team_rows = objectpath.Tree(league.yhandler.get_teams_raw()).execute('$..(team_key)')
     team_key = _team_key_for_league(
-        (row.get('team_key') for row in team_rows if isinstance(row, dict)),
-        league_key,
-    )
+        _find_key(league.yhandler.get_teams_raw(), 'team_key'), league_key)
     if not team_key:
         raise RuntimeError(
             f"Yahoo did not return a team for the authenticated account in {league_key}"

@@ -33,7 +33,7 @@ def test_load_game_logs_filters_season_and_keeps_situations(tmp_path):
     ])
     history_file = tmp_path / 'history.csv'
     current_file = tmp_path / 'current.csv'
-    cache_file = tmp_path / 'cache.csv'
+    cache_file = tmp_path / 'cache.parquet'
     history.to_csv(history_file, index=False)
     current.to_csv(current_file, index=False)
 

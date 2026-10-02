@@ -30,7 +30,7 @@ Yahoo Fantasy API           ---->  src/yahooAPI.py (OAuth, roster)  ---->  api_e
                                     src/backtest.py (spot-check)            for frontend/)
                                     src/features/{shared,pickups,
                                       draft,goalies}.py (features)
-                                    src/models/{pickups,cooling,      ---->  frontend/ (Next.js,
+                                    src/models/{pickups,              ---->  frontend/ (Next.js,
                                       draft,goalieDraft,lstmPickups}.py      reads frontend_data.json)
                                       (train/predict/load/save)
                                     src/season.py (every season constant)
@@ -44,7 +44,7 @@ permanently in `data/raw/goalie_nhl_seasons.csv` by `src/dataProcessing.py`) int
 `fht-draft-campaign` Phase D and the PROJECT-PLAN Learning Log (GATES G1/G3/G4).
 
 Working product: `src/moneypuck.py`, `src/fantasyPoints.py`, `src/features/mlFeatures.py`,
-`src/models/pickups.py`, `src/models/cooling.py`, `src/backtest.py`, `main.py:runPickups`,
+`src/models/pickups.py` (also feeds the inverted cooling list), `src/backtest.py`, `main.py:runPickups`,
 `src/features/pickups.py::rankFreeAgents` (`src/features/pickups.py:24-41`).
 
 Stubs — raise `NotImplementedError` or are TODO-only, verified by reading each file (2026-07-16):
@@ -74,7 +74,7 @@ comment documenting an incident. Do not relitigate without new evidence.
 | One canonical scoring function, `fantasyPoints.SKATER_WEIGHTS` (`src/fantasyPoints.py:1-14`) | Header comment states it is "the single source of truth." Incident: the ML label silently diverged to G/A/SOG-only for months before this was enforced (see `PROJECT-PLAN.md` Learning Log) — the fix was one dict + tests, not scattered constants |
 | LSTM parked; XGBoost is the product model | `PROJECT-PLAN.md:68-70`; `src/models/lstmPickups.py` header dated July 2026 says keep parked until after draft season |
 | Train/predict CLI split (`train-pickups`/`pickups`/`train-draft`/`draft`) | `PROJECT-PLAN.md:77`; `main.py:152-173` — the Next.js `frontend/` is the product interface, scripts are the workbench (the cited line predates the Streamlit deletion) |
-| Model modules share `train(df)`/`predict(df)`/`load()`/`save(model)` | Stated verbatim in `src/models/draft.py:1-8`; implemented identically in `src/models/pickups.py` and `src/models/cooling.py` |
+| Model modules share `train(df)`/`predict(df)`/`load()`/`save(model)` | Stated verbatim in `src/models/draft.py:1-8`; implemented identically in `src/models/pickups.py` (the cooling model that shared it was removed 2026-10-02) |
 | Draft target = next-season fantasy PPG, not totals | `PROJECT-PLAN.md:71-72`: totals conflate skill with injury luck; display as `PPG x 78` |
 | Splits are season-based, never random rows | `src/backtest.py:1-8` comment: model trains on `<=2022`, validates `2023`; every rolling feature only looks backward so features can be built once and sliced by date without leakage |
 | Spearman is the primary metric; baselines before models | `PROJECT-PLAN.md:73-76` |

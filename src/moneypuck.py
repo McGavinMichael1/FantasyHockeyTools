@@ -65,24 +65,14 @@ def checkCurrentFreshness(current_file=CURRENT_FILE):
 
 
 def readCache(path):
-    """Read a processed cache, dispatching on extension.
-
-    Parquet for anything this module writes: the game-log cache was a 161 MB
-    CSV (and a stale 466 MB one), which is ~10-20x larger and slower than the
-    Parquet equivalent and loses every dtype, so each consumer re-inferred
-    them. CSV is still honoured when a caller passes an explicit .csv path.
-    """
-    if str(path).endswith('.parquet'):
-        return pd.read_parquet(path)
-    return pd.read_csv(path)
+    """Read a processed cache. Always Parquet: the game-log cache was a 161 MB
+    CSV that lost every dtype, ~10-20x larger and slower than Parquet."""
+    return pd.read_parquet(path)
 
 
 def writeCache(df, path):
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    if str(path).endswith('.parquet'):
-        df.to_parquet(path, index=False)
-    else:
-        df.to_csv(path, index=False)
+    df.to_parquet(path, index=False)
 
 
 def gameCachePath(min_season):
