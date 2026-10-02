@@ -13,7 +13,6 @@ dependencies = [
     "anthropic>=0.116.0",       # keeper advisor + draft summary generation
     "matplotlib>=3.10.8",       # feature-importance / ROC plots in reports/
     "numpy>=2.4.3",
-    "objectpath>=0.6.1",        # src/yahooAPI.py team-key extraction
     "pandas>=3.0.2",
     "pyarrow>=24.0.0",          # Parquet engine for the processed cache layer
     "RapidFuzz>=3.14.3",        # Yahoo name -> projection matching

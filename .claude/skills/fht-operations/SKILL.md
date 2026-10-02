@@ -30,7 +30,7 @@ bare `python`/`py`:
 
 `pyproject.toml` lists **direct dependencies only, as floors** (July 2026): `pandas`,
 `numpy`, `xgboost`, `scikit-learn`, `scipy`, `matplotlib`, `pyarrow`, `rapidfuzz`,
-`requests`, `objectpath`, `anthropic`, `yahoo-oauth`, `yahoo-fantasy-api`, plus
+`requests`, `anthropic`, `yahoo-oauth`, `yahoo-fantasy-api`, plus
 `pytest` in the `dev` extra. It used to be a flat 110-pin venv freeze; the resolver
 now handles transitives.
 
