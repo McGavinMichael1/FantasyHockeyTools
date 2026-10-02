@@ -21,7 +21,6 @@ from src.features import goalies as goalieFeatures
 from src.features import shared as sharedFeatures
 from src.features import mlFeatures
 from src.features import pickups
-from src.models import cooling as coolingModel
 from src.models import draft as draftModel
 from src.models import goalieDraft as goalieDraftModel
 from src.models import pickups as pickupModel
@@ -45,8 +44,6 @@ def trainPickups():
     historical_df = loadLabeledHistory()
     print("=== Training pickup (heating up) model ===")
     pickupModel.train(historical_df)
-    print("=== Training cooling model ===")
-    coolingModel.train(historical_df)
 
 
 def runPickups():
@@ -81,14 +78,15 @@ def runPickups():
     results = pickups.rankFreeAgents(pickup_stats, allPlayerData, rostered_nhle_ids)
 
     # ML score from the saved model (train with: python main.py train-pickups)
-    # Models regress next-5-game FP/g; convert to 0-1 percentile ranks so the
-    # heuristic blend and score displays keep a bounded scale. Low predicted
-    # FP/g = cooling down, so the cooling score is inverted.
+    # The model regresses next-5-game FP/g; convert to 0-1 percentile ranks so
+    # the heuristic blend and score displays keep a bounded scale. Cooling is
+    # the same prediction inverted: low predicted FP/g = drop candidate. (A
+    # separate cooling model trained on the same target was removed
+    # 2026-10-02 -- its predictions correlated 0.995 with this one.)
     current_players = pickups.latestGameState()
     current_players['pred_next5_fp'] = pickupModel.predict(current_players)
     current_players['ml_score'] = current_players['pred_next5_fp'].rank(pct=True)
-    current_players['cooling_pred_next5_fp'] = coolingModel.predict(current_players)
-    current_players['cooling_score'] = 1 - current_players['cooling_pred_next5_fp'].rank(pct=True)
+    current_players['cooling_score'] = 1 - current_players['ml_score']
     current_players = current_players.merge(
         allPlayerData[['id', 'full_name', 'positionCode']],
         left_on='playerId',
@@ -111,7 +109,7 @@ def runPickups():
           .to_string())
 
     print("\n=== Cooling down (drop candidates watch list) ===")
-    print(current_players[['display_name', 'positionCode', 'cooling_pred_next5_fp', 'cooling_score', 'gamesPlayed']]
+    print(current_players[['display_name', 'positionCode', 'pred_next5_fp', 'cooling_score', 'gamesPlayed']]
           .sort_values('cooling_score', ascending=False)
           .head(20)
           .to_string())
@@ -705,7 +703,7 @@ def runMockDraft(year, refresh=False, team=None, all_teams=False,
 def main():
     parser = argparse.ArgumentParser(description="Fantasy hockey tools")
     sub = parser.add_subparsers(dest='command', required=True)
-    sub.add_parser('train-pickups', help='train pickup + cooling models on historical seasons')
+    sub.add_parser('train-pickups', help='train the pickup model on historical seasons')
     sub.add_parser('pickups', help='rank available free agents (uses saved models)')
     sub.add_parser('train-draft', help='train the draft ranker on historical player-seasons')
     sub.add_parser('train-goalies', help='train the goalie draft ranker on historical goalie-seasons')

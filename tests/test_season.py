@@ -22,7 +22,7 @@ def test_draft_boundaries_match_the_shipped_model():
 
 
 def test_pickup_boundaries_match_the_shipped_model():
-    """Pinned to what models/pickups.py and models/cooling.py used."""
+    """Pinned to what models/pickups.py (and the retired cooling model) used."""
     assert season.PICKUP_TRAIN_MAX_SEASON == 2022
     assert season.PICKUP_VAL_SEASON == 2023
 

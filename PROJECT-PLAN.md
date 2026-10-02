@@ -1351,6 +1351,26 @@ not `redirect_uri` — a `redirect_uri` key in `oauth2.json` is silently ignored
 and the callback defaults to `oob` (`yahoo_oauth/utils.py:18`), which will not
 match an app registered with an `https://localhost` redirect.
 
+### 2026-10-02 — Cooling model removed (the cooling list is the inverted pickup model)
+
+Over-engineering audit. Since the July regression conversion, `src/models/cooling.py` trained
+the **same** target (`next_5_avg`) on the **same** features (`buildFeatureMatrix`) as the pickup
+model, just untuned, and both consumers turned it into `1 - pred.rank(pct=True)`. Gate run
+before deleting it, using the saved Oct 1 `.pkl` files and the 2026 constants (train ≤2023,
+val 2024, which the pickup search's refit also saw). Season 2025 was held out from both:
+
+| Held-out 2025 (41,984 rows) | pickup, inverted | cooling |
+|---|---|---|
+| Spearman vs `next_5_avg` | **0.6194** | 0.6189 |
+| AUC of −pred vs `is_cooling_down` | 0.7778 | **0.7784** |
+| Rank correlation between the two models' predictions | 0.9950 | |
+
+The AUC gap (0.0006) is noise and the models are effectively the same model. Owner approved
+treating it as a tie. `cooling_score = 1 - ml_score` in `main.py` and `api_export.py`; the
+frontend payload shape is unchanged. `train-pickups` now trains one model. `fht-research-frontier`
+item 1 ("tune the cooling model") was resolved by deletion. A cooling-specific model is only
+worth reviving with a *different* target or features.
+
 
 ## Resources & References
 - NHLE API (no auth): `https://api-web.nhle.com/v1/` — roster: `/v1/roster/{team}/current`,

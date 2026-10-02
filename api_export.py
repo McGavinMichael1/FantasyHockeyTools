@@ -14,7 +14,6 @@ from src import moneypuck
 from src import season
 from src import yahooAPI
 from src.features import pickups
-from src.models import cooling as coolingModel
 from src.models import pickups as pickupModel
 
 CURRENT_SEASON = season.CURRENT_SEASON
@@ -383,13 +382,13 @@ def export_data():
     # Heuristic ranking
     results = pickups.rankFreeAgents(pickup_stats, allPlayerData, rostered_nhle_ids)
 
-    # ML predictions. Models regress next-5-game FP/g; convert to 0-1
+    # ML predictions. The model regresses next-5-game FP/g; convert to 0-1
     # percentile ranks so the blend and frontend score bars keep a bounded
-    # scale. Low predicted FP/g = cooling down, so the cooling score is
-    # inverted (higher = stronger drop candidate, as before).
+    # scale. Cooling is the same prediction inverted (higher = stronger drop
+    # candidate).
     current_players = pickups.latestGameState()
     current_players['ml_score'] = pickupModel.predict(current_players).rank(pct=True)
-    current_players['cooling_score'] = 1 - coolingModel.predict(current_players).rank(pct=True)
+    current_players['cooling_score'] = 1 - current_players['ml_score']
     current_players = current_players.merge(
         allPlayerData[['id', 'full_name', 'positionCode', 'sweaterNumber']],
         left_on='playerId',

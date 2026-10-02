@@ -28,7 +28,7 @@ DRAFT_TRAIN_MAX_SEASON = LAST_COMPLETED_SEASON - 3
 DRAFT_VAL_SEASONS = (LAST_COMPLETED_SEASON - 2, LAST_COMPLETED_SEASON - 1)
 DRAFT_TEST_SEASON = LAST_COMPLETED_SEASON
 
-# --- Pickup and cooling models ------------------------------------------
+# --- Pickup model (the cooling list is its inverse) -------------------
 # The label is a next-5-game window inside a season, so these need one less
 # season of headroom than the draft models. backtest.py grades them on
 # CURRENT_SEASON, which is the real held-out set.
